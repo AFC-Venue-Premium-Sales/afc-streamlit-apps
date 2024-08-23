@@ -76,7 +76,7 @@ if uploaded_file is not None:
 
         # Display metrics in the main area
         if not filtered_data.empty:
-            # Chart dimensions and font settings
+            # Chart the dimensions and font settings
             chart_size = (8, 4)  # Size of the charts (width, height)
             font_size_title = 14
             font_size_labels = 10
