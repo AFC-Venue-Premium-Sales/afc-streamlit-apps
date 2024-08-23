@@ -76,9 +76,3 @@ if uploaded_file is not None:
         file_name='filtered_sales_data.csv',
         mime='text/csv',
     )
-
-# Helper function placeholders
-def load_data(file):
-    # Assume the file is a file-like object
-    df = pd.read_excel(file, engine='openpyxl', skiprows=1) 
-    return df
