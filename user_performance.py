@@ -20,7 +20,14 @@ arsenal_gold = '#DAA520'
 
 
 # App title
-st.title('Premium Exec Performance Dashboard')
+st.title('AFC Premium Exec Dashboard')
+
+# About section
+st.markdown("""
+### About
+This application provides detailed Exec Sales Metrics, derived from RTS data. To get started, please download the relevant sales report from [RTS](https://www.tjhub3.com/Rts_Arsenal_Hospitality/Suites/HospitalityPackageSales) and upload it here. The app allows you to filter results by date, user, and fixture for tailored insights.
+""")
+
 
 # File uploader in the sidebar
 uploaded_file = st.sidebar.file_uploader("Choose a sales file", type=['xlsx'])
