@@ -18,11 +18,6 @@ specified_users = ['dcoppin', 'Jedwards', 'jedwards', 'bgardiner', 'BenT', 'jmur
 # Arsenal Gold color in hex
 arsenal_gold = '#DAA520'
 
-# # Display an image at the top of the report
-# image_path = os.path.join(os.path.dirname(__file__), 'images/gunner_flag.jpg')
-# st.image(image_path, use_column_width=True)
-
-
 
 # App title
 st.title('Premium Exec Performance Dashboard')
