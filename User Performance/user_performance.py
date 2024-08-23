@@ -1,9 +1,5 @@
 import streamlit as st
 import pandas as pd
-from user_performance_calc import load_data
-
-
-
 
 st.title('My Streamlit App')
 st.write('Hello, world!')
