@@ -21,7 +21,7 @@ image_path = '/Users/cmunthali/Documents/PYTHON/SALES_REPORTS/gunner_flag.jpg'
 st.image(image_path, use_column_width=True)
 
 # App title
-st.title('Exec User Performance Dashboard')
+st.title('Premium Exec User Performance Dashboard')
 
 # File uploader in the sidebar
 uploaded_file = st.sidebar.file_uploader("Choose a sales file", type=['xlsx'])
