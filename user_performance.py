@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import os
 import matplotlib.pyplot as plt
 from io import BytesIO
 from user_performance_calc import (
@@ -9,6 +10,7 @@ from user_performance_calc import (
     total_budget_target_data
 )
 
+
 # Specified users list
 specified_users = ['dcoppin', 'Jedwards', 'jedwards', 'bgardiner', 'BenT', 'jmurphy', 'ayildirim',
                    'MeganS', 'BethNW', 'HayleyA', 'LucyB', 'Conor', 'SavR', 'MillieL']
@@ -17,11 +19,13 @@ specified_users = ['dcoppin', 'Jedwards', 'jedwards', 'bgardiner', 'BenT', 'jmur
 arsenal_gold = '#DAA520'
 
 # Display an image at the top of the report
-image_path = '/Users/cmunthali/Documents/PYTHON/APPS/gunner_flag.jpg'
+image_path = os.path.join(os.path.dirname(__file__), 'images/gunner_flag.jpg')
 st.image(image_path, use_column_width=True)
 
+
+
 # App title
-st.title('Premium Exec User Performance Dashboard')
+st.title('Premium Exec Performance Dashboard')
 
 # File uploader in the sidebar
 uploaded_file = st.sidebar.file_uploader("Choose a sales file", type=['xlsx'])
