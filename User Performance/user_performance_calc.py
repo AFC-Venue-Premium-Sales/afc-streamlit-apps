@@ -130,26 +130,12 @@ def split_guest_column(df):
 
 def convert_date_format(df, column_name):
     """
-    Convert the datetime format of a specified column in a DataFrame.
-    
-    Parameters:
-    df (pandas.DataFrame): The DataFrame containing the datetime column.
-    column_name (str): The name of the column to format.
-
-    Returns:
-    pandas.DataFrame: The DataFrame with the updated datetime format.
+    Ensure the datetime format of a specified column in a DataFrame.
     """
-    # Ensure the column exists in the DataFrame
     if column_name in df.columns:
-        # Convert column to datetime if it's not already
-        df[column_name] = pd.to_datetime(df[column_name], errors='coerce')
-        
-        # Format datetime in the desired format
-        df[column_name] = df[column_name].dt.strftime('%d-%m-%Y %H:%M:%S')
-    else:
-        print(f"Column {column_name} does not exist in DataFrame.")
-    
+        df[column_name] = pd.to_datetime(df[column_name], errors='coerce')  # Convert and coerce errors
     return df
+
 
 # Columns to keep
 columns_to_keep = ['Order Id', 'Event name', 'Guest', 'Package name', 'Package GL code','Locations', 'Seats', 
