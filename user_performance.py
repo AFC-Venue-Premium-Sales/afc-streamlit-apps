@@ -17,7 +17,7 @@ specified_users = ['dcoppin', 'Jedwards', 'jedwards', 'bgardiner', 'BenT', 'jmur
 arsenal_gold = '#DAA520'
 
 # Display an image at the top of the report
-image_path = '/Users/cmunthali/Documents/PYTHON/SALES_REPORTS/gunner_flag.jpg'
+image_path = '/Users/cmunthali/Documents/PYTHON/APPS/gunner_flag.jpg'
 st.image(image_path, use_column_width=True)
 
 # App title
