@@ -23,7 +23,7 @@ st.title('MBM Sales Performance Dashboard')
 # About section
 st.markdown("""
 ### About
-This application provides defined metrics derived from MBM sales data. To get started, please download the relevant sales report from [RTS](https://www.tjhub3.com/Rts_Arsenal_Hospitality/Suites/HospitalityPackageSales) and upload it here. The app allows you to filter results by date, user, fixture, payment status, and paid status for tailored insights.
+This app provides sales metrics derived from MBM sales data. To get started, please download the relevant sales report from [RTS](https://www.tjhub3.com/Rts_Arsenal_Hospitality/Suites/HospitalityPackageSales) and upload it here. The app allows you to filter results by date, user, fixture, payment status, and paid status for tailored insights.
 """)
 
 # File uploader in the sidebar
@@ -104,7 +104,7 @@ if uploaded_file is not None:
         # Total Accumulated Sales
         st.write("### Total Accumulated Sales Since Going Live")
         total_sold = filtered_data['Total price'].sum()
-        st.write(f"£{total_sold:,.2f}")
+        st.write(f"Total Accumulated Sales: **£{total_sold:,.2f}**")
         
        # Total Sold By Other Payment
         st.write("### Sales with 'Other' Payment")
@@ -116,7 +116,8 @@ if uploaded_file is not None:
         total_sold_by_other = filtered_discount_data['Total price'].sum()
 
         # Display the total sales by 'Other' Payment
-        st.write(f"Total Sales with 'Other' Payment: £{total_sold_by_other:,.2f}")
+        st.write(f"Invoice & Credit payments are logged under 'Discount' field on RTS as a fix for now. I've classified them as 'Other Payments' for now.")
+        st.write(f"Total Sales with 'Other' Payment: **£{total_sold_by_other:,.2f}**")
 
         # Group by 'Order Id', 'Event name', and 'Payment time' to calculate the total sales for each order
         total_discount_value = filtered_discount_data.groupby(['Order Id', 'Event name', 'Payment time'])[['Discount', 'Total price']].sum().reset_index()
@@ -133,7 +134,7 @@ if uploaded_file is not None:
         
         # Calculate and display the total sales per match
         total_sales_per_match = total_sold_per_match['Total price'].sum()
-        st.write(f"Total Match Fixture: £{total_sales_per_match:,.2f}")
+        st.write(f"Total Match Fixture: **£{total_sales_per_match:,.2f}**")
         
         total_sold_per_match['Total price'] = total_sold_per_match['Total price'].apply(lambda x: f"£{x:,.2f}")
         st.dataframe(total_sold_per_match)
@@ -144,7 +145,7 @@ if uploaded_file is not None:
         
         # Calculate and display the total sales per package
         total_sales_per_package = total_sold_per_package['Total price'].sum()
-        st.write(f"Total Package Sales: £{total_sales_per_package:,.2f}")
+        st.write(f"Total Package Sales: **£{total_sales_per_package:,.2f}**")
         
         total_sold_per_package['Total price'] = total_sold_per_package['Total price'].apply(lambda x: f"£{x:,.2f}")
         st.dataframe(total_sold_per_package)
@@ -155,7 +156,7 @@ if uploaded_file is not None:
         
         # Calculate and display the total sales per location
         total_sales_per_location = total_sold_per_location['Total price'].sum()
-        st.write(f"Total Location Sales: £{total_sales_per_location:,.2f}")
+        st.write(f"Total Location Sales: **£{total_sales_per_location:,.2f}**")
         
         total_sold_per_location['Total price'] = total_sold_per_location['Total price'].apply(lambda x: f"£{x:,.2f}")
         st.dataframe(total_sold_per_location)
