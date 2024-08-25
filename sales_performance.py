@@ -10,7 +10,6 @@ from user_performance_calc import (
     total_budget_target_data
 )
 
-
 # Specified users list
 specified_users = ['dcoppin', 'Jedwards', 'jedwards', 'bgardiner', 'BenT', 'jmurphy', 'ayildirim',
                    'MeganS', 'BethNW', 'HayleyA', 'LucyB', 'Conor', 'SavR', 'MillieL']
@@ -18,16 +17,14 @@ specified_users = ['dcoppin', 'Jedwards', 'jedwards', 'bgardiner', 'BenT', 'jmur
 # Arsenal Gold color in hex
 arsenal_gold = '#DAA520'
 
-
 # App title
-st.title('AFC Premium Exec Dashboard')
+st.title('MBM Sales Performance Dashboard')
 
 # About section
 st.markdown("""
 ### About
-This application provides defined metrics derived from MBM sales data. To get started, please download the relevant sales report from [RTS](https://www.tjhub3.com/Rts_Arsenal_Hospitality/Suites/HospitalityPackageSales) and upload it here. The app allows you to filter results by date, user, and fixture for tailored insights.
+This application provides defined metrics derived from MBM sales data. To get started, please download the relevant sales report from [RTS](https://www.tjhub3.com/Rts_Arsenal_Hospitality/Suites/HospitalityPackageSales) and upload it here. The app allows you to filter results by date, user, fixture, payment status, and paid status for tailored insights.
 """)
-
 
 # File uploader in the sidebar
 uploaded_file = st.sidebar.file_uploader("Choose a sales file", type=['xlsx'])
@@ -57,7 +54,7 @@ if uploaded_file is not None:
 
     progress_bar.progress(100)  # Complete the progress
     
-     # Date range selector in the sidebar
+    # Date range selector in the sidebar
     date_range = st.sidebar.date_input("Select Date Range", [])
 
     # Ensure only specified users are shown in the user filter
@@ -65,58 +62,113 @@ if uploaded_file is not None:
 
     # Event name filter dropdown in the sidebar
     event_names = pd.unique(processed_data['Event name'])
-    selected_events = st.sidebar.multiselect("Select Events", options=event_names, default=event_names)
+    selected_events = st.sidebar.multiselect("Select Events", options=event_names, default=None)
+    
+    # Payment status filter
+    payment_status_options = pd.unique(processed_data['Payment status'])
+    selected_payment_status = st.sidebar.multiselect("Select Payment Status", options=payment_status_options, default=None)
+    
+    # Paid filter
+    paid_options = pd.unique(processed_data['Paid'])
+    selected_paid = st.sidebar.selectbox("Filter by Paid", options=paid_options)
+    
+    # Discount Filter
+    discount_options = pd.unique(processed_data['Discount'])
+    selected_discount_options = st.sidebar.multiselect("Filter by Discount (Other payment)", options=discount_options, default=None)
     
     # Username filter dropdown in the sidebar for multiple selections
-    selected_users = st.sidebar.multiselect("Select Execs", options=valid_usernames, default=valid_usernames)
+    selected_users = st.sidebar.multiselect("Select Execs", options=valid_usernames, default=None)
 
-    # Apply filters only if selections are made
-    if date_range and selected_users and selected_events:
+    # Apply filters interactively
+    filtered_data = processed_data.copy()
+
+    if date_range:
         min_date, max_date = (pd.Timestamp(date_range[0]), pd.Timestamp(date_range[1]) if len(date_range) == 2 else pd.Timestamp(date_range[0]))
-        filtered_data = processed_data[
-            (processed_data['Created_on'] >= min_date) &
-            (processed_data['Created_on'] <= max_date) &
-            (processed_data['Created_by'].isin(selected_users)) &
-            (processed_data['Event name'].isin(selected_events))
-        ]
-        
-        # Display metrics in the main area
-        if not filtered_data.empty:
-            # Total Accumulated Sales
-            st.write("### Total Accumulated Sales Since going Live")
-            total_sold = filtered_data['Total price'].sum()
-            total_sold['Total price'] = total_sold['Total price'].apply(lambda x: f"£{x:,.2f}")
-            st.dataframe(total_sold)
-            
-            # Total Sold Per Fixture
-            st.write("### Total Sales Per Match")
-            total_sold_per_match = filtered_data.groupby('Event name')['Total price'].sum().reset_index()
-            total_sold_per_match['Total price'] = total_sold_per_match['Total price'].apply(lambda x: f"£{x:,.2f}")
-            st.dataframe(total_sold_per_match)
-            
-             # Total Sold Per Package
-            st.write("### Total Sales Per Package")
-            total_sold_per_match = filtered_data.groupby('Package name')['Total price'].sum().reset_index()
-            total_sold_per_match['Total price'] = total_sold_per_match['Total price'].apply(lambda x: f"£{x:,.2f}")
-            st.dataframe(total_sold_per_match)
-            
-             # Total Sold Per Location
-            st.write("### Total Sales Per Location")
-            total_sold_per_location = filtered_data.groupby('Location')['Total price'].sum().reset_index()
-            total_sold_per_location['Total price'] = total_sold_per_location['Total price'].apply(lambda x: f"£{x:,.2f}")
-            st.dataframe(total_sold_per_location)
-            
-            
-            # Save the filtered data to a CSV file in memory
-        output = BytesIO()
-        output.write(filtered_data.to_csv(index=False).encode('utf-8'))
-        output.seek(0)
+        filtered_data = filtered_data[(filtered_data['Payment time'] >= min_date) & (filtered_data['Payment time'] <= max_date)]
+    
+    if selected_users:
+        filtered_data = filtered_data[filtered_data['Created_by'].isin(selected_users)]
 
-        # Download button for filtered data
-        st.download_button(
-            label="Download Filtered Data as CSV",
-            data=output,
-            file_name='filtered_sales_data.csv',
-            mime='text/csv',
-        )
-            
+    if selected_events:
+        filtered_data = filtered_data[filtered_data['Event name'].isin(selected_events)]
+
+    if selected_paid:
+        filtered_data = filtered_data[filtered_data['Paid'] == selected_paid]
+
+    if selected_payment_status:
+        filtered_data = filtered_data[filtered_data['Payment status'].isin(selected_payment_status)]
+        
+    # Display metrics in the main area
+    if not filtered_data.empty:
+        
+        # Total Accumulated Sales
+        st.write("### Total Accumulated Sales Since Going Live")
+        total_sold = filtered_data['Total price'].sum()
+        st.write(f"£{total_sold:,.2f}")
+        
+       # Total Sold By Other Payment
+        st.write("### Sales with 'Other' Payment")
+
+        # Filter the rows where 'Discount' is not 'None'
+        filtered_discount_data = filtered_data[filtered_data['Discount'] != 'none']
+
+        # Calculate the total sales for 'Other' Payment before any formatting
+        total_sold_by_other = filtered_discount_data['Total price'].sum()
+
+        # Display the total sales by 'Other' Payment
+        st.write(f"Total Sales with 'Other' Payment: £{total_sold_by_other:,.2f}")
+
+        # Group by 'Order Id', 'Event name', and 'Payment time' to calculate the total sales for each order
+        total_discount_value = filtered_discount_data.groupby(['Order Id', 'Event name', 'Payment time'])[['Discount', 'Total price']].sum().reset_index()
+
+        # Apply formatting to the 'Total price' column
+        total_discount_value['Total price'] = total_discount_value['Total price'].apply(lambda x: f"£{x:,.2f}")
+
+        # Display the dataframe
+        st.dataframe(total_discount_value)
+
+        # Total Sold Per Fixture
+        st.write("### Total Sales Per Fixture")
+        total_sold_per_match = filtered_data.groupby('Event name')['Total price'].sum().reset_index()
+        
+        # Calculate and display the total sales per match
+        total_sales_per_match = total_sold_per_match['Total price'].sum()
+        st.write(f"Total Match Fixture: £{total_sales_per_match:,.2f}")
+        
+        total_sold_per_match['Total price'] = total_sold_per_match['Total price'].apply(lambda x: f"£{x:,.2f}")
+        st.dataframe(total_sold_per_match)
+        
+        # Total Sold Per Package
+        st.write("### Total Sales Per Package")
+        total_sold_per_package = filtered_data.groupby('Package name')['Total price'].sum().reset_index()
+        
+        # Calculate and display the total sales per package
+        total_sales_per_package = total_sold_per_package['Total price'].sum()
+        st.write(f"Total Package Sales: £{total_sales_per_package:,.2f}")
+        
+        total_sold_per_package['Total price'] = total_sold_per_package['Total price'].apply(lambda x: f"£{x:,.2f}")
+        st.dataframe(total_sold_per_package)
+        
+        # Total Sold Per Location
+        st.write("### Total Sales Per Location")
+        total_sold_per_location = filtered_data.groupby('Locations')['Total price'].sum().reset_index()
+        
+        # Calculate and display the total sales per location
+        total_sales_per_location = total_sold_per_location['Total price'].sum()
+        st.write(f"Total Location Sales: £{total_sales_per_location:,.2f}")
+        
+        total_sold_per_location['Total price'] = total_sold_per_location['Total price'].apply(lambda x: f"£{x:,.2f}")
+        st.dataframe(total_sold_per_location)
+        
+        # Save the filtered data to a CSV file in memory
+    output = BytesIO()
+    output.write(filtered_data.to_csv(index=False).encode('utf-8'))
+    output.seek(0)
+
+    # Download button for filtered data
+    st.download_button(
+        label="Download Filtered Data as CSV",
+        data=output,
+        file_name='filtered_sales_data.csv',
+        mime='text/csv',
+    )
