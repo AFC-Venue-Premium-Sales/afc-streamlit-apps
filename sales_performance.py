@@ -18,12 +18,12 @@ specified_users = ['dcoppin', 'Jedwards', 'jedwards', 'bgardiner', 'BenT', 'jmur
 arsenal_gold = '#DAA520'
 
 # App title
-st.title('MBM Sales Performance Dashboard')
+st.title('AFC Finance x MBM Reconciliation')
 
 # About section
 st.markdown("""
 ### About
-This app provides sales metrics derived from MBM sales data. To get started, please download the relevant sales report from [RTS](https://www.tjhub3.com/Rts_Arsenal_Hospitality/Suites/HospitalityPackageSales) and upload it here. The app allows you to filter results by date, user, fixture, payment status, and paid status for tailored insights.
+This app provides sales metrics derived from MBM sales data to be used for reconciliation with the Finance team after each Home Fixture. To get started, please download the relevant sales report from [RTS](https://www.tjhub3.com/Rts_Arsenal_Hospitality/Suites/HospitalityPackageSales) and upload it here. The app allows you to filter results by date, user, fixture, payment status, and paid status for tailored insights.
 """)
 
 # File uploader in the sidebar
@@ -113,17 +113,22 @@ if uploaded_file is not None:
         filtered_discount_data = filtered_data[filtered_data['Discount'] != 'none']
 
         # Calculate the total sales for 'Other' Payment before any formatting
-        total_sold_by_other = filtered_discount_data['Total price'].sum()
-
+        total_sold_by_other = filtered_discount_data['Discount value'].sum()
+        
+        # calculate accumulated sales + 'other' payments
+        other_sales_total = total_sold + total_sold_by_other
+        st.write(f"Accumulated sales with 'Other' payments included: **£{other_sales_total:,.2f}**")
+        
         # Display the total sales by 'Other' Payment
         st.write(f"Invoice & Credit payments are logged under 'Discount' field on RTS as a fix for now. I've classified them as 'Other Payments' for now.")
         st.write(f"Total Sales with 'Other' Payment: **£{total_sold_by_other:,.2f}**")
 
         # Group by 'Order Id', 'Event name', and 'Payment time' to calculate the total sales for each order
-        total_discount_value = filtered_discount_data.groupby(['Order Id', 'Event name', 'Payment time'])[['Discount', 'Total price']].sum().reset_index()
+        total_discount_value = filtered_discount_data.groupby(['Order Id', 'Event name', 'Payment time'])[['Discount', 'Discount value', 'Total price']].sum().reset_index()
 
         # Apply formatting to the 'Total price' column
         total_discount_value['Total price'] = total_discount_value['Total price'].apply(lambda x: f"£{x:,.2f}")
+        total_discount_value['Discount value'] = total_discount_value['Discount value'].apply(lambda x: f"£{x:,.2f}")
 
         # Display the dataframe
         st.dataframe(total_discount_value)
