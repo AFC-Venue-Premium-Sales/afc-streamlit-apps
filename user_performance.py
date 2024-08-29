@@ -1,102 +1,52 @@
 import streamlit as st
 import pandas as pd
-import os
 import matplotlib.pyplot as plt
 from io import BytesIO
-from bcrypt import hashpw, gensalt, checkpw
 from user_performance_calc import (
     load_data, remove_grand_total_row, filter_columns, clean_numeric_columns, 
     split_created_by_column, add_additional_info, split_guest_column, convert_date_format,
     columns_to_keep, competition_fixture, total_budget_packages_data,
     total_budget_target_data
 )
-import os
-import streamlit as st
 
-# Retrieve the environment variable
-PASSWORD = os.getenv("PASSWORD")
-USERNAME = "HospVenue"
-
-# Authentication function
-def login(username, password):
-    return username == USERNAME and password == PASSWORD
-
-# Display the login form if the user is not authenticated
-if 'authenticated' not in st.session_state:
-    st.session_state['authenticated'] = False
-
-if not st.session_state['authenticated']:
-    st.title("Login")
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
-    if st.button("Login"):
-        if login(username, password):
-            st.session_state['authenticated'] = True
-            st.success("Login successful!")
-        else:
-            st.error("Username or password is incorrect")
-else:
-    # Your application code continues here...
-    st.write("You are authenticated!")
-
-    # Specified users list
+def run_app():
+    # Your existing User Performance code
     specified_users = ['dcoppin', 'Jedwards', 'jedwards', 'bgardiner', 'BenT', 'jmurphy', 'ayildirim',
                        'MeganS', 'BethNW', 'HayleyA', 'LucyB', 'Conor', 'SavR', 'MillieL']
 
-    # Arsenal Gold color in hex
     arsenal_gold = '#DAA520'
 
-    # App title
     st.title('AFC Premium Exec Dashboard')
 
-    # About section
     st.markdown("""
     ### About
     This application provides detailed Exec Sales Metrics, derived from RTS data. To get started, please download the relevant sales report from [RTS](https://www.tjhub3.com/Rts_Arsenal_Hospitality/Suites/HospitalityPackageSales) and upload it here. The app allows you to filter results by date, user, and fixture for tailored insights.
     """)
 
-    # File uploader in the sidebar
     uploaded_file = st.sidebar.file_uploader("Choose a sales file", type=['xlsx'])
 
     if uploaded_file is not None:
-        # Show a message indicating the file is loading
         st.sidebar.success("File successfully loaded.")
-        
-        # Initialize a progress bar
         progress_bar = st.sidebar.progress(0)
-
-        # Load the data with progress
         progress_bar.progress(10)
         raw_data = load_data(uploaded_file)
-        
         progress_bar.progress(30)
         processed_data = remove_grand_total_row(raw_data)
         processed_data = processed_data.dropna(subset=['Event name'])
-
-        # Preprocess the data
         progress_bar.progress(50)
         processed_data = filter_columns(processed_data, columns_to_keep)
         processed_data = clean_numeric_columns(processed_data, ['Price', 'Discount value', 'Total price'])
         processed_data = split_created_by_column(processed_data)
         processed_data = split_guest_column(processed_data)
         processed_data = convert_date_format(processed_data, 'Created_on')
+        progress_bar.progress(100)
 
-        progress_bar.progress(100)  # Complete the progress
-
-        # Date range selector in the sidebar
         date_range = st.sidebar.date_input("Select Date Range", [])
-
-        # Ensure only specified users are shown in the user filter
         valid_usernames = [user for user in specified_users if user in pd.unique(processed_data['Created_by'])]
-
-        # Event name filter dropdown in the sidebar
         event_names = pd.unique(processed_data['Event name'])
         selected_events = st.sidebar.multiselect("Select Events", options=event_names, default=event_names)
-        
-        # Username filter dropdown in the sidebar for multiple selections
         selected_users = st.sidebar.multiselect("Select Execs", options=valid_usernames, default=valid_usernames)
 
-        # Apply filters only if selections are made
         if date_range and selected_users and selected_events:
             min_date, max_date = (pd.Timestamp(date_range[0]), pd.Timestamp(date_range[1]) if len(date_range) == 2 else pd.Timestamp(date_range[0]))
             filtered_data = processed_data[
@@ -106,20 +56,16 @@ else:
                 (processed_data['Event name'].isin(selected_events))
             ]
 
-            # Display metrics in the main area
             if not filtered_data.empty:
-                # Chart the dimensions and font settings
-                chart_size = (8, 4)  # Size of the charts (width, height)
+                chart_size = (8, 4)
                 font_size_title = 14
                 font_size_labels = 10
 
-                # Total Package Sales by Exec
                 st.write("### Total Sales Generated by Exec")
                 total_package_sales_by_exec = filtered_data.groupby('Created_by')['Total price'].sum().reset_index()
                 total_package_sales_by_exec['Total price'] = total_package_sales_by_exec['Total price'].apply(lambda x: f"£{x:,.2f}")
                 st.dataframe(total_package_sales_by_exec)
                 
-                # Bar Chart for Total Package Sales by Exec
                 fig, ax = plt.subplots(figsize=chart_size)
                 ax.bar(total_package_sales_by_exec['Created_by'], filtered_data.groupby('Created_by')['Total price'].sum(), color=arsenal_gold)
                 ax.set_title('Total Package Sales by Exec', fontsize=font_size_title)
@@ -129,13 +75,11 @@ else:
                 plt.yticks(fontsize=font_size_labels)
                 st.pyplot(fig)
 
-                # Average Sale Value per Exec
                 st.write("### Average Sale Value per Exec")
                 avg_sale_value_per_exec = filtered_data.groupby('Created_by')['Total price'].mean().reset_index()
                 avg_sale_value_per_exec['Total price'] = avg_sale_value_per_exec['Total price'].apply(lambda x: f"£{x:,.2f}")
                 st.dataframe(avg_sale_value_per_exec)
 
-                # Bar Chart for Average Sale Value per Exec
                 fig, ax = plt.subplots(figsize=chart_size)
                 ax.bar(avg_sale_value_per_exec['Created_by'], filtered_data.groupby('Created_by')['Total price'].mean(), color=arsenal_gold)
                 ax.set_title('Average Sale Value per Exec', fontsize=font_size_title)
@@ -145,12 +89,10 @@ else:
                 plt.yticks(fontsize=font_size_labels)
                 st.pyplot(fig)
 
-                # Total Number of Sales per Exec
                 st.write("### Total Count of Sales by Exec")
                 total_sales_count_by_exec = filtered_data.groupby('Created_by').size().reset_index(name='Total Sales')
                 st.dataframe(total_sales_count_by_exec)
 
-                # Bar Chart for Total Number of Sales per Exec
                 fig, ax = plt.subplots(figsize=chart_size)
                 ax.bar(total_sales_count_by_exec['Created_by'], total_sales_count_by_exec['Total Sales'], color=arsenal_gold)
                 ax.set_title('Total Number of Sales per Exec', fontsize=font_size_title)
@@ -160,13 +102,11 @@ else:
                 plt.yticks(fontsize=font_size_labels)
                 st.pyplot(fig)
 
-                # Total Discounts Given per Exec
                 st.write("### Total Discounts Given per Exec")
                 total_discounts_given_by_exec = filtered_data.groupby('Created_by')['Discount value'].sum().reset_index()
                 total_discounts_given_by_exec['Discount value'] = total_discounts_given_by_exec['Discount value'].apply(lambda x: f"£{x:,.2f}")
                 st.dataframe(total_discounts_given_by_exec)
 
-                # Bar Chart for Total Discounts Given per Exec
                 fig, ax = plt.subplots(figsize=chart_size)
                 ax.bar(total_discounts_given_by_exec['Created_by'], filtered_data.groupby('Created_by')['Discount value'].sum(), color=arsenal_gold)
                 ax.set_title('Total Discounts Given per Exec', fontsize=font_size_title)
@@ -176,7 +116,6 @@ else:
                 plt.yticks(fontsize=font_size_labels)
                 st.pyplot(fig)
 
-                # Revenue Contribution Percentage per Exec
                 st.write("### Revenue Contribution Percentage per Exec")
                 total_revenue = filtered_data['Total price'].sum()
                 revenue_contribution_percentage = filtered_data.groupby('Created_by')['Total price'].sum().reset_index()
@@ -184,7 +123,6 @@ else:
                 revenue_contribution_percentage['Contribution (%)'] = revenue_contribution_percentage['Contribution (%)'].apply(lambda x: f"{x:.2f}%")
                 st.dataframe(revenue_contribution_percentage[['Created_by', 'Contribution (%)']])
 
-                # Bar Chart for Revenue Contribution Percentage per Exec
                 fig, ax = plt.subplots(figsize=chart_size)
                 ax.bar(revenue_contribution_percentage['Created_by'], filtered_data.groupby('Created_by')['Total price'].sum() / total_revenue * 100, color=arsenal_gold)
                 ax.set_title('Revenue Contribution Percentage per Exec', fontsize=font_size_title)
@@ -194,15 +132,14 @@ else:
                 plt.yticks(fontsize=font_size_labels)
                 st.pyplot(fig)
 
-        # Save the filtered data to a CSV file in memory
-        output = BytesIO()
-        output.write(filtered_data.to_csv(index=False).encode('utf-8'))
-        output.seek(0)
+            output = BytesIO()
+            output.write(filtered_data.to_csv(index=False).encode('utf-8'))
+            output.seek(0)
 
-        # Download button for filtered data
-        st.download_button(
-            label="Download Filtered Data as CSV",
-            data=output,
-            file_name='filtered_sales_data.csv',
-            mime='text/csv',
-        )
+            st.download_button(
+                label="Download Filtered Data as CSV",
+                data=output,
+                file_name='filtered_sales_data.csv',
+                mime='text/csv',
+            )
+
