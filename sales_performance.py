@@ -10,11 +10,8 @@ from user_performance_calc import (
 )
 
 def run_app():
-    # Your existing Sales Performance code
     specified_users = ['dcoppin', 'Jedwards', 'jedwards', 'bgardiner', 'BenT', 'jmurphy', 'ayildirim',
                        'MeganS', 'BethNW', 'HayleyA', 'LucyB', 'Conor', 'SavR', 'MillieL']
-
-    arsenal_gold = '#DAA520'
 
     st.title('AFC Finance x MBM Reconciliation')
 
@@ -40,11 +37,14 @@ def run_app():
         processed_data = split_guest_column(processed_data)
         processed_data = convert_date_format(processed_data, 'Created_on')
         progress_bar.progress(100)
-        
+
+        # Sidebar filters
         date_range = st.sidebar.date_input("Select Date Range", [])
         valid_usernames = [user for user in specified_users if user in pd.unique(processed_data['Created_by'])]
         event_names = pd.unique(processed_data['Event name'])
+        sale_location = pd.unique(processed_data['Sale location'])
         selected_events = st.sidebar.multiselect("Select Events", options=event_names, default=None)
+        selected_sale_location = st.sidebar.multiselect("Select Sale Location", options=sale_location, default=None)
         selected_users = st.sidebar.multiselect("Select Execs", options=valid_usernames, default=None)
         payment_status_options = pd.unique(processed_data['Payment status'])
         selected_payment_status = st.sidebar.multiselect("Select Payment Status", options=payment_status_options, default=None)
@@ -55,33 +55,53 @@ def run_app():
 
         filtered_data = processed_data.copy()
 
+        # Apply date range filter
         if date_range:
             min_date, max_date = (pd.Timestamp(date_range[0]), pd.Timestamp(date_range[1]) if len(date_range) == 2 else pd.Timestamp(date_range[0]))
             filtered_data = filtered_data[(filtered_data['Payment time'] >= min_date) & (filtered_data['Payment time'] <= max_date)]
-        
+
+        # Apply sale location filter
+        if selected_sale_location:
+            # Include sales from both "Hospitality website" and selected sale locations if "Hospitality website" is selected
+            if 'Hospitality website' in selected_sale_location and not selected_users:
+                filtered_data = filtered_data[filtered_data['Sale location'].isin(selected_sale_location)]
+            else:
+                filtered_data = filtered_data[filtered_data['Sale location'].isin(selected_sale_location)]
+
+        # Apply user filter
         if selected_users:
             filtered_data = filtered_data[filtered_data['Created_by'].isin(selected_users)]
 
+        # Apply event filter
         if selected_events:
             filtered_data = filtered_data[filtered_data['Event name'].isin(selected_events)]
 
+        # Apply paid status filter
         if selected_paid:
             filtered_data = filtered_data[filtered_data['Paid'] == selected_paid]
 
+        # Apply payment status filter
         if selected_payment_status:
             filtered_data = filtered_data[filtered_data['Payment status'].isin(selected_payment_status)]
-        
+
+        # Apply discount filter
+        filtered_discount_data = filtered_data[filtered_data['Discount'] != 'none']
+        if selected_discount_options:
+            filtered_discount_data = filtered_discount_data[filtered_discount_data['Discount'].isin(selected_discount_options)]
+
+        # Display results
         if not filtered_data.empty:
             st.write("### Total Accumulated Sales Since Going Live")
             total_sold = filtered_data['Total price'].sum()
             st.write(f"Total Accumulated Sales: **£{total_sold:,.2f}**")
             
             st.write("### Sales with 'Other' Payment")
-            filtered_discount_data = filtered_data[filtered_data['Discount'] != 'none']
             total_sold_by_other = filtered_discount_data['Discount value'].sum()
             other_sales_total = total_sold + total_sold_by_other
             st.write(f"Accumulated sales with 'Other' payments included: **£{other_sales_total:,.2f}**")
             st.write(f"Total Sales with 'Other' Payment: **£{total_sold_by_other:,.2f}**")
+
+            # Apply discount filter to total_discount_value table
             total_discount_value = filtered_discount_data.groupby(['Order Id', 'Event name', 'Payment time'])[['Discount', 'Discount value', 'Total price']].sum().reset_index()
             total_discount_value['Total price'] = total_discount_value['Total price'].apply(lambda x: f"£{x:,.2f}")
             total_discount_value['Discount value'] = total_discount_value['Discount value'].apply(lambda x: f"£{x:,.2f}")
@@ -104,7 +124,8 @@ def run_app():
             st.write(f"Total Location Sales: **£{total_sold_per_location['Total price'].sum():,.2f}**")
             total_sold_per_location['Total price'] = total_sold_per_location['Total price'].apply(lambda x: f"£{x:,.2f}")
             st.dataframe(total_sold_per_location)
-        
+
+        # Download button for filtered data
         output = BytesIO()
         output.write(filtered_data.to_csv(index=False).encode('utf-8'))
         output.seek(0)
