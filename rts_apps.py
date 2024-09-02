@@ -9,11 +9,15 @@ def login(username, password):
     USERNAME = "HospVenue"
     return username == USERNAME and password == PASSWORD
 
+# Initialize session state for authentication
 if 'authenticated' not in st.session_state:
     st.session_state['authenticated'] = False
+if 'login_clicked' not in st.session_state:
+    st.session_state['login_clicked'] = False
 
+# Login button logic
 if not st.session_state['authenticated']:
-    st.title("AFC Venue - MBM Hospitality")
+    st.title("🏟️ AFC Venue - MBM Hospitality")
     
     # Description of the app
     st.markdown("""
@@ -26,25 +30,29 @@ if not st.session_state['authenticated']:
     **Premium Exec Metrics**:  
     View and evaluate performance metrics from the Premium Team.
 
-    **Please log in to access the features:**
+    **Note:** You will need to enter your credentials twice to proceed.
     """)
-    
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
-    if st.button("Login"):
-        if login(username, password):
-            st.session_state['authenticated'] = True
-            st.success("Login successful!")
-        else:
-            st.error("Username or password is incorrect")
-else:
-    st.sidebar.title("Navigation")
-    app_choice = st.sidebar.radio("Go to", ["Sales Performance", "User Performance"])
 
-    if app_choice == "Sales Performance":
-        
+    if not st.session_state['login_clicked']:
+        if st.button("🔐 Login"):
+            st.session_state['login_clicked'] = True
+
+    if st.session_state['login_clicked']:
+        username = st.text_input("👤 Username")
+        password = st.text_input("🔑 Password", type="password")
+        if st.button("Submit"):
+            if login(username, password):
+                st.session_state['authenticated'] = True
+                st.success("🎉 Login successful!")
+            else:
+                st.error("❌ Username or password is incorrect")
+
+else:
+    st.sidebar.title("🧭 Navigation")
+    app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
+
+    if app_choice == "📊 Sales Performance":
         sales_performance.run_app()
 
-    elif app_choice == "User Performance":
-        
+    elif app_choice == "📈 User Performance":
         user_performance.run_app()
