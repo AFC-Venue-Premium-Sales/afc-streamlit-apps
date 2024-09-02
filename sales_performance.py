@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 from io import BytesIO
+from tjt_hosp_api import filtered_df_without_seats
 from user_performance_calc import (
     load_data, remove_grand_total_row, filter_columns, clean_numeric_columns, 
     split_created_by_column, add_additional_info, split_guest_column, convert_date_format,
@@ -21,6 +22,8 @@ def run_app():
     """)
 
     uploaded_file = st.sidebar.file_uploader("Choose a sales file", type=['xlsx'])
+    # uploaded_file = filtered_df_without_seats
+    
 
     if uploaded_file is not None:
         st.sidebar.success("File successfully loaded.")
@@ -93,7 +96,7 @@ def run_app():
         if not filtered_data.empty:
             st.write("### Total Accumulated Sales Since Going Live")
             total_sold = filtered_data['Total price'].sum()
-            st.write(f"Total Accumulated Sales: **£{total_sold:,.2f}**")
+            st.write(f"Total Accumulated Sales: **£{total_sold:,.2f}** 🎉")
             
             st.write("### Sales with 'Other' Payment")
             total_sold_by_other = filtered_discount_data['Discount value'].sum()
