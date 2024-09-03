@@ -30,7 +30,7 @@ if not st.session_state['authenticated']:
     **Premium Exec Metrics**:  
     View and evaluate performance metrics from the Premium Team.
 
-    **Note:** You will need to enter your credentials twice to proceed.
+    **Note:** You will need to hit the submit button again after successfully entering your login details.
     """)
 
     if not st.session_state['login_clicked']:
