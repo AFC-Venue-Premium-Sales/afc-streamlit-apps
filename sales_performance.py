@@ -52,7 +52,7 @@ def run_app():
         paid_options = pd.unique(processed_data['Paid'])
         selected_paid = st.sidebar.selectbox("💰 Filter by Paid", options=paid_options)
         discount_options = pd.unique(processed_data['Discount'])
-        selected_discount_options = st.sidebar.multiselect("🔖 Filter by Discount (Other payment)", options=discount_options, default=None)
+        selected_discount_options = st.sidebar.multiselect("🔖 Filter by Discount (Other payment)", options=discount_options, default=discount_options)
 
         filtered_data = processed_data.copy()
 
