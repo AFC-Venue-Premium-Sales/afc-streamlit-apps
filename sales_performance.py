@@ -38,23 +38,25 @@ def run_app():
         processed_data = split_guest_column(processed_data)
         processed_data = convert_date_format(processed_data, 'Created_on')
         progress_bar.progress(100)
+        
+        # Initialize filtered_data with processed_data
+        filtered_data = processed_data.copy()
+
+        # Filtered data based on excluding 'Platinum' package
+        filtered_data = processed_data[processed_data['Package name'] != 'Platinum']
 
         # Sidebar filters
         date_range = st.sidebar.date_input("📅 Select Date Range", [])
-        valid_usernames = [user for user in specified_users if user in pd.unique(processed_data['Created_by'])]
-        event_names = pd.unique(processed_data['Event name'])
-        sale_location = pd.unique(processed_data['Sale location'])
+        valid_usernames = [user for user in specified_users if user in pd.unique(filtered_data['Created_by'])]
+        event_names = pd.unique(filtered_data['Event name'])
+        sale_location = pd.unique(filtered_data['Sale location'])
         selected_events = st.sidebar.multiselect("🎫 Select Events", options=event_names, default=None)
         selected_sale_location = st.sidebar.multiselect("📍 Select Sale Location", options=sale_location, default=None)
         selected_users = st.sidebar.multiselect("👤 Select Execs", options=valid_usernames, default=None)
-        payment_status_options = pd.unique(processed_data['Payment status'])
+        payment_status_options = pd.unique(filtered_data['Payment status'])
         selected_payment_status = st.sidebar.multiselect("💳 Select Payment Status", options=payment_status_options, default=None)
-        paid_options = pd.unique(processed_data['Paid'])
+        paid_options = pd.unique(filtered_data['Paid'])
         selected_paid = st.sidebar.selectbox("💰 Filter by Paid", options=paid_options)
-        discount_options = pd.unique(processed_data['Discount'])
-        selected_discount_options = st.sidebar.multiselect("🔖 Filter by Discount (Other payment)", options=discount_options, default=discount_options)
-
-        filtered_data = processed_data.copy()
 
         # Apply date range filter
         if date_range:
@@ -81,8 +83,22 @@ def run_app():
         if selected_payment_status:
             filtered_data = filtered_data[filtered_data['Payment status'].isin(selected_payment_status)]
 
-        # Apply discount filter
+        # Apply dynamic discount filter
         filtered_discount_data = filtered_data[filtered_data['Discount'] != 'none']
+        
+        # Update discount filter based on selected event(s)
+        if selected_events:
+            relevant_discounts = pd.unique(filtered_discount_data[filtered_discount_data['Event name'].isin(selected_events)]['Discount'])
+        else:
+            relevant_discounts = pd.unique(filtered_discount_data['Discount'])
+        
+        selected_discount_options = st.sidebar.multiselect(
+            "🔖 Filter by Discount (Other payment)",
+            options=relevant_discounts,  # Only show relevant discounts based on selected events
+            default=relevant_discounts
+        )
+
+        # Apply discount filter
         if selected_discount_options:
             filtered_discount_data = filtered_discount_data[filtered_discount_data['Discount'].isin(selected_discount_options)]
 
@@ -112,9 +128,10 @@ def run_app():
 
             st.write("### 🎟️ Total Sales Per Package")
             total_sold_per_package = filtered_data.groupby('Package name')['Total price'].sum().reset_index()
-            st.write(f"Total Package Sales: **£{total_sold_per_package['Total price'].sum():,.2f}**")
+            st.write(f"Total Package Sales (Excluding 'Platinum'): **£{total_sold_per_package['Total price'].sum():,.2f}**")
             total_sold_per_package['Total price'] = total_sold_per_package['Total price'].apply(lambda x: f"£{x:,.2f}")
             st.dataframe(total_sold_per_package)
+
 
             st.write("### 🏟️ Total Sales Per Location")
             total_sold_per_location = filtered_data.groupby('Locations')['Total price'].sum().reset_index()
