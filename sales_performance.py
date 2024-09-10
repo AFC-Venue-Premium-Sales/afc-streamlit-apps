@@ -18,7 +18,7 @@ def run_app():
 
     st.markdown("""
     ### ℹ️ About
-    This app provides sales metrics derived from MBM sales data to be used for reconciliation with the Finance team after each Home Fixture. To get started, please download the relevant sales report from [RTS](https://www.tjhub3.com/Rts_Arsenal_Hospitality/Suites/HospitalityPackageSales) and upload it here. The app allows you to filter results by date, user, fixture, payment status, and paid status for tailored insights.
+    This app provides sales metrics derived from MBM sales data to be used for reconciliation with the Finance team after each Home Fixture. To get started, please download the relevant sales report from [RTS](https://www.tjhub3.com/Rts_Arsenal_Hospitality/Suites/HospitalityPackageSales) and upload it here. The app allows you to filter results by date, user, fixture, payment status, and paid status for tailored insights. Please note that sales from 'Platinum' package (Seasonal) have been excluded as this is MBM only.
     """)
 
     uploaded_file = st.sidebar.file_uploader("📄 Choose a sales file", type=['xlsx'])
@@ -115,7 +115,7 @@ def run_app():
             st.write(f"Total Sales with 'Other' Payment: **£{total_sold_by_other:,.2f}**")
 
             # Apply discount filter to total_discount_value table
-            total_discount_value = filtered_discount_data.groupby(['Order Id', 'Event name', 'Payment time'])[['Discount', 'Discount value', 'Total price']].sum().reset_index()
+            total_discount_value = filtered_discount_data.groupby(['Order Id', 'Guest_name', 'Event name', 'Package GL code', 'Payment time'])[['Discount', 'Discount value', 'Total price']].sum().reset_index()
             total_discount_value['Total price'] = total_discount_value['Total price'].apply(lambda x: f"£{x:,.2f}")
             total_discount_value['Discount value'] = total_discount_value['Discount value'].apply(lambda x: f"£{x:,.2f}")
             st.dataframe(total_discount_value)
