@@ -8,6 +8,18 @@ from tjt_hosp_api import filtered_df_without_seats
 def run_app():
     specified_users = ['dcoppin', 'Jedwards', 'jedwards', 'bgardiner', 'BenT', 'jmurphy', 'ayildirim',
                        'MeganS', 'BethNW', 'HayleyA', 'LucyB', 'Conor', 'SavR', 'MillieS']
+    
+    competition_fixture = {
+        'Season': ['Emirates Stadium Pre-Season 24-25', 'Emirates Stadium 24-25', 'Arsenal Women 24-25'],
+        'Competition': ['Friendly & Emirates Cup', 'Premiere League', 'Womens Super League', 'UEFA Champions League',],
+        'Fixture': [
+            ['Arsenal v Bayer 04 Leverkusen', 'Arsenal v Olympique Lyonnais'], 
+            ['Arsenal v Wolves', 'Arsenal v Brighton', 'Arsenal v Leicester City', 'Arsenal v Southampton', 'Arsenal v Liverpool'],
+            ['Arsenal Women v Manchester City Women', 'Arsenal Women v Everton Women', 'Arsenal Women v Chelsea Women', 'Arsenal Women v Brighton Women', 'Arsenal Women v Aston Villa Women'],
+            ['Arsenal v Paris Saint-Germain', 'Arsenal v Shakhtar Donetsk', 'Arsenal v AS Monaco',],
+        ]
+        
+    }
 
     st.title('💷  AFC Finance x MBM Reconciliation 💷')
 
@@ -54,18 +66,21 @@ def run_app():
         # Sidebar filters
         st.sidebar.header("Filter Data by Date and Time")
         date_range = st.sidebar.date_input("📅 Select Date Range", [])
-        start_time = st.sidebar.time_input("⏰ Start Time", value=datetime.now().replace(hour=0, minute=0, second=0).time())
-        end_time = st.sidebar.time_input("⏰ End Time", value=datetime.now().replace(hour=23, minute=59, second=59).time())
+        start_time = st.sidebar.time_input("⏰ Start Time", value=None)  # Empty start time
+        end_time = st.sidebar.time_input("⏰ End Time", value=None)  # Empty end time
+
+        # Initialize min_date and max_date to None to avoid UnboundLocalError
+        min_date, max_date = None, None
 
         # Combine date and time inputs into full datetime objects
         if len(date_range) == 1:
-            min_date = datetime.combine(date_range[0], start_time)
-            max_date = datetime.combine(date_range[0], end_time)
+            if start_time is not None and end_time is not None:
+                min_date = datetime.combine(date_range[0], start_time)
+                max_date = datetime.combine(date_range[0], end_time)
         elif len(date_range) == 2:
-            min_date = datetime.combine(date_range[0], start_time)
-            max_date = datetime.combine(date_range[1], end_time)
-        else:
-            min_date, max_date = None, None
+            if start_time is not None and end_time is not None:
+                min_date = datetime.combine(date_range[0], start_time)
+                max_date = datetime.combine(date_range[1], end_time)
 
         valid_usernames = [user for user in specified_users if user in pd.unique(filtered_data['CreatedBy'])]
         event_names = pd.unique(filtered_data['Fixture Name'])
@@ -110,7 +125,8 @@ def run_app():
 
         # Static total: Get accumulated sales from June 18th, 2024 till now
         static_start_date = datetime(2024, 6, 18, 0, 0, 0)
-        static_total = loaded_api_df[(loaded_api_df['CreatedOn'] >= static_start_date)]['TotalPrice'].sum()
+        static_total = loaded_api_df[(loaded_api_df['CreatedOn'] >= static_start_date) & 
+                                     (loaded_api_df['Package Name'] != 'Platinum')]['TotalPrice'].sum()
 
         # Dynamic total: Affected by filters
         dynamic_total = filtered_data['TotalPrice'].sum()

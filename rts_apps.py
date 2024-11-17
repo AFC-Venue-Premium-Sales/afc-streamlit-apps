@@ -1,13 +1,14 @@
 import streamlit as st
-import user_performance
+import user_performance_api
 import sales_performance
 import os
 
 # Authentication function
 def login(username, password):
-    PASSWORD = os.getenv("PASSWORD")
+    PASSWORD = "Hospitality2024!"
     USERNAME = "HospVenue"
     return username == USERNAME and password == PASSWORD
+    
 
 # Initialize session state for authentication
 if 'authenticated' not in st.session_state:
@@ -55,4 +56,4 @@ else:
         sales_performance.run_app()
 
     elif app_choice == "📈 User Performance":
-        user_performance.run_app()
+        user_performance_api.run_app()
