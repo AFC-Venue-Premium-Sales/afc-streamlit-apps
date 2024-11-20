@@ -94,7 +94,7 @@ login_token = msal_authentication(
     logout_request={},
     login_button_text="🔐 Login",
     logout_button_text="🔓 Logout",
-    key="msal"
+    key="unique_msal_key"
 )
 
 # Check auth
@@ -121,5 +121,5 @@ else:
     **Premium Exec Metrics**:  
     View and evaluate performance metrics from the Premium Team.
 
-    **Note:** Please log in using your company account to access the app.
+    **Note:** Please log in using AFC credentials to access the app.
     """)
