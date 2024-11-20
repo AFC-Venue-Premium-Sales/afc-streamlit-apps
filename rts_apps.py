@@ -66,6 +66,24 @@ import streamlit as st
 import user_performance_api
 import sales_performance
 from msal_streamlit_authentication import msal_authentication
+import logging
+
+# Configure logging
+logging.basicConfig(
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    level=logging.DEBUG,
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
+
+# Log startup
+logging.debug("Starting the Streamlit app.")
+
+# Initialize session state for login_token
+if 'login_token' not in st.session_state:
+    st.session_state['login_token'] = None
+    logging.debug("Initialized session state for login_token.")
 
 # Define MSAL configuration
 msal_config = {
@@ -87,27 +105,42 @@ login_request = {
 }
 
 # Initialize authentication
-login_token = msal_authentication(
-    auth=msal_config['auth'],
-    cache=msal_config['cache'],
-    login_request=login_request,
-    logout_request={},
-    login_button_text="🔐 Login",
-    logout_button_text="🔓 Logout",
-    key="unique_msal_key"
-)
+try:
+    login_token = msal_authentication(
+        auth=msal_config['auth'],
+        cache=msal_config['cache'],
+        login_request=login_request,
+        logout_request={},
+        login_button_text="🔐 Login",
+        logout_button_text="🔓 Logout",
+        key="unique_msal_key"
+    )
+    logging.debug(f"Login token retrieved: {login_token}")
+except Exception as e:
+    logging.error(f"Error during authentication: {e}")
 
-# Check auth
+# Persist the login_token in session state
 if login_token:
+    st.session_state['login_token'] = login_token
+    logging.debug("Login token saved in session state.")
+else:
+    logging.debug("No login token retrieved.")
+
+# Check session state for authentication
+if st.session_state['login_token']:
+    logging.info("User is authenticated. Displaying app navigation.")
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
 
     if app_choice == "📊 Sales Performance":
         sales_performance.run_app()
+        logging.info("Navigated to Sales Performance.")
 
     elif app_choice == "📈 User Performance":
         user_performance_api.run_app()
+        logging.info("Navigated to User Performance.")
 else:
+    logging.info("User not authenticated. Displaying login prompt.")
     st.title("🏟️ AFC Venue - MBM Hospitality")
 
     # Description of the app
