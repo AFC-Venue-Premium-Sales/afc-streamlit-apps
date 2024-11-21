@@ -97,8 +97,8 @@ redirect_uri = "https://afc-apps-hospitality.streamlit.app"
 # Create MSAL application instance
 msal_app = PublicClientApplication(client_id=client_id, authority=authority)
 
+# Silent Authentication
 try:
-    # Check if the user is already authenticated (silent login)
     accounts = msal_app.get_accounts()
     if accounts:
         result = msal_app.acquire_token_silent(scopes=["User.Read"], account=accounts[0])
@@ -106,21 +106,17 @@ try:
     else:
         result = None
 
-    # If silent authentication fails, trigger interactive login
-    if not result and not st.session_state["login_status"]:
-        st.session_state["login_status"] = None
-        logging.debug("Silent authentication failed. Login required.")
-
     if result and "access_token" in result:
         st.session_state["login_status"] = result["access_token"]
-        logging.debug(f"Access token received: {result['access_token']}")
-
+        logging.debug(f"Silent authentication successful: {result['access_token']}")
+    else:
+        logging.debug("Silent authentication failed. Login required.")
 except Exception as e:
-    logging.error(f"Authentication error: {e}")
+    logging.error(f"Error during silent authentication: {e}")
     st.session_state["login_status"] = None
 
 # Debugging the login status and session state
-logging.debug(f"Login status: {st.session_state['login_status']}")
+logging.debug(f"Login status after silent authentication: {st.session_state['login_status']}")
 
 # Handle authenticated and unauthenticated states
 if st.session_state["login_status"]:
@@ -152,7 +148,7 @@ else:
     **Note:** Please log in using AFC credentials to access the app.
     """)
 
-    # Show login button
+    # Show login button for interactive authentication
     if st.button("🔐 Login"):
         try:
             # Trigger interactive login
