@@ -66,7 +66,7 @@ import streamlit as st
 import logging
 import user_performance_api
 import sales_performance
-from msal import PublicClientApplication
+from msal_streamlit_authentication import msal_authentication
 
 # Configure logging
 logging.basicConfig(
@@ -90,33 +90,50 @@ if "logout_triggered" not in st.session_state:
     logging.debug("Initialized session state for logout_triggered.")
 
 # MSAL Configuration
-client_id = "9c350612-9d05-40f3-94e9-d348d92f446a"
-authority = "https://login.microsoftonline.com/068cb91a-8be0-49d7-be3a-38190b0ba021"
-redirect_uri = "https://afc-apps-hospitality.streamlit.app"
+msal_config = {
+    "auth": {
+        "clientId": "9c350612-9d05-40f3-94e9-d348d92f446a",
+        "authority": "https://login.microsoftonline.com/068cb91a-8be0-49d7-be3a-38190b0ba021",
+        "redirectUri": "https://afc-apps-hospitality.streamlit.app",
+        "postLogoutRedirectUri": "https://afc-apps-hospitality.streamlit.app"
+    },
+    "cache": {
+        "cacheLocation": "localStorage",
+        "storeAuthStateInCookie": True
+    }
+}
 
-# Create MSAL application instance
-msal_app = PublicClientApplication(client_id=client_id, authority=authority)
+# Login request parameters
+login_request = {
+    "scopes": ["User.Read"]
+}
 
-# Silent Authentication
+# Authentication with msal_authentication wrapper
 try:
-    accounts = msal_app.get_accounts()
-    if accounts:
-        result = msal_app.acquire_token_silent(scopes=["User.Read"], account=accounts[0])
-        logging.debug("Silent authentication attempted.")
+    if not st.session_state["logout_triggered"]:
+        logging.debug("Starting MSAL authentication process...")
+        login_status = msal_authentication(
+            auth=msal_config["auth"],
+            cache=msal_config["cache"],
+            login_request=login_request,
+            logout_request={},  # Ensure no additional arguments conflict
+            login_button_text="🔐 Login",
+            logout_button_text="🔓 Logout",
+            key="unique_msal_key"  # Unique key for Streamlit session management
+        )
+        st.session_state["login_status"] = login_status
+        logging.debug(f"Login status retrieved: {login_status}")
     else:
-        result = None
-
-    if result and "access_token" in result:
-        st.session_state["login_status"] = result["access_token"]
-        logging.debug(f"Silent authentication successful: {result['access_token']}")
-    else:
-        logging.debug("Silent authentication failed. Login required.")
+        logging.info("Logout triggered, skipping login attempt.")
 except Exception as e:
-    logging.error(f"Error during silent authentication: {e}")
+    logging.error(f"Error during authentication: {e}")
     st.session_state["login_status"] = None
 
-# Debugging the login status and session state
-logging.debug(f"Login status after silent authentication: {st.session_state['login_status']}")
+# Reset logout trigger if previously triggered
+if st.session_state["logout_triggered"]:
+    st.warning("You have been logged out. Please log in again.")
+    st.session_state["login_status"] = None
+    st.session_state["logout_triggered"] = False  # Reset logout state
 
 # Handle authenticated and unauthenticated states
 if st.session_state["login_status"]:
@@ -131,10 +148,12 @@ if st.session_state["login_status"]:
     elif app_choice == "📈 User Performance":
         logging.info("Navigated to User Performance.")
         user_performance_api.run_app()
-
 else:
-    # Unauthenticated state: show login button
+    # User is not authenticated
+    logging.info("User not authenticated. Displaying login prompt.")
     st.title("🏟️ AFC Venue - MBM Hospitality")
+
+    # Description of the app
     st.markdown("""
     **Welcome to the Venue Hospitality Dashboard!**  
     This app provides insights into MBM Sales Performance and User Metrics. 
@@ -148,19 +167,6 @@ else:
     **Note:** Please log in using AFC credentials to access the app.
     """)
 
-    # Show login button for interactive authentication
-    if st.button("🔐 Login"):
-        try:
-            # Trigger interactive login
-            result = msal_app.acquire_token_interactive(scopes=["User.Read"])  # Removed `redirect_uri`
-            if result and "access_token" in result:
-                st.session_state["login_status"] = result["access_token"]
-                logging.debug(f"Access token received: {result['access_token']}")
-            else:
-                st.error("Login failed. Please try again.")
-        except Exception as e:
-            logging.error(f"Authentication error: {e}")
-            st.error("Authentication failed. Please try again.")
 
 
 
