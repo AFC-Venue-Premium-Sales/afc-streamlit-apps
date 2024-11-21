@@ -66,7 +66,7 @@ import streamlit as st
 import logging
 import user_performance_api
 import sales_performance
-from msal_streamlit_authentication import msal_authentication
+from msal import PublicClientApplication
 
 # Configure logging
 logging.basicConfig(
@@ -89,50 +89,44 @@ if "logout_triggered" not in st.session_state:
     st.session_state["logout_triggered"] = False
     logging.debug("Initialized session state for logout_triggered.")
 
-# Define MSAL configuration
-msal_config = {
-    "auth": {
-        "clientId": "9c350612-9d05-40f3-94e9-d348d92f446a",
-        "authority": "https://login.microsoftonline.com/068cb91a-8be0-49d7-be3a-38190b0ba021",
-        "redirectUri": "https://afc-apps-hospitality.streamlit.app",
-        "postLogoutRedirectUri": "https://afc-apps-hospitality.streamlit.app"
-    },
-    "cache": {
-        "cacheLocation": "localStorage",
-        "storeAuthStateInCookie": True
-    }
-}
+# MSAL Configuration
+client_id = "9c350612-9d05-40f3-94e9-d348d92f446a"
+authority = "https://login.microsoftonline.com/068cb91a-8be0-49d7-be3a-38190b0ba021"
+redirect_uri = "https://afc-apps-hospitality.streamlit.app"
 
-# Define login request parameters
-login_request = {
-    "scopes": ["User.Read"]
-}
+# Create MSAL application instance
+msal_app = PublicClientApplication(client_id=client_id, authority=authority)
 
-# Handle MSAL authentication and session state updates
 try:
-    if not st.session_state["logout_triggered"]:
-        logging.debug("Starting MSAL authentication process...")
-        login_status = msal_authentication(
-            auth=msal_config['auth'],
-            cache=msal_config['cache'],
-            login_request=login_request,
-            logout_request={},
-            login_button_text="🔐 Login",
-            logout_button_text="🔓 Logout",
-            key="unique_msal_key"
-        )
-        st.session_state["login_status"] = login_status
-        logging.debug(f"Login status after authentication: {login_status}")
+    # Check if the user is already authenticated (silent login)
+    accounts = msal_app.get_accounts()
+    if accounts:
+        result = msal_app.acquire_token_silent(scopes=["User.Read"], account=accounts[0])
+        logging.debug("Silent authentication attempted.")
     else:
-        logging.info("Logout was triggered, skipping authentication.")
+        result = None
+
+    # If silent authentication fails, trigger interactive login
+    if not result:
+        logging.debug("Silent authentication failed. Starting interactive login.")
+        result = msal_app.acquire_token_interactive(
+            scopes=["User.Read"], redirect_uri=redirect_uri
+        )
+    
+    # Set login status in session state
+    if result and "access_token" in result:
+        st.session_state["login_status"] = result["access_token"]
+        logging.debug(f"Access token received: {result['access_token']}")
+    else:
         st.session_state["login_status"] = None
-        st.session_state["logout_triggered"] = False  # Reset the logout state
+        logging.warning("Authentication failed or no access token received.")
+
 except Exception as e:
-    logging.error(f"Error during authentication: {e}")
+    logging.error(f"Authentication error: {e}")
     st.session_state["login_status"] = None
 
-# Debug session state for troubleshooting
-logging.debug(f"Session state: {st.session_state}")
+# Debugging the login status and session state
+logging.debug(f"Login status after manual MSAL flow: {st.session_state['login_status']}")
 
 # Handle authenticated and unauthenticated states
 if st.session_state["login_status"]:
@@ -172,4 +166,3 @@ else:
         st.session_state["login_status"] = None
         st.session_state["logout_triggered"] = False  # Reset logout state
         logging.info("Reset logout state after user was logged out.")
-
