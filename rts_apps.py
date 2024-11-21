@@ -108,7 +108,7 @@ login_request = {
     "scopes": ["User.Read"]
 }
 
-# Initialize msal_authentication
+# Handle MSAL authentication and session state updates
 try:
     if not st.session_state["logout_triggered"]:
         logging.debug("Starting MSAL authentication process...")
@@ -121,22 +121,22 @@ try:
             logout_button_text="🔓 Logout",
             key="unique_msal_key"
         )
-        logging.debug(f"Login status retrieved: {login_status}")
         st.session_state["login_status"] = login_status
+        logging.debug(f"Login status after authentication: {login_status}")
     else:
-        logging.info("Logout triggered, skipping login attempt.")
+        logging.info("Logout was triggered, skipping authentication.")
+        st.session_state["login_status"] = None
+        st.session_state["logout_triggered"] = False  # Reset the logout state
 except Exception as e:
     logging.error(f"Error during authentication: {e}")
     st.session_state["login_status"] = None
 
-# Check if logout was accidentally triggered
-if st.session_state["logout_triggered"]:
-    logging.warning("User logged out manually.")
-    st.session_state["login_status"] = None
-    st.session_state["logout_triggered"] = False  # Reset logout state
+# Debug session state for troubleshooting
+logging.debug(f"Session state: {st.session_state}")
 
 # Handle authenticated and unauthenticated states
 if st.session_state["login_status"]:
+    # User is authenticated
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
 
@@ -147,7 +147,9 @@ if st.session_state["login_status"]:
     elif app_choice == "📈 User Performance":
         logging.info("Navigated to User Performance.")
         user_performance_api.run_app()
+
 else:
+    # User is not authenticated
     logging.info("User not authenticated. Displaying login prompt.")
     st.title("🏟️ AFC Venue - MBM Hospitality")
 
@@ -164,3 +166,10 @@ else:
 
     **Note:** Please log in using AFC credentials to access the app.
     """)
+
+    # Logout safeguard
+    if st.session_state.get("logout_triggered", False):
+        st.session_state["login_status"] = None
+        st.session_state["logout_triggered"] = False  # Reset logout state
+        logging.info("Reset logout state after user was logged out.")
+
