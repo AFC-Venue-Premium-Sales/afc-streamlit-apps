@@ -107,26 +107,20 @@ try:
         result = None
 
     # If silent authentication fails, trigger interactive login
-    if not result:
-        logging.debug("Silent authentication failed. Starting interactive login.")
-        result = msal_app.acquire_token_interactive(
-            scopes=["User.Read"], redirect_uri=redirect_uri
-        )
-    
-    # Set login status in session state
+    if not result and not st.session_state["login_status"]:
+        st.session_state["login_status"] = None
+        logging.debug("Silent authentication failed. Login required.")
+
     if result and "access_token" in result:
         st.session_state["login_status"] = result["access_token"]
         logging.debug(f"Access token received: {result['access_token']}")
-    else:
-        st.session_state["login_status"] = None
-        logging.warning("Authentication failed or no access token received.")
 
 except Exception as e:
     logging.error(f"Authentication error: {e}")
     st.session_state["login_status"] = None
 
 # Debugging the login status and session state
-logging.debug(f"Login status after manual MSAL flow: {st.session_state['login_status']}")
+logging.debug(f"Login status: {st.session_state['login_status']}")
 
 # Handle authenticated and unauthenticated states
 if st.session_state["login_status"]:
@@ -143,11 +137,8 @@ if st.session_state["login_status"]:
         user_performance_api.run_app()
 
 else:
-    # User is not authenticated
-    logging.info("User not authenticated. Displaying login prompt.")
+    # Unauthenticated state: show login button
     st.title("🏟️ AFC Venue - MBM Hospitality")
-
-    # Description of the app
     st.markdown("""
     **Welcome to the Venue Hospitality Dashboard!**  
     This app provides insights into MBM Sales Performance and User Metrics. 
@@ -161,8 +152,20 @@ else:
     **Note:** Please log in using AFC credentials to access the app.
     """)
 
-    # Logout safeguard
-    if st.session_state.get("logout_triggered", False):
-        st.session_state["login_status"] = None
-        st.session_state["logout_triggered"] = False  # Reset logout state
-        logging.info("Reset logout state after user was logged out.")
+    # Show login button
+    if st.button("🔐 Login"):
+        try:
+            # Trigger interactive login
+            result = msal_app.acquire_token_interactive(
+                scopes=["User.Read"], redirect_uri=redirect_uri
+            )
+            if result and "access_token" in result:
+                st.session_state["login_status"] = result["access_token"]
+                logging.debug(f"Access token received: {result['access_token']}")
+            else:
+                st.error("Login failed. Please try again.")
+        except Exception as e:
+            logging.error(f"Authentication error: {e}")
+            st.error("Authentication failed. Please try again.")
+
+
