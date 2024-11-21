@@ -98,8 +98,8 @@ msal_config = {
         "postLogoutRedirectUri": "https://afc-apps-hospitality.streamlit.app"
     },
     "cache": {
-        "cacheLocation": "localStorage",  # Cache in localStorage for persistence
-        "storeAuthStateInCookie": True    # Use cookies to store authentication state
+        "cacheLocation": "localStorage",
+        "storeAuthStateInCookie": True
     }
 }
 
@@ -131,10 +131,9 @@ except Exception as e:
 
 # Check if logout was accidentally triggered
 if st.session_state["logout_triggered"]:
-    logging.warning("User logged out manually. Clearing session state.")
+    logging.warning("User logged out manually.")
     st.session_state["login_status"] = None
     st.session_state["logout_triggered"] = False  # Reset logout state
-    st.experimental_rerun()
 
 # Handle authenticated and unauthenticated states
 if st.session_state["login_status"]:
@@ -148,12 +147,6 @@ if st.session_state["login_status"]:
     elif app_choice == "📈 User Performance":
         logging.info("Navigated to User Performance.")
         user_performance_api.run_app()
-
-    # Add a logout button
-    if st.sidebar.button("Logout"):
-        logging.info("Logout button clicked.")
-        st.session_state["logout_triggered"] = True
-        st.experimental_rerun()
 else:
     logging.info("User not authenticated. Displaying login prompt.")
     st.title("🏟️ AFC Venue - MBM Hospitality")
@@ -171,9 +164,3 @@ else:
 
     **Note:** Please log in using AFC credentials to access the app.
     """)
-
-    # Manual logout button for testing
-    if st.button("Logout"):
-        logging.info("Logout button clicked on login page.")
-        st.session_state["logout_triggered"] = True
-        st.experimental_rerun()
