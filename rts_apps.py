@@ -152,9 +152,7 @@ else:
     if st.button("🔐 Login"):
         try:
             # Trigger interactive login
-            result = msal_app.acquire_token_interactive(
-                scopes=["User.Read"], redirect_uri=redirect_uri
-            )
+            result = msal_app.acquire_token_interactive(scopes=["User.Read"])  # Removed `redirect_uri`
             if result and "access_token" in result:
                 st.session_state["login_status"] = result["access_token"]
                 logging.debug(f"Access token received: {result['access_token']}")
@@ -163,5 +161,6 @@ else:
         except Exception as e:
             logging.error(f"Authentication error: {e}")
             st.error("Authentication failed. Please try again.")
+
 
 
