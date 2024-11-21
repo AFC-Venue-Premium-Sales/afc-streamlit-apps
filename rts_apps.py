@@ -63,10 +63,10 @@
 
 
 import streamlit as st
+import logging
 import user_performance_api
 import sales_performance
 from msal_streamlit_authentication import msal_authentication
-import logging
 
 # Configure logging
 logging.basicConfig(
@@ -80,10 +80,14 @@ logging.basicConfig(
 # Log startup
 logging.debug("Starting the Streamlit app.")
 
-# Initialize session state for login_token
-if 'login_token' not in st.session_state:
-    st.session_state['login_token'] = None
-    logging.debug("Initialized session state for login_token.")
+# Initialize session state
+if "login_status" not in st.session_state:
+    st.session_state["login_status"] = None
+    logging.debug("Initialized session state for login_status.")
+
+if "logout_triggered" not in st.session_state:
+    st.session_state["logout_triggered"] = False
+    logging.debug("Initialized session state for logout_triggered.")
 
 # Define MSAL configuration
 msal_config = {
@@ -104,41 +108,45 @@ login_request = {
     "scopes": ["User.Read"]
 }
 
-# Initialize authentication
+# Initialize msal_authentication
 try:
-    login_token = msal_authentication(
-        auth=msal_config['auth'],
-        cache=msal_config['cache'],
-        login_request=login_request,
-        logout_request={},
-        login_button_text="🔐 Login",
-        logout_button_text="🔓 Logout",
-        key="unique_msal_key"
-    )
-    logging.debug(f"Login token retrieved: {login_token}")
+    if not st.session_state["logout_triggered"]:
+        logging.debug("Starting MSAL authentication process...")
+        login_status = msal_authentication(
+            auth=msal_config['auth'],
+            cache=msal_config['cache'],
+            login_request=login_request,
+            logout_request={},
+            login_button_text="🔐 Login",
+            logout_button_text="🔓 Logout",
+            key="unique_msal_key"
+        )
+        logging.debug(f"Login status retrieved: {login_status}")
+        st.session_state["login_status"] = login_status
+    else:
+        logging.info("Logout triggered, skipping login attempt.")
 except Exception as e:
     logging.error(f"Error during authentication: {e}")
+    st.session_state["login_status"] = None
 
-# Persist the login_token in session state
-if login_token:
-    st.session_state['login_token'] = login_token
-    logging.debug("Login token saved in session state.")
-else:
-    logging.debug("No login token retrieved.")
+# Check if logout was accidentally triggered
+if st.session_state["logout_triggered"]:
+    logging.warning("User logged out manually.")
+    st.session_state["login_status"] = None
+    st.session_state["logout_triggered"] = False  # Reset logout state
 
-# Check session state for authentication
-if st.session_state['login_token']:
-    logging.info("User is authenticated. Displaying app navigation.")
+# Handle authenticated and unauthenticated states
+if st.session_state["login_status"]:
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
 
     if app_choice == "📊 Sales Performance":
-        sales_performance.run_app()
         logging.info("Navigated to Sales Performance.")
+        sales_performance.run_app()
 
     elif app_choice == "📈 User Performance":
-        user_performance_api.run_app()
         logging.info("Navigated to User Performance.")
+        user_performance_api.run_app()
 else:
     logging.info("User not authenticated. Displaying login prompt.")
     st.title("🏟️ AFC Venue - MBM Hospitality")
@@ -156,3 +164,10 @@ else:
 
     **Note:** Please log in using AFC credentials to access the app.
     """)
+
+    # Manual logout check
+    if st.button("Logout"):
+        logging.info("Logout button clicked.")
+        st.session_state["logout_triggered"] = True
+        st.session_state["login_status"] = None
+        st.experimental_rerun()
