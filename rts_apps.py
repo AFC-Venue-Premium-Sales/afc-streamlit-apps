@@ -79,6 +79,15 @@ logging.basicConfig(
 
 logging.debug("Starting the Streamlit app.")
 
+# Initialize session state
+if "login_token" not in st.session_state:
+    st.session_state["login_token"] = None
+    logging.debug("Initialized session state for login_token.")
+
+if "rerun_triggered" not in st.session_state:
+    st.session_state["rerun_triggered"] = False
+    logging.debug("Initialized session state for rerun_triggered.")
+
 # Define MSAL configuration
 msal_config = {
     "auth": {
@@ -93,34 +102,36 @@ msal_config = {
     }
 }
 
-# Log MSAL configuration
-logging.debug(f"MSAL Configuration: {msal_config}")
-
 # Define login request parameters
 login_request = {
     "scopes": ["User.Read"]
 }
 
-# Log login request parameters
-logging.debug(f"Login Request Parameters: {login_request}")
-
-# Initialize authentication
-try:
-    logging.debug("Initializing MSAL authentication...")
-    login_token = msal_authentication(
-        auth=msal_config['auth'],
-        cache=msal_config['cache'],
-        login_request=login_request,
-        logout_request={},
-        login_button_text="🔐 Login",
-        logout_button_text="🔓 Logout",
-        key="unique_msal_key"
-    )
-    logging.debug(f"Login Token Retrieved: {login_token}")
-except Exception as e:
-    logging.error(f"Error during authentication initialization: {e}")
-    st.error("An error occurred during authentication. Please try again later.")
-    st.stop()
+# Prevent multiple reruns
+if not st.session_state["rerun_triggered"]:
+    try:
+        logging.debug("Initializing MSAL authentication...")
+        login_token = msal_authentication(
+            auth=msal_config['auth'],
+            cache=msal_config['cache'],
+            login_request=login_request,
+            logout_request={},
+            login_button_text="🔐 Login",
+            logout_button_text="🔓 Logout",
+            key="unique_msal_key"
+        )
+        if login_token:
+            logging.info(f"Login Token Details: {login_token}")
+        else:
+            logging.warning("No login token retrieved.")
+        st.session_state["login_token"] = login_token
+        st.session_state["rerun_triggered"] = True
+    except Exception as e:
+        logging.error(f"Error during authentication initialization: {e}")
+        st.error("An error occurred during authentication. Please try again later.")
+else:
+    logging.debug("Rerun prevented: Using existing session state for login_token.")
+    login_token = st.session_state["login_token"]
 
 # Check auth
 if login_token:
@@ -163,4 +174,5 @@ else:
     **Note:** Please log in using AFC credentials to access the app.
     """)
     logging.debug("Login prompt displayed.")
+
 
