@@ -116,10 +116,10 @@ try:
             auth=msal_config["auth"],
             cache=msal_config["cache"],
             login_request=login_request,
-            logout_request={},  # Ensure no additional arguments conflict
+            logout_request={},
             login_button_text="🔐 Login",
             logout_button_text="🔓 Logout",
-            key="unique_msal_key"  # Unique key for Streamlit session management
+            key="unique_msal_key"
         )
         st.session_state["login_status"] = login_status
         logging.debug(f"Login status retrieved: {login_status}")
@@ -167,6 +167,22 @@ else:
     **Note:** Please log in using AFC credentials to access the app.
     """)
 
-
-
-
+    # Add spacing and move the login button to the bottom
+    st.markdown("---")  # Horizontal rule for separation
+    st.markdown("<br><br>", unsafe_allow_html=True)  # Add extra spacing using HTML
+    if st.button("🔐 Login"):
+        try:
+            # Trigger interactive login
+            login_status = msal_authentication(
+                auth=msal_config["auth"],
+                cache=msal_config["cache"],
+                login_request=login_request,
+                logout_request={},
+                login_button_text="🔐 Login",
+                logout_button_text="🔓 Logout",
+                key="unique_msal_key"
+            )
+            st.session_state["login_status"] = login_status
+        except Exception as e:
+            st.error("Login failed. Please try again.")
+            logging.error(f"Authentication error: {e}")
