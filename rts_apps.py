@@ -158,13 +158,18 @@ else:
     if code:
         logging.debug(f"Authorization Code Received: {code}")
         try:
-            # Exchange authorization code for tokens
+            # Log all parameters before token exchange
             token_url = f"{authority}/oauth2/v2.0/token"
             logging.debug("Attempting to exchange authorization code for tokens...")
+            logging.debug(f"Token URL: {token_url}")
+            logging.debug(f"Code Verifier: {st.session_state['code_verifier']}")
+            logging.debug(f"Redirect URI: {redirect_uri}")
+            logging.debug(f"Client ID: {client_id}")
+
             token = session.fetch_token(
                 token_url,
                 code=code,
-                code_verifier=st.session_state["code_verifier"]  # Use PKCE verifier
+                code_verifier=st.session_state["code_verifier"],  # PKCE verifier
             )
             st.session_state["access_token"] = token["access_token"]
             st.success("Login successful!")
@@ -173,4 +178,8 @@ else:
         except Exception as e:
             logging.error(f"Error during token exchange: {e}")
             st.error("Failed to log in. Check the logs for details.")
+    else:
+        logging.error("Authorization Code not found in the query parameters.")
+        st.error("Failed to retrieve authorization code. Please try logging in again.")
+
             
