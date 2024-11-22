@@ -61,6 +61,7 @@
         
         
 
+
 import streamlit as st
 import logging
 import user_performance_api
@@ -79,64 +80,43 @@ logging.basicConfig(
 # Log startup
 logging.debug("Starting the Streamlit app.")
 
-# Initialize session state
-if "login_status" not in st.session_state:
-    st.session_state["login_status"] = None
-    logging.debug("Initialized session state for login_status.")
-
-if "logout_triggered" not in st.session_state:
-    st.session_state["logout_triggered"] = False
-    logging.debug("Initialized session state for logout_triggered.")
-
-# MSAL Configuration
+# Define MSAL configuration
 msal_config = {
     "auth": {
-        "clientId": "9c350612-9d05-40f3-94e9-d348d92f446a",
-        "authority": "https://login.microsoftonline.com/068cb91a-8be0-49d7-be3a-38190b0ba021",
-        "redirectUri": "https://afc-apps-hospitality.streamlit.app",
+        "clientId": "9c350612-9d05-40f3-94e9-d348d92f446a",  # Replace with your Azure AD app's client ID
+        "authority": "https://login.microsoftonline.com/068cb91a-8be0-49d7-be3a-38190b0ba021",  # Replace with your tenant ID
+        "redirectUri": "https://afc-apps-hospitality.streamlit.app",  # Ensure this matches Azure AD config
         "postLogoutRedirectUri": "https://afc-apps-hospitality.streamlit.app"
     },
     "cache": {
-        "cacheLocation": "localStorage",
-        "storeAuthStateInCookie": True
+        "cacheLocation": "sessionStorage",
+        "storeAuthStateInCookie": False
     }
 }
 
-# Login request parameters
+# Define login request parameters
 login_request = {
     "scopes": ["User.Read"]
 }
 
-# Authentication with msal_authentication wrapper
+# Initialize msal_authentication
 try:
-    if not st.session_state["logout_triggered"]:
-        logging.debug("Starting MSAL authentication process...")
-        login_status = msal_authentication(
-            auth=msal_config["auth"],
-            cache=msal_config["cache"],
-            login_request=login_request,
-            logout_request={},
-            login_button_text="🔐 Login",
-            logout_button_text="🔓 Logout",
-            key="unique_msal_key"
-        )
-        st.session_state["login_status"] = login_status
-        logging.debug(f"Login status retrieved: {login_status}")
-    else:
-        logging.info("Logout triggered, skipping login attempt.")
+    login_status = msal_authentication(
+        auth=msal_config['auth'],
+        cache=msal_config['cache'],
+        login_request=login_request,
+        logout_request={},
+        login_button_text="🔐 Login",
+        logout_button_text="🔓 Logout",
+        key="unique_msal_key"
+    )
+    logging.debug(f"Login status: {login_status}")
 except Exception as e:
     logging.error(f"Error during authentication: {e}")
-    st.session_state["login_status"] = None
-
-# Reset logout trigger if previously triggered
-if st.session_state["logout_triggered"]:
-    st.warning("You have been logged out. Please log in again.")
-    st.session_state["login_status"] = None
-    st.session_state["logout_triggered"] = False  # Reset logout state
+    login_status = None
 
 # Handle authenticated and unauthenticated states
-if st.session_state["login_status"]:
-    # User is authenticated
+if login_status:
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
 
@@ -148,7 +128,6 @@ if st.session_state["login_status"]:
         logging.info("Navigated to User Performance.")
         user_performance_api.run_app()
 else:
-    # User is not authenticated
     logging.info("User not authenticated. Displaying login prompt.")
     st.title("🏟️ AFC Venue - MBM Hospitality")
 
