@@ -66,7 +66,7 @@ import streamlit as st
 import logging
 import user_performance_api
 import sales_performance
-from msal_streamlit_authentication import msal_authentication
+from authlib.integrations.requests_client import OAuth2Session
 
 # Configure logging
 logging.basicConfig(
@@ -80,43 +80,25 @@ logging.basicConfig(
 # Log startup
 logging.debug("Starting the Streamlit app.")
 
-# Define MSAL configuration
-msal_config = {
-    "auth": {
-        "clientId": "9c350612-9d05-40f3-94e9-d348d92f446a",  # Replace with your Azure AD app's client ID
-        "authority": "https://login.microsoftonline.com/068cb91a-8be0-49d7-be3a-38190b0ba021",  # Replace with your tenant ID
-        "redirectUri": "https://afc-apps-hospitality.streamlit.app",  # Ensure this matches Azure AD config
-        "postLogoutRedirectUri": "https://afc-apps-hospitality.streamlit.app"
-    },
-    "cache": {
-        "cacheLocation": "sessionStorage",
-        "storeAuthStateInCookie": False
-    }
-}
+# Azure AD configuration
+client_id = "9c350612-9d05-40f3-94e9-d348d92f446a"  # Replace with your Azure AD Client ID
+authority = "https://login.microsoftonline.com/068cb91a-8be0-49d7-be3a-38190b0ba021"  # Replace with your Tenant ID
+redirect_uri = "https://afc-apps-hospitality.streamlit.app"  # Replace with your Redirect URI
+scope = "User.Read"  # Adjust scope based on your needs
 
-# Define login request parameters
-login_request = {
-    "scopes": ["User.Read"]
-}
+# Generate OAuth2 session
+session = OAuth2Session(client_id=client_id, redirect_uri=redirect_uri, scope=scope)
 
-# Initialize msal_authentication
-try:
-    login_status = msal_authentication(
-        auth=msal_config['auth'],
-        cache=msal_config['cache'],
-        login_request=login_request,
-        logout_request={},
-        login_button_text="🔐 Login",
-        logout_button_text="🔓 Logout",
-        key="unique_msal_key"
-    )
-    logging.debug(f"Login status: {login_status}")
-except Exception as e:
-    logging.error(f"Error during authentication: {e}")
-    login_status = None
+# Initialize session state
+if "access_token" not in st.session_state:
+    st.session_state["access_token"] = None
 
-# Handle authenticated and unauthenticated states
-if login_status:
+if "code_verifier" not in st.session_state:
+    st.session_state["code_verifier"] = None
+
+# Handle login flow
+if st.session_state["access_token"]:
+    # User is authenticated
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
 
@@ -127,11 +109,14 @@ if login_status:
     elif app_choice == "📈 User Performance":
         logging.info("Navigated to User Performance.")
         user_performance_api.run_app()
-else:
-    logging.info("User not authenticated. Displaying login prompt.")
-    st.title("🏟️ AFC Venue - MBM Hospitality")
 
-    # Description of the app
+    if st.sidebar.button("Logout"):
+        st.session_state["access_token"] = None
+        st.experimental_rerun()
+
+else:
+    # User is not authenticated
+    st.title("🏟️ AFC Venue - MBM Hospitality")
     st.markdown("""
     **Welcome to the Venue Hospitality Dashboard!**  
     This app provides insights into MBM Sales Performance and User Metrics. 
@@ -144,4 +129,36 @@ else:
 
     **Note:** Please log in using AFC credentials to access the app.
     """)
+
+    if st.button("Log in"):
+        # Generate authorization URL
+        authorization_url = f"{authority}/oauth2/v2.0/authorize"
+        url, state = session.create_authorization_url(
+            authorization_url,
+            code_challenge="your_generated_code_challenge",  # Generate a secure PKCE code_challenge
+            code_challenge_method="S256"
+        )
+        st.session_state["oauth_state"] = state
+        st.write(f"[Click here to log in]({url})")
+        st.stop()
+
+    # Capture the authorization code automatically
+    query_params = st.experimental_get_query_params()
+    code = query_params.get("code", [None])[0]
+
+    if code:
+        try:
+            token_url = f"{authority}/oauth2/v2.0/token"
+            token = session.fetch_token(
+                token_url,
+                code=code,
+                code_verifier=st.session_state["code_verifier"]
+            )
+            st.session_state["access_token"] = token["access_token"]
+            st.success("Login successful!")
+            st.experimental_rerun()
+        except Exception as e:
+            logging.error(f"Error during token exchange: {e}")
+            st.error("Failed to log in.")
+
 
