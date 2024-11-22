@@ -89,7 +89,7 @@ scope = "User.Read"  # Adjust scope based on your needs
 
 # Generate PKCE pair
 def generate_pkce_pair():
-    code_verifier = secrets.token_urlsafe(64)  # Generate a secure random string
+    code_verifier = secrets.token_urlsafe(64)  # Generates a secure random string
     code_challenge = base64.urlsafe_b64encode(
         hashlib.sha256(code_verifier.encode()).digest()
     ).rstrip(b"=").decode("utf-8")  # Create a SHA256 hash and encode it
@@ -100,6 +100,7 @@ if "access_token" not in st.session_state:
     st.session_state["access_token"] = None
 
 if "code_verifier" not in st.session_state:
+    # Generate only once and persist across steps
     st.session_state["code_verifier"], st.session_state["code_challenge"] = generate_pkce_pair()
 
 # OAuth2 session
@@ -147,7 +148,7 @@ else:
         st.stop()
 
     # Capture the authorization code automatically from the redirect
-    query_params = st.experimental_get_query_params()
+    query_params = st.query_params  # Use the new `st.query_params`
     code = query_params.get("code", [None])[0]
 
     if code:
@@ -165,6 +166,3 @@ else:
         except Exception as e:
             logging.error(f"Error during token exchange: {e}")
             st.error("Failed to log in.")
-
-
-
