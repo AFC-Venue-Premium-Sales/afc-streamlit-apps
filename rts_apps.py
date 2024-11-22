@@ -61,7 +61,6 @@
         
         
 
-
 import streamlit as st
 import logging
 import os
@@ -78,7 +77,7 @@ logging.basicConfig(
 
 # Azure App Configuration
 CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
-TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"  # Correct Tenant ID
+TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"
 AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
 SCOPE = ["User.Read"]
 REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app"
@@ -133,7 +132,8 @@ def get_token_silent():
 # Handle redirect from Azure AD
 def handle_redirect():
     """Process the authorization code from the redirect URI."""
-    query_params = st.experimental_get_query_params()
+    query_params = st.query_params  # Updated method
+    logging.debug(f"Query params: {query_params}")
     if "code" in query_params:
         code = query_params["code"][0]
         try:
@@ -189,3 +189,4 @@ if st.session_state["is_authenticated"]:
         # Placeholder for user_performance_api.run_app()
 else:
     st.warning("You must log in to access the app.")
+
