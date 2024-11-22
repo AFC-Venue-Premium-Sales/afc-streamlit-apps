@@ -84,10 +84,6 @@ if "login_token" not in st.session_state:
     st.session_state["login_token"] = None
     logging.debug("Initialized session state for login_token.")
 
-if "rerun_triggered" not in st.session_state:
-    st.session_state["rerun_triggered"] = False
-    logging.debug("Initialized session state for rerun_triggered.")
-
 # Define MSAL configuration
 msal_config = {
     "auth": {
@@ -107,10 +103,10 @@ login_request = {
     "scopes": ["User.Read"]
 }
 
-# Prevent multiple reruns
-if not st.session_state["rerun_triggered"]:
+# Render MSAL authentication
+if not st.session_state["login_token"]:
     try:
-        logging.debug("Initializing MSAL authentication...")
+        logging.debug("Rendering msal_authentication login/logout buttons...")
         login_token = msal_authentication(
             auth=msal_config['auth'],
             cache=msal_config['cache'],
@@ -122,12 +118,10 @@ if not st.session_state["rerun_triggered"]:
         )
         logging.debug(f"Login Token Retrieved: {login_token}")
         st.session_state["login_token"] = login_token
-        st.session_state["rerun_triggered"] = True
     except Exception as e:
         logging.error(f"Error during authentication initialization: {e}")
-        st.error("An error occurred during authentication. Please try again later.")
+        st.error("An error occurred during authentication.")
 else:
-    logging.debug("Rerun prevented: Using existing session state for login_token.")
     login_token = st.session_state["login_token"]
 
 # Check auth
