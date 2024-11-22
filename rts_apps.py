@@ -120,10 +120,7 @@ if not st.session_state["rerun_triggered"]:
             logout_button_text="🔓 Logout",
             key="unique_msal_key"
         )
-        if login_token:
-            logging.info(f"Login Token Details: {login_token}")
-        else:
-            logging.warning("No login token retrieved.")
+        logging.debug(f"Login Token Retrieved: {login_token}")
         st.session_state["login_token"] = login_token
         st.session_state["rerun_triggered"] = True
     except Exception as e:
@@ -174,5 +171,3 @@ else:
     **Note:** Please log in using AFC credentials to access the app.
     """)
     logging.debug("Login prompt displayed.")
-
-
