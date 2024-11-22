@@ -63,10 +63,21 @@
 
 
 import streamlit as st
-
+import logging
 import user_performance_api
 import sales_performance
 from msal_streamlit_authentication import msal_authentication
+
+# Configure logging
+logging.basicConfig(
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    level=logging.DEBUG,
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
+
+logging.debug("Starting the Streamlit app.")
 
 # Define MSAL configuration
 msal_config = {
@@ -82,33 +93,60 @@ msal_config = {
     }
 }
 
+# Log MSAL configuration
+logging.debug(f"MSAL Configuration: {msal_config}")
+
 # Define login request parameters
 login_request = {
     "scopes": ["User.Read"]
 }
 
+# Log login request parameters
+logging.debug(f"Login Request Parameters: {login_request}")
+
 # Initialize authentication
-login_token = msal_authentication(
-    auth=msal_config['auth'],
-    cache=msal_config['cache'],
-    login_request=login_request,
-    logout_request={},
-    login_button_text="🔐 Login",
-    logout_button_text="🔓 Logout",
-    key="unique_msal_key"
-)
+try:
+    logging.debug("Initializing MSAL authentication...")
+    login_token = msal_authentication(
+        auth=msal_config['auth'],
+        cache=msal_config['cache'],
+        login_request=login_request,
+        logout_request={},
+        login_button_text="🔐 Login",
+        logout_button_text="🔓 Logout",
+        key="unique_msal_key"
+    )
+    logging.debug(f"Login Token Retrieved: {login_token}")
+except Exception as e:
+    logging.error(f"Error during authentication initialization: {e}")
+    st.error("An error occurred during authentication. Please try again later.")
+    st.stop()
 
 # Check auth
 if login_token:
+    logging.info("User is authenticated.")
     st.sidebar.title("🧭 Navigation")
+    
+    # Debugging navigation choices
     app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
+    logging.debug(f"Navigation Choice: {app_choice}")
 
     if app_choice == "📊 Sales Performance":
-        sales_performance.run_app()
-
+        logging.info("Navigating to Sales Performance.")
+        try:
+            sales_performance.run_app()
+        except Exception as e:
+            logging.error(f"Error in Sales Performance App: {e}")
+            st.error("An error occurred in the Sales Performance section.")
     elif app_choice == "📈 User Performance":
-        user_performance_api.run_app()
+        logging.info("Navigating to User Performance.")
+        try:
+            user_performance_api.run_app()
+        except Exception as e:
+            logging.error(f"Error in User Performance App: {e}")
+            st.error("An error occurred in the User Performance section.")
 else:
+    logging.warning("User not authenticated. Displaying login prompt.")
     st.title("🏟️ AFC Venue - MBM Hospitality")
 
     # Description of the app
@@ -124,3 +162,5 @@ else:
 
     **Note:** Please log in using AFC credentials to access the app.
     """)
+    logging.debug("Login prompt displayed.")
+
