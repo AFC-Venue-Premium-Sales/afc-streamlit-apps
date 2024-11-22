@@ -102,6 +102,9 @@ if "access_token" not in st.session_state:
 if "code_verifier" not in st.session_state:
     # Generate only once and persist across steps
     st.session_state["code_verifier"], st.session_state["code_challenge"] = generate_pkce_pair()
+    logging.debug(f"Generated Code Verifier: {st.session_state['code_verifier']}")
+    logging.debug(f"Generated Code Challenge: {st.session_state['code_challenge']}")
+    logging.debug(f"Code Challenge Length: {len(st.session_state['code_challenge'])}")
 
 # OAuth2 session
 session = OAuth2Session(
@@ -144,17 +147,20 @@ else:
             code_challenge_method="S256"  # Use PKCE method
         )
         st.session_state["oauth_state"] = state
+        logging.debug(f"Generated Authorization URL: {url}")
         st.write(f"[Click here to log in]({url})")
         st.stop()
 
     # Capture the authorization code automatically from the redirect
-    query_params = st.query_params  # Use the new `st.query_params`
+    query_params = st.query_params  # Use the updated `st.query_params`
     code = query_params.get("code", [None])[0]
 
     if code:
+        logging.debug(f"Authorization Code Received: {code}")
         try:
             # Exchange authorization code for tokens
             token_url = f"{authority}/oauth2/v2.0/token"
+            logging.debug("Attempting to exchange authorization code for tokens...")
             token = session.fetch_token(
                 token_url,
                 code=code,
@@ -162,7 +168,9 @@ else:
             )
             st.session_state["access_token"] = token["access_token"]
             st.success("Login successful!")
+            logging.debug(f"Access Token: {st.session_state['access_token']}")
             st.experimental_rerun()
         except Exception as e:
             logging.error(f"Error during token exchange: {e}")
-            st.error("Failed to log in.")
+            st.error("Failed to log in. Check the logs for details.")
+            
