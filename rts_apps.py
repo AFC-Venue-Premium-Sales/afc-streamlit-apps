@@ -344,10 +344,13 @@ def is_valid_email(email):
     pattern = rf"^.+@({'|'.join(ALLOWED_DOMAINS)})$"
     return re.match(pattern, email)
 
-# Step 1: User enters email
+# Step 1: Initialize authentication state
 if "is_authenticated" not in st.session_state:
     st.session_state["is_authenticated"] = False
+if "email_sent" not in st.session_state:
+    st.session_state["email_sent"] = False
 
+# Step 2: Display login flow only when not authenticated
 if not st.session_state["is_authenticated"]:
     st.title("🏟️ AFC Venue - MBM Hospitality")
     st.markdown("""
@@ -361,44 +364,44 @@ if not st.session_state["is_authenticated"]:
     View and evaluate performance metrics from the Premium Team.
     """)
 
-    # Ask for email
-if not st.session_state.get("email_sent", False):
-    email = st.text_input("Enter your company email address", key="email_input")
-    if st.button("Send Access Code", key="send_code_button"):
-        # Validate email
-        if is_valid_email(email):  # Check if email matches allowed domains
-            # Generate token
-            token = serializer.dumps(email)  # Create a secure token
-            try:
-                send_email(email, token)
-                st.success(f"Access code sent to {email}. Check your inbox!")
-                st.session_state["email_sent"] = True
-                st.session_state["email"] = email
-            except Exception as e:
-                st.error("Failed to send email. Please check your email configuration.")
-                st.error(str(e))
-        else:
-            st.error("Invalid email address. Only @arsenal.co.uk and @con.arsenal.co.uk are allowed.")
-
-# Step 2: User enters the code
-if st.session_state.get("email_sent", False):
-    code = st.text_input("Enter the access code sent to your email", key="access_code_input")
-    if st.button("Verify Code", key="verify_code_button"):
-        try:
-            # Validate token
-            email_from_token = serializer.loads(code, max_age=300)  # Token valid for 5 minutes
-            if email_from_token == st.session_state["email"]:
-                st.session_state["is_authenticated"] = True
-                st.session_state["app_choice"] = "📊 Sales Performance"  # Default page
-                st.success("Access granted!")
-                st.rerun()  # Redirect immediately after login
+    # Step 2.1: Email input and sending access code
+    if not st.session_state["email_sent"]:
+        email = st.text_input("Enter your work email address", key="email_input")
+        if st.button("Send Access Code", key="send_code_button"):
+            # Validate email
+            if is_valid_email(email):  # Check if email matches allowed domains
+                # Generate token
+                token = serializer.dumps(email)  # Create a secure token
+                try:
+                    send_email(email, token)
+                    st.success(f"Access code sent to {email}. Check your inbox!")
+                    st.session_state["email_sent"] = True
+                    st.session_state["email"] = email
+                except Exception as e:
+                    st.error("Failed to send email. Please check your email configuration.")
+                    st.error(str(e))
             else:
-                st.error("Invalid access code.")
-        except Exception as e:
-            st.error("Invalid or expired access code.")
+                st.error("Invalid email address. Only @arsenal.co.uk and @con.arsenal.co.uk are allowed.")
+
+    # Step 2.2: Access code input and verification
+    elif st.session_state["email_sent"]:
+        code = st.text_input("Enter the access code sent to your email", key="access_code_input")
+        if st.button("Verify Code", key="verify_code_button"):
+            try:
+                # Validate token
+                email_from_token = serializer.loads(code, max_age=300)  # Token valid for 5 minutes
+                if email_from_token == st.session_state["email"]:
+                    st.session_state["is_authenticated"] = True
+                    st.session_state["app_choice"] = "📊 Sales Performance"  # Default page
+                    st.success("Access granted!")
+                    st.experimental_rerun()  # Redirect immediately after login
+                else:
+                    st.error("Invalid access code.")
+            except Exception as e:
+                st.error("Invalid or expired access code.")
 
 # Step 3: Show the app after authentication
-if st.session_state.get("is_authenticated", False):
+if st.session_state["is_authenticated"]:
     # Sidebar navigation
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio(
@@ -422,4 +425,4 @@ if st.session_state.get("is_authenticated", False):
     elif app_choice == "🔓 Sign Out":
         # Clear session state and redirect to login page
         st.session_state.clear()
-        st.rerun()
+        st.experimental_rerun()
