@@ -1,122 +1,122 @@
 
-import streamlit as st
-from itsdangerous import URLSafeTimedSerializer
-import smtplib
-from email.message import EmailMessage
-import re
-import sales_performance  
-import user_performance_api
-import os
-from dotenv import load_dotenv
+# import streamlit as st
+# from itsdangerous import URLSafeTimedSerializer
+# import smtplib
+# from email.message import EmailMessage
+# import re
+# import sales_performance  
+# import user_performance_api
+# import os
+# from dotenv import load_dotenv
 
-# Load variables from .env file
-load_dotenv()
+# # Load variables from .env file
+# load_dotenv()
 
-# Access variables
-SECRET_KEY = os.getenv("SECRET_KEY")
-EMAIL_SENDER = os.getenv("EMAIL_SENDER")
-EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
-SMTP_SERVER = os.getenv("SMTP_SERVER")
-SMTP_PORT = os.getenv("SMTP_PORT")
-ALLOWED_DOMAINS = ["arsenal.co.uk", "con.arsenal.co.uk"] 
+# # Access variables
+# SECRET_KEY = os.getenv("SECRET_KEY")
+# EMAIL_SENDER = os.getenv("EMAIL_SENDER")
+# EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+# SMTP_SERVER = os.getenv("SMTP_SERVER")
+# SMTP_PORT = os.getenv("SMTP_PORT")
+# ALLOWED_DOMAINS = ["arsenal.co.uk", "con.arsenal.co.uk"] 
 
-# Serializer for generating/verifying tokens
-serializer = URLSafeTimedSerializer(SECRET_KEY)
+# # Serializer for generating/verifying tokens
+# serializer = URLSafeTimedSerializer(SECRET_KEY)
 
-# Function to send the token via email
-def send_email(email, token):
-    msg = EmailMessage()
-    msg["Subject"] = "AFC Hosp Reporting App"
-    msg["From"] = EMAIL_SENDER
-    msg["To"] = email
-    msg.set_content(f"Your access code is: {token}\n\nThis is an automated email. Please do not reply.")
+# # Function to send the token via email
+# def send_email(email, token):
+#     msg = EmailMessage()
+#     msg["Subject"] = "AFC Hosp Reporting App"
+#     msg["From"] = EMAIL_SENDER
+#     msg["To"] = email
+#     msg.set_content(f"Your access code is: {token}\n\nThis is an automated email. Please do not reply.")
 
-    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
-        smtp.starttls()  # Secure the connection
-        smtp.login(EMAIL_SENDER, EMAIL_PASSWORD)
-        smtp.send_message(msg)
+#     with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
+#         smtp.starttls()  # Secure the connection
+#         smtp.login(EMAIL_SENDER, EMAIL_PASSWORD)
+#         smtp.send_message(msg)
 
-# Function to validate email domain
-def is_valid_email(email):
-    pattern = rf"^.+@({'|'.join(ALLOWED_DOMAINS)})$"
-    return re.match(pattern, email)
+# # Function to validate email domain
+# def is_valid_email(email):
+#     pattern = rf"^.+@({'|'.join(ALLOWED_DOMAINS)})$"
+#     return re.match(pattern, email)
 
-# Step 1: User enters email
-if "is_authenticated" not in st.session_state:
-    st.session_state["is_authenticated"] = False
+# # Step 1: User enters email
+# if "is_authenticated" not in st.session_state:
+#     st.session_state["is_authenticated"] = False
 
-if not st.session_state["is_authenticated"]:
-    st.title("🏟️ AFC Venue - MBM Hospitality")
-    st.markdown("""
-    **Welcome to the Venue Hospitality Dashboard!**  
-    This app provides insights into MBM Sales Performance and User Metrics. 
+# if not st.session_state["is_authenticated"]:
+#     st.title("🏟️ AFC Venue - MBM Hospitality")
+#     st.markdown("""
+#     **Welcome to the Venue Hospitality Dashboard!**  
+#     This app provides insights into MBM Sales Performance and User Metrics. 
 
-    **MBM Sales Performance**:  
-    Analyse sales from MBM hospitality. 
+#     **MBM Sales Performance**:  
+#     Analyse sales from MBM hospitality. 
 
-    **Premium Exec Metrics**:  
-    View and evaluate performance metrics from the Premium Team.
-    """)
+#     **Premium Exec Metrics**:  
+#     View and evaluate performance metrics from the Premium Team.
+#     """)
 
-    # Ask for email
-    email = st.text_input("Enter your company email address")
-    if st.button("Send Access Code"):
-        # Validate email
-        if is_valid_email(email):  # Check if email matches allowed domains
-            # Generate token
-            token = serializer.dumps(email)  # Create a secure token
-            try:
-                send_email(email, token)
-                st.success(f"Access code sent to {email}. Check your inbox!")
-                st.session_state["email"] = email
-            except Exception as e:
-                st.error("Failed to send email. Please check your email configuration.")
-                st.error(str(e))
-        else:
-            st.error("Invalid email address. Only @arsenal.co.uk and @con.arsenal.co.uk are allowed.")
+#     # Ask for email
+#     email = st.text_input("Enter your company email address")
+#     if st.button("Send Access Code"):
+#         # Validate email
+#         if is_valid_email(email):  # Check if email matches allowed domains
+#             # Generate token
+#             token = serializer.dumps(email)  # Create a secure token
+#             try:
+#                 send_email(email, token)
+#                 st.success(f"Access code sent to {email}. Check your inbox!")
+#                 st.session_state["email"] = email
+#             except Exception as e:
+#                 st.error("Failed to send email. Please check your email configuration.")
+#                 st.error(str(e))
+#         else:
+#             st.error("Invalid email address. Only @arsenal.co.uk and @con.arsenal.co.uk are allowed.")
 
-    # Step 2: User enters the code
-    if "email" in st.session_state:
-        code = st.text_input("Enter the access code sent to your email")
-        if st.button("Verify Code"):
-            try:
-                # Validate token
-                email_from_token = serializer.loads(code, max_age=300)  # Token valid for 5 minutes
-                if email_from_token == st.session_state["email"]:
-                    st.session_state["is_authenticated"] = True
-                    st.session_state["app_choice"] = "📊 Sales Performance"  # Default page
-                    st.success("Access granted!")
-                    st.rerun()  # Redirect immediately after login
-                else:
-                    st.error("Invalid access code.")
-            except Exception as e:
-                st.error("Invalid or expired access code.")
+#     # Step 2: User enters the code
+#     if "email" in st.session_state:
+#         code = st.text_input("Enter the access code sent to your email")
+#         if st.button("Verify Code"):
+#             try:
+#                 # Validate token
+#                 email_from_token = serializer.loads(code, max_age=300)  # Token valid for 5 minutes
+#                 if email_from_token == st.session_state["email"]:
+#                     st.session_state["is_authenticated"] = True
+#                     st.session_state["app_choice"] = "📊 Sales Performance"  # Default page
+#                     st.success("Access granted!")
+#                     st.rerun()  # Redirect immediately after login
+#                 else:
+#                     st.error("Invalid access code.")
+#             except Exception as e:
+#                 st.error("Invalid or expired access code.")
 
-# Step 3: Show the app after authentication
-if st.session_state["is_authenticated"]:
-    # Sidebar navigation
-    st.sidebar.title("🧭 Navigation")
-    app_choice = st.sidebar.radio(
-        "Go to",
-        ["📊 Sales Performance", "📈 User Performance", "🔓 Sign Out"],
-        index=0 if "app_choice" not in st.session_state else
-        ["📊 Sales Performance", "📈 User Performance", "🔓 Sign Out"].index(st.session_state["app_choice"])
-    )
+# # Step 3: Show the app after authentication
+# if st.session_state["is_authenticated"]:
+#     # Sidebar navigation
+#     st.sidebar.title("🧭 Navigation")
+#     app_choice = st.sidebar.radio(
+#         "Go to",
+#         ["📊 Sales Performance", "📈 User Performance", "🔓 Sign Out"],
+#         index=0 if "app_choice" not in st.session_state else
+#         ["📊 Sales Performance", "📈 User Performance", "🔓 Sign Out"].index(st.session_state["app_choice"])
+#     )
 
-    # Save the selected app choice
-    st.session_state["app_choice"] = app_choice
+#     # Save the selected app choice
+#     st.session_state["app_choice"] = app_choice
 
-    # Handle page navigation
-    if app_choice == "📊 Sales Performance":
-        sales_performance.run_app()  # Pulls and renders Sales Performance data
+#     # Handle page navigation
+#     if app_choice == "📊 Sales Performance":
+#         sales_performance.run_app()  # Pulls and renders Sales Performance data
 
-    elif app_choice == "📈 User Performance":
-        user_performance_api.run_app()  # Pulls and renders User Performance data
+#     elif app_choice == "📈 User Performance":
+#         user_performance_api.run_app()  # Pulls and renders User Performance data
 
-    elif app_choice == "🔓 Sign Out":
-        # Clear session state and redirect to login page
-        st.session_state.clear()
-        st.rerun()
+#     elif app_choice == "🔓 Sign Out":
+#         # Clear session state and redirect to login page
+#         st.session_state.clear()
+#         st.rerun()
 
 
 
