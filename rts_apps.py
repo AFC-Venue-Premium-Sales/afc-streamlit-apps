@@ -12,6 +12,18 @@ from dotenv import load_dotenv
 # Load variables from .env file
 load_dotenv()
 
+import os
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+
+# Check if environment variables are loaded
+logging.debug(f"EMAIL_SENDER: {os.getenv('EMAIL_SENDER')}")
+logging.debug(f"EMAIL_PASSWORD: {'Loaded' if os.getenv('EMAIL_PASSWORD') else 'Not Loaded'}")
+logging.debug(f"SMTP_SERVER: {os.getenv('SMTP_SERVER')}")
+logging.debug(f"SMTP_PORT: {os.getenv('SMTP_PORT')}")
+
+
 # Access variables
 SECRET_KEY = os.getenv("SECRET_KEY")
 EMAIL_SENDER = os.getenv("EMAIL_SENDER")
