@@ -59,7 +59,7 @@ if not st.session_state["is_authenticated"]:
     """)
 
     # Ask for email
-    email = st.text_input("Enter your company email address")
+    email = st.text_input("Enter your work email address")
     if st.button("Send Access Code"):
         # Validate email
         if is_valid_email(email):  # Check if email matches allowed domains
