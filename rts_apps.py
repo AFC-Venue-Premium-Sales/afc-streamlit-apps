@@ -355,7 +355,7 @@ if "email" not in st.session_state:
 if st.session_state["state"] == "email_input":
     # Email Input State
     st.title("🏟️ AFC Venue - MBM Hospitality")
-    email = st.text_input("Enter your company email address", key="email_input_widget")
+    email = st.text_input("Enter your work email address", key="email_input_widget")
     if st.button("Send Access Code", key="send_code_button_widget"):
         if is_valid_email(email):
             try:
