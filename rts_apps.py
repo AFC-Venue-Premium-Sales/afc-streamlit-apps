@@ -201,7 +201,6 @@
 
 
 
-
 import streamlit as st
 import logging
 import user_performance_api
@@ -224,6 +223,10 @@ if "login_token" not in st.session_state:
     st.session_state["login_token"] = None
     logging.debug("Initialized session state for login_token.")
 
+if "auth_code" not in st.session_state:
+    st.session_state["auth_code"] = None
+    logging.debug("Initialized session state for auth_code.")
+
 # Define MSAL configuration
 msal_config = {
     "auth": {
@@ -243,6 +246,14 @@ login_request = {
     "scopes": ["User.Read"]
 }
 
+# Capture authorization code from query parameters
+query_params = st.query_params  # Updated to st.query_params from st.experimental_get_query_params
+logging.debug(f"Full Redirect Query Parameters: {query_params}")
+
+if "code" in query_params:
+    st.session_state["auth_code"] = query_params["code"]
+    logging.debug(f"Authorization Code Retrieved: {st.session_state['auth_code']}")
+
 # Render MSAL authentication
 if not st.session_state["login_token"]:
     try:
@@ -256,8 +267,11 @@ if not st.session_state["login_token"]:
             logout_button_text="🔓 Logout",
             key="unique_msal_key"
         )
-        logging.debug(f"Login Token Retrieved: {login_token}")
-        st.session_state["login_token"] = login_token
+        if login_token:
+            logging.debug(f"Login Token Retrieved: {login_token}")
+            st.session_state["login_token"] = login_token
+        else:
+            logging.warning("Login token not retrieved. Authorization process might be incomplete.")
     except Exception as e:
         logging.error(f"Error during authentication initialization: {e}")
         st.error("An error occurred during authentication.")
