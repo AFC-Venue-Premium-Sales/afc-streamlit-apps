@@ -236,16 +236,45 @@ if "auth_code" not in st.session_state:
     st.session_state["auth_code"] = None
 if "access_token" not in st.session_state:
     st.session_state["access_token"] = None
-if "code_verifier" not in st.session_state or "code_challenge" not in st.session_state:
-    code_verifier, code_challenge = generate_pkce_pair()
-    st.session_state["code_verifier"] = code_verifier
-    st.session_state["code_challenge"] = code_challenge
-    logging.debug(f"Generated PKCE Pair - Verifier: {code_verifier}, Challenge: {code_challenge}")
+if "pkce" not in st.session_state:
+    st.session_state["pkce"] = generate_pkce_pair()
+    logging.debug(f"Generated PKCE Pair - Verifier: {st.session_state['pkce'][0]}, Challenge: {st.session_state['pkce'][1]}")
 
 # OAuth2 session
 oauth2_session = OAuth2Session(
     client_id=client_id, redirect_uri=redirect_uri, scope=scope
 )
+
+# Capture authorization code from query parameters
+query_params = st.query_params
+logging.debug(f"Redirect Query Parameters: {query_params}")
+
+if "code" in query_params and not st.session_state["auth_code"]:
+    st.session_state["auth_code"] = query_params["code"]
+    logging.debug(f"Authorization Code Retrieved: {st.session_state['auth_code']}")
+
+    # Step 3: Exchange Code for Token
+    try:
+        token_url = f"{authority}/oauth2/v2.0/token"
+        code_verifier = st.session_state["pkce"][0]
+        logging.debug(f"Using Code Verifier: {code_verifier}")
+
+        token = oauth2_session.fetch_token(
+            token_url,
+            code=st.session_state["auth_code"],
+            code_verifier=code_verifier
+        )
+        st.session_state["access_token"] = token["access_token"]
+        st.success("Login successful!")
+        logging.debug(f"Access Token: {st.session_state['access_token']}")
+
+        # Clear query parameters to prevent script reruns with old params
+        st.experimental_set_query_params()
+        st.experimental_rerun()
+
+    except Exception as e:
+        logging.error(f"Error during token exchange: {e}")
+        st.error("Failed to log in. Please try again.")
 
 # Render Login or Logout Button
 if st.session_state["access_token"]:
@@ -254,47 +283,21 @@ if st.session_state["access_token"]:
 
     if st.sidebar.button("Logout"):
         st.session_state["access_token"] = None
+        st.session_state["auth_code"] = None
+        st.session_state["pkce"] = generate_pkce_pair()
         st.experimental_rerun()
 else:
     st.title("🏟️ AFC Venue - MBM Hospitality")
     st.markdown("Please log in using AFC credentials to access the app.")
 
-    # Step 1: Generate Authorization URL
-    authorization_url = f"{authority}/oauth2/v2.0/authorize"
     if st.button("Log in"):
+        authorization_url = f"{authority}/oauth2/v2.0/authorize"
+        code_challenge = st.session_state["pkce"][1]
         url, state = oauth2_session.create_authorization_url(
             authorization_url,
-            code_challenge=st.session_state["code_challenge"],
+            code_challenge=code_challenge,
             code_challenge_method="S256"
         )
-        st.session_state["oauth_state"] = state
         logging.debug(f"Generated Authorization URL: {url}")
         st.write(f"[Click here to log in]({url})")
-        st.stop()
 
-    # Step 2: Handle Redirect Query Parameters
-    query_params = st.query_params
-    logging.debug(f"Redirect Query Parameters: {query_params}")
-
-    if "code" in query_params:
-        st.session_state["auth_code"] = query_params["code"][0]
-        logging.debug(f"Authorization Code Retrieved: {st.session_state['auth_code']}")
-
-        # Step 3: Exchange Code for Token
-        try:
-            token_url = f"{authority}/oauth2/v2.0/token"
-            logging.debug(f"Using Code Verifier: {st.session_state['code_verifier']}")
-            token = oauth2_session.fetch_token(
-                token_url,
-                code=st.session_state["auth_code"],
-                code_verifier=st.session_state["code_verifier"]
-            )
-            st.session_state["access_token"] = token["access_token"]
-            st.success("Login successful!")
-            logging.debug(f"Access Token: {st.session_state['access_token']}")
-            st.experimental_rerun()
-        except Exception as e:
-            logging.error(f"Error during token exchange: {e}")
-            st.error("Failed to log in.")
-    else:
-        logging.warning("Authorization Code not found. Please log in again.")
