@@ -232,13 +232,14 @@ def generate_pkce_pair():
     return code_verifier, code_challenge
 
 # Initialize session state
+if "pkce" not in st.session_state:
+    st.session_state["pkce"] = generate_pkce_pair()
+    logging.debug(f"Generated PKCE Pair - Verifier: {st.session_state['pkce'][0]}, Challenge: {st.session_state['pkce'][1]}")
+
 if "auth_code" not in st.session_state:
     st.session_state["auth_code"] = None
 if "access_token" not in st.session_state:
     st.session_state["access_token"] = None
-if "pkce" not in st.session_state:
-    st.session_state["pkce"] = generate_pkce_pair()
-    logging.debug(f"Generated PKCE Pair - Verifier: {st.session_state['pkce'][0]}, Challenge: {st.session_state['pkce'][1]}")
 
 # OAuth2 session
 oauth2_session = OAuth2Session(
@@ -277,6 +278,7 @@ if "code" in query_params and not st.session_state["auth_code"]:
         st.error("Failed to log in. Please try again.")
 
 # Render Login or Logout Button
+# Render Login or Logout Button
 if st.session_state["access_token"]:
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
@@ -290,6 +292,7 @@ else:
     st.title("🏟️ AFC Venue - MBM Hospitality")
     st.markdown("Please log in using AFC credentials to access the app.")
 
+    # Single login button
     if st.button("Log in"):
         authorization_url = f"{authority}/oauth2/v2.0/authorize"
         code_challenge = st.session_state["pkce"][1]
@@ -299,4 +302,7 @@ else:
             code_challenge_method="S256"
         )
         logging.debug(f"Generated Authorization URL: {url}")
-        st.write(f"[Click here to log in]({url})")
+        st.experimental_set_query_params()  # Clear any previous parameters
+        st.write("Redirecting to login...")
+        st.markdown(f"[Click here if not redirected automatically]({url})", unsafe_allow_html=True)
+        st.stop()
