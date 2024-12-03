@@ -306,4 +306,4 @@ else:
         logging.debug(f"Generated Authorization URL: {url}")
         # Provide only a link for manual redirection
         st.markdown(f"[Click here to log in]({url})", unsafe_allow_html=True)
-        st
+        st.stop()
