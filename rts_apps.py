@@ -247,16 +247,18 @@ login_request = {
 }
 
 # Capture authorization code from query parameters
-query_params = st.query_params  # Updated to st.query_params from st.experimental_get_query_params
-logging.debug(f"Full Redirect Query Parameters: {query_params}")
-
-if "code" in query_params:
-    st.session_state["auth_code"] = query_params["code"]
-    logging.debug(f"Authorization Code Retrieved: {st.session_state['auth_code']}")
+try:
+    query_params = st.query_params  # Updated to st.query_params
+    logging.debug(f"Full Redirect Query Parameters: {query_params}")
+    if "code" in query_params:
+        st.session_state["auth_code"] = query_params["code"]
+        logging.debug(f"Authorization Code Retrieved: {st.session_state['auth_code']}")
+except Exception as e:
+    logging.error(f"Error retrieving query parameters: {e}")
 
 # Render MSAL authentication
-if not st.session_state["login_token"]:
-    try:
+try:
+    if not st.session_state["login_token"]:
         logging.debug("Rendering msal_authentication login/logout buttons...")
         login_token = msal_authentication(
             auth=msal_config['auth'],
@@ -272,13 +274,13 @@ if not st.session_state["login_token"]:
             st.session_state["login_token"] = login_token
         else:
             logging.warning("Login token not retrieved. Authorization process might be incomplete.")
-    except Exception as e:
-        logging.error(f"Error during authentication initialization: {e}")
-        st.error("An error occurred during authentication.")
-else:
-    login_token = st.session_state["login_token"]
+    else:
+        login_token = st.session_state["login_token"]
+except Exception as e:
+    logging.error(f"Error during MSAL authentication: {e}")
+    st.error("An error occurred during authentication.")
 
-# Check auth
+# Check if the user is authenticated
 if login_token:
     logging.info("User is authenticated.")
     st.sidebar.title("🧭 Navigation")
