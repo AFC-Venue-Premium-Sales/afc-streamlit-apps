@@ -223,7 +223,7 @@ authority = "https://login.microsoftonline.com/068cb91a-8be0-49d7-be3a-38190b0ba
 redirect_uri = "https://afc-apps-hospitality.streamlit.app"
 scope = "User.Read"
 
-# Generate PKCE pair
+# Function to generate PKCE pair
 def generate_pkce_pair():
     code_verifier = secrets.token_urlsafe(64)
     code_challenge = base64.urlsafe_b64encode(
@@ -268,7 +268,7 @@ if "code" in query_params and not st.session_state["auth_code"]:
         st.success("Login successful!")
         logging.debug(f"Access Token: {st.session_state['access_token']}")
 
-        # Clear query parameters to prevent script reruns with old params
+        # Clear query parameters to prevent reruns with old params
         st.experimental_set_query_params()
         st.experimental_rerun()
 
@@ -284,7 +284,7 @@ if st.session_state["access_token"]:
     if st.sidebar.button("Logout"):
         st.session_state["access_token"] = None
         st.session_state["auth_code"] = None
-        st.session_state["pkce"] = generate_pkce_pair()
+        st.session_state["pkce"] = generate_pkce_pair()  # Reset PKCE for next login
         st.experimental_rerun()
 else:
     st.title("🏟️ AFC Venue - MBM Hospitality")
@@ -300,4 +300,3 @@ else:
         )
         logging.debug(f"Generated Authorization URL: {url}")
         st.write(f"[Click here to log in]({url})")
-
