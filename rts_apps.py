@@ -279,14 +279,12 @@ if "code" in query_params and not st.session_state["auth_code"]:
 
 # Render Login or Logout Button
 # Render Login or Logout Button
-if st.session_state["access_token"]:
+if st.session_state.get("access_token"):
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
 
     if st.sidebar.button("Logout"):
-        st.session_state["access_token"] = None
-        st.session_state["auth_code"] = None
-        st.session_state["pkce"] = generate_pkce_pair()  # Reset PKCE for next login
+        st.session_state.clear()  # Clear all session state variables
         st.experimental_rerun()
 else:
     st.title("🏟️ AFC Venue - MBM Hospitality")
@@ -295,14 +293,17 @@ else:
     # Single login button
     if st.button("Log in"):
         authorization_url = f"{authority}/oauth2/v2.0/authorize"
-        code_challenge = st.session_state["pkce"][1]
+        code_challenge = st.session_state.get("pkce", [None, None])[1]
+        if code_challenge is None:
+            st.error("PKCE code challenge not generated. Please try reloading the app.")
+            st.stop()
+
         url, state = oauth2_session.create_authorization_url(
             authorization_url,
             code_challenge=code_challenge,
             code_challenge_method="S256"
         )
         logging.debug(f"Generated Authorization URL: {url}")
-        st.experimental_set_query_params()  # Clear any previous parameters
-        st.write("Redirecting to login...")
-        st.markdown(f"[Click here if not redirected automatically]({url})", unsafe_allow_html=True)
-        st.stop()
+        # Provide only a link for manual redirection
+        st.markdown(f"[Click here to log in]({url})", unsafe_allow_html=True)
+        st
