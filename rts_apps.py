@@ -223,7 +223,7 @@ authority = "https://login.microsoftonline.com/068cb91a-8be0-49d7-be3a-38190b0ba
 redirect_uri = "https://afc-apps-hospitality.streamlit.app"
 scope = "User.Read"
 
-# Generate PKCE code verifier and challenge
+# Generate PKCE pair
 def generate_pkce_pair():
     code_verifier = secrets.token_urlsafe(64)
     code_challenge = base64.urlsafe_b64encode(
@@ -234,14 +234,13 @@ def generate_pkce_pair():
 # Initialize session state
 if "auth_code" not in st.session_state:
     st.session_state["auth_code"] = None
-    logging.debug("Initialized session state for auth_code.")
 if "access_token" not in st.session_state:
     st.session_state["access_token"] = None
-    logging.debug("Initialized session state for access_token.")
-if "code_verifier" not in st.session_state:
-    st.session_state["code_verifier"], st.session_state["code_challenge"] = generate_pkce_pair()
-    logging.debug(f"Generated Code Verifier: {st.session_state['code_verifier']}")
-    logging.debug(f"Generated Code Challenge: {st.session_state['code_challenge']}")
+if "code_verifier" not in st.session_state or "code_challenge" not in st.session_state:
+    code_verifier, code_challenge = generate_pkce_pair()
+    st.session_state["code_verifier"] = code_verifier
+    st.session_state["code_challenge"] = code_challenge
+    logging.debug(f"Generated PKCE Pair - Verifier: {code_verifier}, Challenge: {code_challenge}")
 
 # OAuth2 session
 oauth2_session = OAuth2Session(
@@ -249,7 +248,7 @@ oauth2_session = OAuth2Session(
 )
 
 # Render Login or Logout Button
-if "access_token" in st.session_state and st.session_state["access_token"]:
+if st.session_state["access_token"]:
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
 
@@ -273,17 +272,18 @@ else:
         st.write(f"[Click here to log in]({url})")
         st.stop()
 
-    # Step 2: Capture Redirect Query Parameters
-    query_params = st.experimental_get_query_params()  # Replace with `st.query_params` after April 2024
+    # Step 2: Handle Redirect Query Parameters
+    query_params = st.query_params
     logging.debug(f"Redirect Query Parameters: {query_params}")
+
     if "code" in query_params:
         st.session_state["auth_code"] = query_params["code"][0]
         logging.debug(f"Authorization Code Retrieved: {st.session_state['auth_code']}")
 
-    # Step 3: Exchange Authorization Code for Access Token
-    if st.session_state["auth_code"]:
+        # Step 3: Exchange Code for Token
         try:
             token_url = f"{authority}/oauth2/v2.0/token"
+            logging.debug(f"Using Code Verifier: {st.session_state['code_verifier']}")
             token = oauth2_session.fetch_token(
                 token_url,
                 code=st.session_state["auth_code"],
@@ -291,13 +291,10 @@ else:
             )
             st.session_state["access_token"] = token["access_token"]
             st.success("Login successful!")
-            logging.debug(f"Access Token Retrieved: {token['access_token']}")
+            logging.debug(f"Access Token: {st.session_state['access_token']}")
             st.experimental_rerun()
         except Exception as e:
             logging.error(f"Error during token exchange: {e}")
-            st.error("Failed to log in. Please try again.")
-
-# Display Auth Data for Debugging
-if st.session_state["access_token"]:
-    st.write("Authentication successful!")
-    st.write(f"Access Token: {st.session_state['access_token']}")
+            st.error("Failed to log in.")
+    else:
+        logging.warning("Authorization Code not found. Please log in again.")
