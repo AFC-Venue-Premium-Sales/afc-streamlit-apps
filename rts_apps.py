@@ -199,8 +199,6 @@
 
 
 
-
-
 import streamlit as st
 import logging
 import user_performance_api
@@ -237,12 +235,16 @@ def generate_pkce_pair():
     return code_verifier, code_challenge
 
 # Initialize PKCE and session state
-if "code_verifier" not in st.session_state or "code_challenge" not in st.session_state:
+if "code_verifier" not in st.session_state:
     code_verifier, code_challenge = generate_pkce_pair()
     st.session_state["code_verifier"] = code_verifier
     st.session_state["code_challenge"] = code_challenge
     logging.debug(f"PKCE Code Verifier: {code_verifier}")
     logging.debug(f"PKCE Code Challenge: {code_challenge}")
+else:
+    logging.debug("Reusing existing PKCE values from session state.")
+    logging.debug(f"PKCE Code Verifier: {st.session_state['code_verifier']}")
+    logging.debug(f"PKCE Code Challenge: {st.session_state['code_challenge']}")
 
 # Build the authorization URL with PKCE
 def get_auth_url():
@@ -269,10 +271,11 @@ def exchange_code_for_token(auth_code):
     }
     response = requests.post(token_url, data=data)
     if response.status_code == 200:
+        logging.info("Token Exchange Successful!")
         return response.json()
     else:
         logging.error(f"Token Exchange Failed! {response.json()}")
-        st.error("Failed to exchange token.")
+        st.error("Failed to exchange token. Please try again.")
         return None
 
 # Streamlit app logic
@@ -295,19 +298,21 @@ if not st.session_state["access_token"]:
     View and evaluate performance metrics from the Premium Team.
     """)
     # Display the login link
-    st.markdown(f"[Click here to log in]({get_auth_url()})")
+    auth_url = get_auth_url()
+    st.markdown(f"[Click here to log in]({auth_url})")
 
-    query_params = st.query_params  # Corrected to use st.query_params
+    # Handle the authorization code
+    query_params = st.query_params
     if "code" in query_params:
         auth_code = query_params["code"]
         st.session_state["auth_code"] = auth_code
         logging.debug(f"Authorization Code Retrieved: {auth_code}")
 
+        # Exchange the authorization code for an access token
         token_response = exchange_code_for_token(auth_code)
-        if token_response:
+        if token_response and "access_token" in token_response:
             st.session_state["access_token"] = token_response["access_token"]
-            st.success("Successfully authenticated!")
-            st.experimental_rerun()
+            st.success("Login successful! You are now authenticated.")
 else:
     # User is authenticated
     st.sidebar.title("🧭 Navigation")
@@ -317,3 +322,4 @@ else:
         sales_performance.run_app()
     elif app_choice == "📈 User Performance":
         user_performance_api.run_app()
+
