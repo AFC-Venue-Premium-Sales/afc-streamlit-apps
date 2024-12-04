@@ -9,7 +9,7 @@ def run_app():
     specified_users = ['dcoppin', 'Jedwards', 'jedwards', 'bgardiner', 'BenT', 'jmurphy', 'ayildirim',
                        'MeganS', 'BethNW', 'HayleyA', 'LucyB', 'Conor', 'SavR', 'MillieS']
 
-    st.title('💷  AFC Finance x MBM Reconciliation 💷')
+    st.title('💷 MBM Sales 💷')
 
     st.markdown("""
     ### ℹ️ About
