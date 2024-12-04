@@ -206,12 +206,17 @@ import logging
 import user_performance_api
 import sales_performance
 from msal_streamlit_authentication import msal_authentication
+import base64
+import os
+import hashlib
 
 # Configure logging
 logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
     level=logging.DEBUG,
-    handlers=[logging.StreamHandler()]
+    handlers=[
+        logging.StreamHandler()
+    ]
 )
 
 logging.debug("Starting the Streamlit app.")
@@ -224,6 +229,13 @@ if "login_token" not in st.session_state:
 if "auth_code" not in st.session_state:
     st.session_state["auth_code"] = None
     logging.debug("Initialized session state for auth_code.")
+
+if "code_verifier" not in st.session_state:
+    code_verifier = base64.urlsafe_b64encode(os.urandom(32)).rstrip(b"=").decode("utf-8")
+    code_challenge = base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode()).digest()).rstrip(b"=").decode("utf-8")
+    st.session_state["code_verifier"] = code_verifier
+    st.session_state["code_challenge"] = code_challenge
+    logging.debug(f"Generated PKCE Pair - Verifier: {code_verifier}, Challenge: {code_challenge}")
 
 # Define MSAL configuration
 msal_config = {
@@ -239,23 +251,20 @@ msal_config = {
     }
 }
 
-# Define login request parameters with claims
+# Define login request parameters
 login_request = {
-    "scopes": ["User.Read"],
-    "extraQueryParameters": {
-        "claims": '{"id_token":{"email":{"essential":true},"name":{"essential":true},"preferred_username":{"essential":true}}}'
-    }
+    "scopes": ["User.Read", "profile"],
+    "code_challenge": st.session_state["code_challenge"],
+    "code_challenge_method": "S256"
 }
 
 # Capture authorization code from query parameters
-query_params = st.query_params
+query_params = st.query_params  # Updated to st.query_params from st.experimental_get_query_params
 logging.debug(f"Full Redirect Query Parameters: {query_params}")
 
 if "code" in query_params:
     st.session_state["auth_code"] = query_params["code"]
     logging.debug(f"Authorization Code Retrieved: {st.session_state['auth_code']}")
-    # Clear query params
-    st.experimental_set_query_params()
 
 # Show the login button if the user is not authenticated
 if not st.session_state["login_token"]:
@@ -276,7 +285,7 @@ if not st.session_state["login_token"]:
     # Render login button
     if st.button("🔐 Login"):
         try:
-            logging.debug("Rendering msal_authentication login/logout buttons...")
+            logging.debug("Initiating login process...")
             login_token = msal_authentication(
                 auth=msal_config['auth'],
                 cache=msal_config['cache'],
@@ -284,6 +293,7 @@ if not st.session_state["login_token"]:
                 logout_request={},
                 login_button_text="🔐 Login",
                 logout_button_text="🔓 Logout",
+                code_verifier=st.session_state["code_verifier"],
                 key="unique_msal_key"
             )
             if login_token:
@@ -297,12 +307,10 @@ if not st.session_state["login_token"]:
 else:
     # User is authenticated
     login_token = st.session_state["login_token"]
-    claims = login_token.get("id_token_claims", {})
-    user_email = claims.get("email", "Unknown Email")
-    user_name = claims.get("name", "Unknown User")
-    st.sidebar.write(f"Welcome, {user_name} ({user_email})!")
-    
+    logging.info("User is authenticated.")
     st.sidebar.title("🧭 Navigation")
+
+    # Debugging navigation choices
     app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
     logging.debug(f"Navigation Choice: {app_choice}")
 
@@ -318,6 +326,7 @@ else:
         try:
             user_performance_api.run_app()
         except Exception as e:
-            logging.error(f"Error in User Performance App: {e}") 
+            logging.error(f"Error in User Performance App: {e}")
             st.error("An error occurred in the User Performance section.")
+
 
