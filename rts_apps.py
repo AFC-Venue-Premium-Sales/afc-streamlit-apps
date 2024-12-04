@@ -202,97 +202,63 @@
 
 
 import streamlit as st
+import msal
+import jwt
 import requests
-import uuid
-import base64
-import hashlib
-import jwt  # Install via `pip install PyJWT`
 
-# Azure AD details
+# Azure AD configuration
 CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
 TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"
 AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
 REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app"
-SCOPES = ["openid", "profile", "email"]
+SCOPES = ["User.Read", "email"]
 
-# Generate PKCE values
-def generate_pkce_pair():
-    code_verifier = base64.urlsafe_b64encode(uuid.uuid4().bytes).decode("utf-8").rstrip("=")
-    code_challenge = base64.urlsafe_b64encode(
-        hashlib.sha256(code_verifier.encode("utf-8")).digest()
-    ).decode("utf-8").rstrip("=")
-    return code_verifier, code_challenge
-
-# Decode JWT to extract user info
-def decode_id_token(id_token):
-    try:
-        payload = jwt.decode(id_token, options={"verify_signature": False})
-        return payload
-    except Exception as e:
-        st.error("Error decoding ID token.")
-        return None
-
-# Initialize session state for PKCE
-if "code_verifier" not in st.session_state:
-    code_verifier, code_challenge = generate_pkce_pair()
-    st.session_state["code_verifier"] = code_verifier
-    st.session_state["code_challenge"] = code_challenge
-else:
-    code_verifier = st.session_state["code_verifier"]
-    code_challenge = st.session_state["code_challenge"]
-
-# Initialize session state for tokens
+# Initialize session state
 if "login_token" not in st.session_state:
     st.session_state["login_token"] = None
 
-if "auth_code" not in st.session_state:
-    st.session_state["auth_code"] = None
+# MSAL client setup
+msal_client = msal.PublicClientApplication(client_id=CLIENT_ID, authority=AUTHORITY)
 
-# Login button
+# Decode JWT token to extract claims
+def decode_token(token):
+    return jwt.decode(token, options={"verify_signature": False})
+
+# Login button and flow
 if st.session_state["login_token"] is None:
     st.title("🔐 Login with SSO")
+    
     if st.button("Login"):
-        auth_url = (
-            f"{AUTHORITY}/oauth2/v2.0/authorize?"
-            f"client_id={CLIENT_ID}&response_type=code"
-            f"&redirect_uri={REDIRECT_URI}"
-            f"&scope={' '.join(SCOPES)}"
-            f"&state={uuid.uuid4()}"
-            f"&code_challenge={code_challenge}"
-            f"&code_challenge_method=S256"
+        auth_url = msal_client.get_authorization_request_url(
+            scopes=SCOPES,
+            redirect_uri=REDIRECT_URI
         )
-        st.write("Please click the link below to login:")
-        st.write(auth_url)
-
-# After redirect, handle the auth code
-query_params = st.experimental_get_query_params()  # Replace with st.query_params for post-April 2024
-if "code" in query_params and st.session_state["login_token"] is None:
-    st.session_state["auth_code"] = query_params["code"][0]
-
-    # Exchange the auth code for a token
-    token_url = f"{AUTHORITY}/oauth2/v2.0/token"
-    data = {
-        "client_id": CLIENT_ID,
-        "grant_type": "authorization_code",
-        "code": st.session_state["auth_code"],
-        "redirect_uri": REDIRECT_URI,
-        "code_verifier": st.session_state["code_verifier"],  # Use stored verifier
-    }
-    response = requests.post(token_url, data=data)
-    if response.status_code == 200:
-        token_data = response.json()
-        st.session_state["login_token"] = token_data
-        id_token = token_data.get("id_token")
-        user_info = decode_id_token(id_token)
-
-        if user_info:
-            st.success(f"Welcome, {user_info.get('name', 'User')}!")
-            st.write("Logged in as:", user_info.get("email"))
+        st.markdown(f"[Click here to login]({auth_url})")
+    
+    # Handle redirect and token exchange
+    query_params = st.experimental_get_query_params()  # Replace with st.query_params for post-April 2024
+    if "code" in query_params:
+        code = query_params["code"][0]
+        result = msal_client.acquire_token_by_authorization_code(
+            code=code,
+            scopes=SCOPES,
+            redirect_uri=REDIRECT_URI
+        )
+        if "access_token" in result:
+            st.session_state["login_token"] = result["access_token"]
+            st.success("Login successful!")
         else:
-            st.error("Failed to retrieve user information.")
-    else:
-        st.error("Login failed. Please try again.")
-        st.write(response.json())
+            st.error("Login failed.")
+            st.write(result)
 else:
-    st.sidebar.title("🧭 Navigation")
-    st.sidebar.write("You are logged in.")
+    # User is authenticated
+    token = st.session_state["login_token"]
+    claims = decode_token(token)
+    
+    # Extract email claim
+    email = claims.get("email") or claims.get("preferred_username")
+    if email:
+        st.sidebar.success(f"Welcome, {email}!")
+    else:
+        st.error("Email address not found in token claims.")
+        st.write(claims)  # Debugging: Show all claims
