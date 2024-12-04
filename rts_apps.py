@@ -206,6 +206,7 @@ import requests
 import uuid
 import base64
 import hashlib
+import jwt  # Install via `pip install PyJWT`
 
 # Azure AD details
 CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
@@ -221,6 +222,15 @@ def generate_pkce_pair():
         hashlib.sha256(code_verifier.encode("utf-8")).digest()
     ).decode("utf-8").rstrip("=")
     return code_verifier, code_challenge
+
+# Decode JWT to extract user info
+def decode_id_token(id_token):
+    try:
+        payload = jwt.decode(id_token, options={"verify_signature": False})
+        return payload
+    except Exception as e:
+        st.error("Error decoding ID token.")
+        return None
 
 # Initialize session state for PKCE
 if "code_verifier" not in st.session_state:
@@ -270,16 +280,19 @@ if "code" in query_params and st.session_state["login_token"] is None:
     }
     response = requests.post(token_url, data=data)
     if response.status_code == 200:
-        st.session_state["login_token"] = response.json()
-        st.success("Login successful!")
-        st.write(st.session_state["login_token"])
+        token_data = response.json()
+        st.session_state["login_token"] = token_data
+        id_token = token_data.get("id_token")
+        user_info = decode_id_token(id_token)
+
+        if user_info:
+            st.success(f"Welcome, {user_info.get('name', 'User')}!")
+            st.write("Logged in as:", user_info.get("email"))
+        else:
+            st.error("Failed to retrieve user information.")
     else:
         st.error("Login failed. Please try again.")
         st.write(response.json())
 else:
     st.sidebar.title("🧭 Navigation")
     st.sidebar.write("You are logged in.")
-
-
-
-
