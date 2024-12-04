@@ -189,7 +189,7 @@ def login(username, password):
         "srathour@arsenal.co.uk",
         "aroberts@con.arsenal.co.uk",
         "cdixon@arsenal.co.uk",
-        "ddacosta@con.arsenal.co.uk"
+        "ddacosta@con.arsenal.co.uk",
         "cmunthali@arsenal.co.uk"
     ]
     return username in ALLOWED_USERNAMES and password == PASSWORD
