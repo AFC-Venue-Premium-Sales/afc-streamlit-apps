@@ -206,6 +206,10 @@ import logging
 import user_performance_api
 import sales_performance
 from msal_streamlit_authentication import msal_authentication
+import requests
+import hashlib
+import base64
+import secrets
 
 # Configure logging
 logging.basicConfig(
@@ -227,32 +231,64 @@ if "auth_code" not in st.session_state:
     st.session_state["auth_code"] = None
     logging.debug("Initialized session state for auth_code.")
 
-# Define MSAL configuration
-msal_config = {
-    "auth": {
-        "clientId": "9c350612-9d05-40f3-94e9-d348d92f446a",
-        "authority": "https://login.microsoftonline.com/068cb91a-8be0-49d7-be3a-38190b0ba021",
-        "redirectUri": "https://afc-apps-hospitality.streamlit.app",
-        "postLogoutRedirectUri": "https://afc-apps-hospitality.streamlit.app"
-    },
-    "cache": {
-        "cacheLocation": "sessionStorage",
-        "storeAuthStateInCookie": False
-    }
-}
+if "code_verifier" not in st.session_state:
+    st.session_state["code_verifier"] = None
+    logging.debug("Initialized session state for code_verifier.")
 
-# Define login request parameters
-login_request = {
-    "scopes": ["User.Read"]
-}
+# Function to generate PKCE code verifier and code challenge
+def generate_pkce_pair():
+    code_verifier = secrets.token_urlsafe(64)  # Generate random code verifier
+    code_challenge = hashlib.sha256(code_verifier.encode("utf-8")).digest()
+    code_challenge = base64.urlsafe_b64encode(code_challenge).decode("utf-8").rstrip("=")
+    return code_verifier, code_challenge
+
+# Define MSAL configuration
+tenant_id = "068cb91a-8be0-49d7-be3a-38190b0ba021"
+client_id = "9c350612-9d05-40f3-94e9-d348d92f446a"
+redirect_uri = "https://afc-apps-hospitality.streamlit.app"
+token_url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
+auth_url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/authorize"
+
+# PKCE setup
+if "code_verifier" not in st.session_state:
+    st.session_state["code_verifier"], code_challenge = generate_pkce_pair()
+    logging.debug(f"PKCE Code Verifier: {st.session_state['code_verifier']}")
+    logging.debug(f"PKCE Code Challenge: {code_challenge}")
+
+# Build the authorization URL with PKCE
+def get_auth_url():
+    params = {
+        "client_id": client_id,
+        "response_type": "code",
+        "redirect_uri": redirect_uri,
+        "scope": "User.Read",
+        "code_challenge": code_challenge,
+        "code_challenge_method": "S256",
+    }
+    url = f"{auth_url}?{requests.compat.urlencode(params)}"
+    logging.debug(f"Authorization URL: {url}")
+    return url
 
 # Capture authorization code from query parameters
-query_params = st.query_params  # Updated to st.query_params from st.experimental_get_query_params
-logging.debug(f"Full Redirect Query Parameters: {query_params}")
+query_params = st.experimental_get_query_params()
+logging.debug(f"Query Parameters: {query_params}")
 
 if "code" in query_params:
     st.session_state["auth_code"] = query_params["code"]
     logging.debug(f"Authorization Code Retrieved: {st.session_state['auth_code']}")
+
+# Function to exchange the authorization code for an access token
+def exchange_code_for_token(auth_code, code_verifier):
+    payload = {
+        "client_id": client_id,
+        "grant_type": "authorization_code",
+        "code": auth_code,
+        "redirect_uri": redirect_uri,
+        "code_verifier": code_verifier,
+    }
+    logging.debug("Exchanging authorization code for token...")
+    response = requests.post(token_url, data=payload)
+    return response.json()
 
 # Show the login button if the user is not authenticated
 if not st.session_state["login_token"]:
@@ -272,32 +308,23 @@ if not st.session_state["login_token"]:
 
     # Render login button
     if st.button("🔐 Login"):
-        try:
-            logging.debug("Rendering msal_authentication login/logout buttons...")
-            login_token = msal_authentication(
-                auth=msal_config['auth'],
-                cache=msal_config['cache'],
-                login_request=login_request,
-                logout_request={},
-                login_button_text="🔐 Login",
-                logout_button_text="🔓 Logout",
-                key="unique_msal_key"
-            )
-            if login_token:
-                logging.debug(f"Login Token Retrieved: {login_token}")
-                st.session_state["login_token"] = login_token
-            else:
-                logging.warning("Login token not retrieved. Authorization process might be incomplete.")
-        except Exception as e:
-            logging.error(f"Error during authentication initialization: {e}")
-            st.error("An error occurred during authentication.")
-else:
-    # User is authenticated
-    login_token = st.session_state["login_token"]
-    logging.info("User is authenticated.")
-    st.sidebar.title("🧭 Navigation")
+        st.markdown(f"[Click here to log in]({get_auth_url()})")
 
-    # Debugging navigation choices
+# Handle the authorization code and exchange for a token
+elif st.session_state["auth_code"]:
+    logging.debug("Authorization code received. Exchanging for token...")
+    token_response = exchange_code_for_token(st.session_state["auth_code"], st.session_state["code_verifier"])
+    if "access_token" in token_response:
+        st.session_state["login_token"] = token_response["access_token"]
+        logging.info("User is authenticated.")
+    else:
+        logging.error(f"Token exchange failed: {token_response}")
+        st.error("Authentication failed. Please try again.")
+        st.stop()
+
+# Show the app after authentication
+if st.session_state["login_token"]:
+    st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
     logging.debug(f"Navigation Choice: {app_choice}")
 
@@ -315,4 +342,5 @@ else:
         except Exception as e:
             logging.error(f"Error in User Performance App: {e}")
             st.error("An error occurred in the User Performance section.")
+
 
