@@ -176,22 +176,19 @@
 
 
 
-
 import streamlit as st
 import user_performance_api
 import sales_performance
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Authentication function
 def login(username, password):
-    PASSWORD = "Hospitality2024!"
-    ALLOWED_USERNAMES = [
-        "srathour@arsenal.co.uk",
-        "aroberts@con.arsenal.co.uk",
-        "cdixon@arsenal.co.uk",
-        "ddacosta@con.arsenal.co.uk",
-        "cmunthali@arsenal.co.uk"
-    ]
+    PASSWORD = os.getenv("PASSWORD")
+    ALLOWED_USERNAMES = os.getenv("ALLOWED_USERNAMES", "").split(",")
     return username in ALLOWED_USERNAMES and password == PASSWORD
 
 # Initialize session state for authentication
