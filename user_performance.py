@@ -180,16 +180,15 @@ import streamlit as st
 import user_performance_api
 import sales_performance
 import os
-from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+# Load secrets from environment variables
+PASSWORD = os.getenv("PASSWORD")
+ALLOWED_USERNAMES = os.getenv("ALLOWED_USERNAMES", "").split(",")
 
 # Authentication function
 def login(username, password):
-    PASSWORD = os.getenv("PASSWORD")
-    ALLOWED_USERNAMES = os.getenv("ALLOWED_USERNAMES", "").split(",")
-    return username in ALLOWED_USERNAMES and password == PASSWORD
+    allowed_usernames = [user.strip() for user in ALLOWED_USERNAMES]
+    return username.strip() in allowed_usernames and password == PASSWORD
 
 # Initialize session state for authentication
 if 'authenticated' not in st.session_state:
@@ -242,4 +241,5 @@ else:
     # Add a logout button in the sidebar
     if st.sidebar.button("🔓 Logout"):
         st.session_state['authenticated'] = False
-        st.experimental_rerun()  
+        st.experimental_rerun()
+
