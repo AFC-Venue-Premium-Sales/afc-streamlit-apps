@@ -206,7 +206,6 @@ import logging
 import user_performance_api
 import sales_performance
 from msal_streamlit_authentication import msal_authentication
-from urllib.parse import parse_qs, urlparse
 
 # Configure logging
 logging.basicConfig(
@@ -248,15 +247,15 @@ login_request = {
 }
 
 # Capture authorization code from query parameters
-query_params = st.experimental_get_query_params()  # Replace this with st.query_params after 2024-04-11
+query_params = st.query_params  # Updated to st.query_params from st.experimental_get_query_params
 logging.debug(f"Full Redirect Query Parameters: {query_params}")
 
 if "code" in query_params:
-    st.session_state["auth_code"] = query_params["code"][0]
+    st.session_state["auth_code"] = query_params["code"]
     logging.debug(f"Authorization Code Retrieved: {st.session_state['auth_code']}")
 
 # Render MSAL authentication
-if not st.session_state["login_token"] and st.session_state["auth_code"]:
+if not st.session_state["login_token"]:
     try:
         logging.debug("Rendering msal_authentication login/logout buttons...")
         login_token = msal_authentication(
@@ -268,8 +267,11 @@ if not st.session_state["login_token"] and st.session_state["auth_code"]:
             logout_button_text="🔓 Logout",
             key="unique_msal_key"
         )
-        logging.debug(f"Login Token Retrieved: {login_token}")
-        st.session_state["login_token"] = login_token
+        if login_token:
+            logging.debug(f"Login Token Retrieved: {login_token}")
+            st.session_state["login_token"] = login_token
+        else:
+            logging.warning("Login token not retrieved. Authorization process might be incomplete.")
     except Exception as e:
         logging.error(f"Error during authentication initialization: {e}")
         st.error("An error occurred during authentication.")
@@ -317,4 +319,3 @@ else:
     **Note:** Please log in using AFC credentials to access the app.
     """)
     logging.debug("Login prompt displayed.")
-
