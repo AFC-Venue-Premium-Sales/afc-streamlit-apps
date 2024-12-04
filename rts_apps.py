@@ -205,13 +205,11 @@ import streamlit as st
 import logging
 import user_performance_api
 import sales_performance
-from msal_streamlit_authentication import msal_authentication
-import requests
 import hashlib
 import base64
 import os
 from urllib.parse import urlencode
-
+import requests
 
 # Configure logging
 logging.basicConfig(
@@ -295,13 +293,13 @@ if not st.session_state["access_token"]:
 
     **Premium Exec Metrics**:  
     View and evaluate performance metrics from the Premium Team.
-
-    [Click here to log in]({get_auth_url()})
     """)
+    # Display the login link
+    st.markdown(f"[Click here to log in]({get_auth_url()})")
 
-    query_params = st.experimental_get_query_params()
+    query_params = st.query_params  # Corrected to use st.query_params
     if "code" in query_params:
-        auth_code = query_params["code"][0]
+        auth_code = query_params["code"]
         st.session_state["auth_code"] = auth_code
         logging.debug(f"Authorization Code Retrieved: {auth_code}")
 
