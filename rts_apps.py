@@ -209,7 +209,9 @@ from msal_streamlit_authentication import msal_authentication
 import requests
 import hashlib
 import base64
-import secrets
+import os
+from urllib.parse import urlencode
+
 
 # Configure logging
 logging.basicConfig(
@@ -222,37 +224,26 @@ logging.basicConfig(
 
 logging.debug("Starting the Streamlit app.")
 
-# Initialize session state
-if "login_token" not in st.session_state:
-    st.session_state["login_token"] = None
-    logging.debug("Initialized session state for login_token.")
-
-if "auth_code" not in st.session_state:
-    st.session_state["auth_code"] = None
-    logging.debug("Initialized session state for auth_code.")
-
-if "code_verifier" not in st.session_state:
-    st.session_state["code_verifier"] = None
-    logging.debug("Initialized session state for code_verifier.")
-
-# Function to generate PKCE code verifier and code challenge
-def generate_pkce_pair():
-    code_verifier = secrets.token_urlsafe(64)  # Generate random code verifier
-    code_challenge = hashlib.sha256(code_verifier.encode("utf-8")).digest()
-    code_challenge = base64.urlsafe_b64encode(code_challenge).decode("utf-8").rstrip("=")
-    return code_verifier, code_challenge
-
-# Define MSAL configuration
-tenant_id = "068cb91a-8be0-49d7-be3a-38190b0ba021"
+# Azure app configuration
 client_id = "9c350612-9d05-40f3-94e9-d348d92f446a"
 redirect_uri = "https://afc-apps-hospitality.streamlit.app"
-token_url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
-auth_url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/authorize"
+auth_url = "https://login.microsoftonline.com/068cb91a-8be0-49d7-be3a-38190b0ba021/oauth2/v2.0/authorize"
+token_url = "https://login.microsoftonline.com/068cb91a-8be0-49d7-be3a-38190b0ba021/oauth2/v2.0/token"
 
-# PKCE setup
-if "code_verifier" not in st.session_state:
-    st.session_state["code_verifier"], code_challenge = generate_pkce_pair()
-    logging.debug(f"PKCE Code Verifier: {st.session_state['code_verifier']}")
+# PKCE helper functions
+def generate_pkce_pair():
+    code_verifier = base64.urlsafe_b64encode(os.urandom(32)).decode("utf-8").rstrip("=")
+    code_challenge = base64.urlsafe_b64encode(
+        hashlib.sha256(code_verifier.encode("utf-8")).digest()
+    ).decode("utf-8").rstrip("=")
+    return code_verifier, code_challenge
+
+# Initialize PKCE and session state
+if "code_verifier" not in st.session_state or "code_challenge" not in st.session_state:
+    code_verifier, code_challenge = generate_pkce_pair()
+    st.session_state["code_verifier"] = code_verifier
+    st.session_state["code_challenge"] = code_challenge
+    logging.debug(f"PKCE Code Verifier: {code_verifier}")
     logging.debug(f"PKCE Code Challenge: {code_challenge}")
 
 # Build the authorization URL with PKCE
@@ -262,36 +253,38 @@ def get_auth_url():
         "response_type": "code",
         "redirect_uri": redirect_uri,
         "scope": "User.Read",
-        "code_challenge": code_challenge,
+        "code_challenge": st.session_state["code_challenge"],  # Use session state
         "code_challenge_method": "S256",
     }
-    url = f"{auth_url}?{requests.compat.urlencode(params)}"
+    url = f"{auth_url}?{urlencode(params)}"
     logging.debug(f"Authorization URL: {url}")
     return url
 
-# Capture authorization code from query parameters
-query_params = st.experimental_get_query_params()
-logging.debug(f"Query Parameters: {query_params}")
-
-if "code" in query_params:
-    st.session_state["auth_code"] = query_params["code"]
-    logging.debug(f"Authorization Code Retrieved: {st.session_state['auth_code']}")
-
-# Function to exchange the authorization code for an access token
-def exchange_code_for_token(auth_code, code_verifier):
-    payload = {
+# Exchange authorization code for access token
+def exchange_code_for_token(auth_code):
+    data = {
         "client_id": client_id,
         "grant_type": "authorization_code",
         "code": auth_code,
         "redirect_uri": redirect_uri,
-        "code_verifier": code_verifier,
+        "code_verifier": st.session_state["code_verifier"],  # Use session state
     }
-    logging.debug("Exchanging authorization code for token...")
-    response = requests.post(token_url, data=payload)
-    return response.json()
+    response = requests.post(token_url, data=data)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        logging.error(f"Token Exchange Failed! {response.json()}")
+        st.error("Failed to exchange token.")
+        return None
 
-# Show the login button if the user is not authenticated
-if not st.session_state["login_token"]:
+# Streamlit app logic
+if "auth_code" not in st.session_state:
+    st.session_state["auth_code"] = None
+
+if "access_token" not in st.session_state:
+    st.session_state["access_token"] = None
+
+if not st.session_state["access_token"]:
     st.title("🏟️ AFC Venue - MBM Hospitality")
     st.markdown("""
     **Welcome to the Venue Hospitality Dashboard!**  
@@ -303,44 +296,26 @@ if not st.session_state["login_token"]:
     **Premium Exec Metrics**:  
     View and evaluate performance metrics from the Premium Team.
 
-    **Note:** Please log in using AFC credentials to access the app.
+    [Click here to log in]({get_auth_url()})
     """)
 
-    # Render login button
-    if st.button("🔐 Login"):
-        st.markdown(f"[Click here to log in]({get_auth_url()})")
+    query_params = st.experimental_get_query_params()
+    if "code" in query_params:
+        auth_code = query_params["code"][0]
+        st.session_state["auth_code"] = auth_code
+        logging.debug(f"Authorization Code Retrieved: {auth_code}")
 
-# Handle the authorization code and exchange for a token
-elif st.session_state["auth_code"]:
-    logging.debug("Authorization code received. Exchanging for token...")
-    token_response = exchange_code_for_token(st.session_state["auth_code"], st.session_state["code_verifier"])
-    if "access_token" in token_response:
-        st.session_state["login_token"] = token_response["access_token"]
-        logging.info("User is authenticated.")
-    else:
-        logging.error(f"Token exchange failed: {token_response}")
-        st.error("Authentication failed. Please try again.")
-        st.stop()
-
-# Show the app after authentication
-if st.session_state["login_token"]:
+        token_response = exchange_code_for_token(auth_code)
+        if token_response:
+            st.session_state["access_token"] = token_response["access_token"]
+            st.success("Successfully authenticated!")
+            st.experimental_rerun()
+else:
+    # User is authenticated
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
-    logging.debug(f"Navigation Choice: {app_choice}")
 
     if app_choice == "📊 Sales Performance":
-        logging.info("Navigating to Sales Performance.")
-        try:
-            sales_performance.run_app()
-        except Exception as e:
-            logging.error(f"Error in Sales Performance App: {e}")
-            st.error("An error occurred in the Sales Performance section.")
+        sales_performance.run_app()
     elif app_choice == "📈 User Performance":
-        logging.info("Navigating to User Performance.")
-        try:
-            user_performance_api.run_app()
-        except Exception as e:
-            logging.error(f"Error in User Performance App: {e}")
-            st.error("An error occurred in the User Performance section.")
-
-
+        user_performance_api.run_app()
