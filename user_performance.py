@@ -185,16 +185,20 @@ import os
 # Authentication function
 def login(username, password):
     PASSWORD = "Hospitality2024!"
-    USERNAME = "HospVenue"
-    return username == USERNAME and password == PASSWORD
-    
+    ALLOWED_USERNAMES = [
+        "srathour@arsenal.co.uk",
+        "aroberts@con.arsenal.co.uk",
+        "cdixon@arsenal.co.uk",
+        "ddacosta@con.arsenal.co.uk"
+        "cmunthali@arsenal.co.uk"
+    ]
+    return username in ALLOWED_USERNAMES and password == PASSWORD
 
 # Initialize session state for authentication
 if 'authenticated' not in st.session_state:
     st.session_state['authenticated'] = False
 if 'login_clicked' not in st.session_state:
     st.session_state['login_clicked'] = False
-    
 
 # Login button logic
 if not st.session_state['authenticated']:
@@ -219,7 +223,7 @@ if not st.session_state['authenticated']:
             st.session_state['login_clicked'] = True
 
     if st.session_state['login_clicked']:
-        username = st.text_input("👤 Username")
+        username = st.text_input("👤 Username (work Email Address)")
         password = st.text_input("🔑 Password", type="password")
         if st.button("Submit"):
             if login(username, password):

@@ -17,7 +17,7 @@ def run_app():
     
     The app allows you to filter results by date, user, fixture, payment status, and paid status for tailored insights. 
     
-    Please note that sales from 'Platinum' package (Seasonal) have been excluded for finance as this is MBM only.
+    Please note that sales from 'Platinum' package & 'Woolwich Package' sales have been excluded from th
     """)
 
     loaded_api_df = filtered_df_without_seats
@@ -110,7 +110,7 @@ def run_app():
 
         # Static total: Get accumulated sales from June 18th, 2024 till now
         static_start_date = datetime(2024, 6, 18, 0, 0, 0)
-        static_total = loaded_api_df[(loaded_api_df['CreatedOn'] >= static_start_date)]['TotalPrice'].sum()
+        static_total = loaded_api_df[(loaded_api_df['PaymentTime'] >= static_start_date)]['TotalPrice'].sum()
 
         # Dynamic total: Affected by filters
         dynamic_total = filtered_data['TotalPrice'].sum()
