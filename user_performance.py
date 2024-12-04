@@ -179,27 +179,15 @@
 import streamlit as st
 import user_performance_api
 import sales_performance
-import os
 
-# Load secrets from environment variables
-PASSWORD = os.getenv("PASSWORD")
-ALLOWED_USERNAMES = os.getenv("ALLOWED_USERNAMES", "").split(",")
-
-# Authentication function
-def login(username, password):
-    allowed_usernames = [user.strip() for user in ALLOWED_USERNAMES]
-    return username.strip() in allowed_usernames and password == PASSWORD
-
-# Initialize session state for authentication
+# Initialize session state for authentication (set it to True by default for testing)
 if 'authenticated' not in st.session_state:
-    st.session_state['authenticated'] = False
-if 'login_clicked' not in st.session_state:
-    st.session_state['login_clicked'] = False
+    st.session_state['authenticated'] = True
 
-# Login button logic
-if not st.session_state['authenticated']:
+# Login button logic (skip it entirely and set authenticated to True)
+if st.session_state['authenticated']:
     st.title("🏟️ AFC Venue - MBM Hospitality")
-    
+
     # Description of the app
     st.markdown("""
     **Welcome to the Venue Hospitality Dashboard!**  
@@ -210,25 +198,8 @@ if not st.session_state['authenticated']:
 
     **Premium Exec Metrics**:  
     View and evaluate performance metrics from the Premium Team.
-
-    **Note:** You will need to hit the submit button again after successfully entering your login details.
     """)
 
-    if not st.session_state['login_clicked']:
-        if st.button("🔐 Login"):
-            st.session_state['login_clicked'] = True
-
-    if st.session_state['login_clicked']:
-        username = st.text_input("👤 Username (work Email Address)")
-        password = st.text_input("🔑 Password", type="password")
-        if st.button("Submit"):
-            if login(username, password):
-                st.session_state['authenticated'] = True
-                st.success("🎉 Login successful!")
-            else:
-                st.error("❌ Username or password is incorrect")
-
-else:
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
 
