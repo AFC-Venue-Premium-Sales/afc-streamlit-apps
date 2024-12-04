@@ -13,11 +13,11 @@ def run_app():
 
     st.markdown("""
     ### ℹ️ About
-    This app provides sales metrics derived from MBM sales data to be used for reconciliation with the Finance team after each Home Fixture. 
+    This app provides sales metrics from TJT's data export API. 
     
     The app allows you to filter results by date, user, fixture, payment status, and paid status for tailored insights. 
     
-    Please note that sales from 'Platinum' package & 'Woolwich Package' sales have been excluded from th
+    Please note that sales from 'Platinum' package & 'Woolwich Package' sales have been excluded from this
     """)
 
     loaded_api_df = filtered_df_without_seats
