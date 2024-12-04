@@ -222,15 +222,21 @@ def generate_pkce_pair():
     ).decode("utf-8").rstrip("=")
     return code_verifier, code_challenge
 
-# Initialize session state
+# Initialize session state for PKCE
+if "code_verifier" not in st.session_state:
+    code_verifier, code_challenge = generate_pkce_pair()
+    st.session_state["code_verifier"] = code_verifier
+    st.session_state["code_challenge"] = code_challenge
+else:
+    code_verifier = st.session_state["code_verifier"]
+    code_challenge = st.session_state["code_challenge"]
+
+# Initialize session state for tokens
 if "login_token" not in st.session_state:
     st.session_state["login_token"] = None
 
 if "auth_code" not in st.session_state:
     st.session_state["auth_code"] = None
-
-# Generate PKCE
-code_verifier, code_challenge = generate_pkce_pair()
 
 # Login button
 if st.session_state["login_token"] is None:
@@ -260,7 +266,7 @@ if "code" in query_params and st.session_state["login_token"] is None:
         "grant_type": "authorization_code",
         "code": st.session_state["auth_code"],
         "redirect_uri": REDIRECT_URI,
-        "code_verifier": code_verifier,
+        "code_verifier": st.session_state["code_verifier"],  # Use stored verifier
     }
     response = requests.post(token_url, data=data)
     if response.status_code == 200:
@@ -273,6 +279,7 @@ if "code" in query_params and st.session_state["login_token"] is None:
 else:
     st.sidebar.title("🧭 Navigation")
     st.sidebar.write("You are logged in.")
+
 
 
 
