@@ -241,3 +241,8 @@ else:
 
     elif app_choice == "📈 User Performance":
         user_performance_api.run_app()
+
+    # Add a logout button in the sidebar
+    if st.sidebar.button("🔓 Logout"):
+        st.session_state['authenticated'] = False
+        st.experimental_rerun()  
