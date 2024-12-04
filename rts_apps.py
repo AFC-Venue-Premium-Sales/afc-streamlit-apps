@@ -211,9 +211,7 @@ from msal_streamlit_authentication import msal_authentication
 logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
     level=logging.DEBUG,
-    handlers=[
-        logging.StreamHandler()
-    ]
+    handlers=[logging.StreamHandler()]
 )
 
 logging.debug("Starting the Streamlit app.")
@@ -241,18 +239,23 @@ msal_config = {
     }
 }
 
-# Define login request parameters
+# Define login request parameters with claims
 login_request = {
-    "scopes": ["User.Read"]
+    "scopes": ["User.Read"],
+    "extraQueryParameters": {
+        "claims": '{"id_token":{"email":{"essential":true},"name":{"essential":true},"preferred_username":{"essential":true}}}'
+    }
 }
 
 # Capture authorization code from query parameters
-query_params = st.query_params  
+query_params = st.query_params
 logging.debug(f"Full Redirect Query Parameters: {query_params}")
 
 if "code" in query_params:
     st.session_state["auth_code"] = query_params["code"]
     logging.debug(f"Authorization Code Retrieved: {st.session_state['auth_code']}")
+    # Clear query params
+    st.experimental_set_query_params()
 
 # Show the login button if the user is not authenticated
 if not st.session_state["login_token"]:
@@ -294,10 +297,12 @@ if not st.session_state["login_token"]:
 else:
     # User is authenticated
     login_token = st.session_state["login_token"]
-    logging.info("User is authenticated.")
+    claims = login_token.get("id_token_claims", {})
+    user_email = claims.get("email", "Unknown Email")
+    user_name = claims.get("name", "Unknown User")
+    st.sidebar.write(f"Welcome, {user_name} ({user_email})!")
+    
     st.sidebar.title("🧭 Navigation")
-
-    # Debugging navigation choices
     app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
     logging.debug(f"Navigation Choice: {app_choice}")
 
@@ -315,3 +320,4 @@ else:
         except Exception as e:
             logging.error(f"Error in User Performance App: {e}") 
             st.error("An error occurred in the User Performance section.")
+
