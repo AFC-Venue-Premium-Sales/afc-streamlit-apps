@@ -254,35 +254,49 @@ if "code" in query_params:
     st.session_state["auth_code"] = query_params["code"]
     logging.debug(f"Authorization Code Retrieved: {st.session_state['auth_code']}")
 
-# Render MSAL authentication
+# Show the login button if the user is not authenticated
 if not st.session_state["login_token"]:
-    try:
-        logging.debug("Rendering msal_authentication login/logout buttons...")
-        login_token = msal_authentication(
-            auth=msal_config['auth'],
-            cache=msal_config['cache'],
-            login_request=login_request,
-            logout_request={},
-            login_button_text="🔐 Login",
-            logout_button_text="🔓 Logout",
-            key="unique_msal_key"
-        )
-        if login_token:
-            logging.debug(f"Login Token Retrieved: {login_token}")
-            st.session_state["login_token"] = login_token
-        else:
-            logging.warning("Login token not retrieved. Authorization process might be incomplete.")
-    except Exception as e:
-        logging.error(f"Error during authentication initialization: {e}")
-        st.error("An error occurred during authentication.")
-else:
-    login_token = st.session_state["login_token"]
+    st.title("🏟️ AFC Venue - MBM Hospitality")
+    st.markdown("""
+    **Welcome to the Venue Hospitality Dashboard!**  
+    This app provides insights into MBM Sales Performance and User Metrics. 
 
-# Check auth
-if login_token:
+    **MBM Sales Performance**:  
+    Analyse sales from MBM hospitality. 
+
+    **Premium Exec Metrics**:  
+    View and evaluate performance metrics from the Premium Team.
+
+    **Note:** Please log in using AFC credentials to access the app.
+    """)
+
+    # Render login button
+    if st.button("🔐 Login"):
+        try:
+            logging.debug("Rendering msal_authentication login/logout buttons...")
+            login_token = msal_authentication(
+                auth=msal_config['auth'],
+                cache=msal_config['cache'],
+                login_request=login_request,
+                logout_request={},
+                login_button_text="🔐 Login",
+                logout_button_text="🔓 Logout",
+                key="unique_msal_key"
+            )
+            if login_token:
+                logging.debug(f"Login Token Retrieved: {login_token}")
+                st.session_state["login_token"] = login_token
+            else:
+                logging.warning("Login token not retrieved. Authorization process might be incomplete.")
+        except Exception as e:
+            logging.error(f"Error during authentication initialization: {e}")
+            st.error("An error occurred during authentication.")
+else:
+    # User is authenticated
+    login_token = st.session_state["login_token"]
     logging.info("User is authenticated.")
     st.sidebar.title("🧭 Navigation")
-    
+
     # Debugging navigation choices
     app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
     logging.debug(f"Navigation Choice: {app_choice}")
@@ -301,21 +315,3 @@ if login_token:
         except Exception as e:
             logging.error(f"Error in User Performance App: {e}")
             st.error("An error occurred in the User Performance section.")
-else:
-    logging.warning("User not authenticated. Displaying login prompt.")
-    st.title("🏟️ AFC Venue - MBM Hospitality")
-
-    # Description of the app
-    st.markdown("""
-    **Welcome to the Venue Hospitality Dashboard!**  
-    This app provides insights into MBM Sales Performance and User Metrics. 
-
-    **MBM Sales Performance**:  
-    Analyse sales from MBM hospitality. 
-
-    **Premium Exec Metrics**:  
-    View and evaluate performance metrics from the Premium Team.
-
-    **Note:** Please log in using AFC credentials to access the app.
-    """)
-    logging.debug("Login prompt displayed.")
