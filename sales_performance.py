@@ -110,7 +110,7 @@ def run_app():
 
         # Static total: Get accumulated sales from June 18th, 2024 till now
         static_start_date = datetime(2024, 6, 18, 0, 0, 0)
-        static_total = loaded_api_df[(loaded_api_df['PaymentTime'] >= static_start_date)]['TotalPrice'].sum()
+        static_total = loaded_api_df[(loaded_api_df['CreatedOn'] >= static_start_date)]['TotalPrice'].sum()
 
         # Dynamic total: Affected by filters
         dynamic_total = filtered_data['TotalPrice'].sum()
