@@ -247,7 +247,7 @@ login_request = {
 }
 
 # Capture authorization code from query parameters
-query_params = st.query_params  # Updated to st.query_params from st.experimental_get_query_params
+query_params = st.query_params  
 logging.debug(f"Full Redirect Query Parameters: {query_params}")
 
 if "code" in query_params:
@@ -313,5 +313,5 @@ else:
         try:
             user_performance_api.run_app()
         except Exception as e:
-            logging.error(f"Error in User Performance App: {e}")
+            logging.error(f"Error in User Performance App: {e}") 
             st.error("An error occurred in the User Performance section.")
