@@ -199,15 +199,13 @@
 
 
 
+
+
 import streamlit as st
 import logging
 import user_performance_api
 import sales_performance
-import hashlib
-import base64
-import os
-from urllib.parse import urlencode
-import requests
+from msal_streamlit_authentication import msal_authentication
 
 # Configure logging
 logging.basicConfig(
@@ -220,73 +218,94 @@ logging.basicConfig(
 
 logging.debug("Starting the Streamlit app.")
 
-# Azure app configuration
-client_id = "9c350612-9d05-40f3-94e9-d348d92f446a"
-redirect_uri = "https://afc-apps-hospitality.streamlit.app"
-auth_url = "https://login.microsoftonline.com/068cb91a-8be0-49d7-be3a-38190b0ba021/oauth2/v2.0/authorize"
-token_url = "https://login.microsoftonline.com/068cb91a-8be0-49d7-be3a-38190b0ba021/oauth2/v2.0/token"
+# Initialize session state
+if "login_token" not in st.session_state:
+    st.session_state["login_token"] = None
+    logging.debug("Initialized session state for login_token.")
 
-# PKCE helper functions
-def generate_pkce_pair():
-    code_verifier = base64.urlsafe_b64encode(os.urandom(32)).decode("utf-8").rstrip("=")
-    code_challenge = base64.urlsafe_b64encode(
-        hashlib.sha256(code_verifier.encode("utf-8")).digest()
-    ).decode("utf-8").rstrip("=")
-    return code_verifier, code_challenge
-
-# Initialize PKCE and session state
-if "code_verifier" not in st.session_state:
-    code_verifier, code_challenge = generate_pkce_pair()
-    st.session_state["code_verifier"] = code_verifier
-    st.session_state["code_challenge"] = code_challenge
-    logging.debug(f"PKCE Code Verifier: {code_verifier}")
-    logging.debug(f"PKCE Code Challenge: {code_challenge}")
-else:
-    logging.debug("Reusing existing PKCE values from session state.")
-    logging.debug(f"PKCE Code Verifier: {st.session_state['code_verifier']}")
-    logging.debug(f"PKCE Code Challenge: {st.session_state['code_challenge']}")
-
-# Build the authorization URL with PKCE
-def get_auth_url():
-    params = {
-        "client_id": client_id,
-        "response_type": "code",
-        "redirect_uri": redirect_uri,
-        "scope": "User.Read",
-        "code_challenge": st.session_state["code_challenge"],  # Use session state
-        "code_challenge_method": "S256",
-    }
-    url = f"{auth_url}?{urlencode(params)}"
-    logging.debug(f"Authorization URL: {url}")
-    return url
-
-# Exchange authorization code for access token
-def exchange_code_for_token(auth_code):
-    data = {
-        "client_id": client_id,
-        "grant_type": "authorization_code",
-        "code": auth_code,
-        "redirect_uri": redirect_uri,
-        "code_verifier": st.session_state["code_verifier"],  # Use session state
-    }
-    response = requests.post(token_url, data=data)
-    if response.status_code == 200:
-        logging.info("Token Exchange Successful!")
-        return response.json()
-    else:
-        logging.error(f"Token Exchange Failed! {response.json()}")
-        st.error("Failed to exchange token. Please try again.")
-        return None
-
-# Streamlit app logic
 if "auth_code" not in st.session_state:
     st.session_state["auth_code"] = None
+    logging.debug("Initialized session state for auth_code.")
 
-if "access_token" not in st.session_state:
-    st.session_state["access_token"] = None
+# Define MSAL configuration
+msal_config = {
+    "auth": {
+        "clientId": "9c350612-9d05-40f3-94e9-d348d92f446a",
+        "authority": "https://login.microsoftonline.com/068cb91a-8be0-49d7-be3a-38190b0ba021",
+        "redirectUri": "https://afc-apps-hospitality.streamlit.app",
+        "postLogoutRedirectUri": "https://afc-apps-hospitality.streamlit.app"
+    },
+    "cache": {
+        "cacheLocation": "sessionStorage",
+        "storeAuthStateInCookie": False
+    }
+}
 
-if not st.session_state["access_token"]:
+# Define login request parameters
+login_request = {
+    "scopes": ["User.Read"]
+}
+
+# Capture authorization code from query parameters
+query_params = st.query_params  # Updated to st.query_params from st.experimental_get_query_params
+logging.debug(f"Full Redirect Query Parameters: {query_params}")
+
+if "code" in query_params:
+    st.session_state["auth_code"] = query_params["code"]
+    logging.debug(f"Authorization Code Retrieved: {st.session_state['auth_code']}")
+
+# Render MSAL authentication
+if not st.session_state["login_token"]:
+    try:
+        logging.debug("Rendering msal_authentication login/logout buttons...")
+        login_token = msal_authentication(
+            auth=msal_config['auth'],
+            cache=msal_config['cache'],
+            login_request=login_request,
+            logout_request={},
+            login_button_text="🔐 Login",
+            logout_button_text="🔓 Logout",
+            key="unique_msal_key"
+        )
+        if login_token:
+            logging.debug(f"Login Token Retrieved: {login_token}")
+            st.session_state["login_token"] = login_token
+        else:
+            logging.warning("Login token not retrieved. Authorization process might be incomplete.")
+    except Exception as e:
+        logging.error(f"Error during authentication initialization: {e}")
+        st.error("An error occurred during authentication.")
+else:
+    login_token = st.session_state["login_token"]
+
+# Check auth
+if login_token:
+    logging.info("User is authenticated.")
+    st.sidebar.title("🧭 Navigation")
+    
+    # Debugging navigation choices
+    app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
+    logging.debug(f"Navigation Choice: {app_choice}")
+
+    if app_choice == "📊 Sales Performance":
+        logging.info("Navigating to Sales Performance.")
+        try:
+            sales_performance.run_app()
+        except Exception as e:
+            logging.error(f"Error in Sales Performance App: {e}")
+            st.error("An error occurred in the Sales Performance section.")
+    elif app_choice == "📈 User Performance":
+        logging.info("Navigating to User Performance.")
+        try:
+            user_performance_api.run_app()
+        except Exception as e:
+            logging.error(f"Error in User Performance App: {e}")
+            st.error("An error occurred in the User Performance section.")
+else:
+    logging.warning("User not authenticated. Displaying login prompt.")
     st.title("🏟️ AFC Venue - MBM Hospitality")
+
+    # Description of the app
     st.markdown("""
     **Welcome to the Venue Hospitality Dashboard!**  
     This app provides insights into MBM Sales Performance and User Metrics. 
@@ -296,30 +315,7 @@ if not st.session_state["access_token"]:
 
     **Premium Exec Metrics**:  
     View and evaluate performance metrics from the Premium Team.
+
+    **Note:** Please log in using AFC credentials to access the app.
     """)
-    # Display the login link
-    auth_url = get_auth_url()
-    st.markdown(f"[Click here to log in]({auth_url})")
-
-    # Handle the authorization code
-    query_params = st.query_params
-    if "code" in query_params:
-        auth_code = query_params["code"]
-        st.session_state["auth_code"] = auth_code
-        logging.debug(f"Authorization Code Retrieved: {auth_code}")
-
-        # Exchange the authorization code for an access token
-        token_response = exchange_code_for_token(auth_code)
-        if token_response and "access_token" in token_response:
-            st.session_state["access_token"] = token_response["access_token"]
-            st.success("Login successful! You are now authenticated.")
-else:
-    # User is authenticated
-    st.sidebar.title("🧭 Navigation")
-    app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
-
-    if app_choice == "📊 Sales Performance":
-        sales_performance.run_app()
-    elif app_choice == "📈 User Performance":
-        user_performance_api.run_app()
-
+    logging.debug("Login prompt displayed.")
