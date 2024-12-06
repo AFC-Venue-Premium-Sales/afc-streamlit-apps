@@ -210,27 +210,25 @@ AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
 # MSAL Application
 app = PublicClientApplication(client_id=CLIENT_ID, authority=AUTHORITY)
 
-# Device Code Login
-# Device Code Flow Function with Enhanced Logging
+# Device Code Login Function
 def login_with_device_code():
-    # Step 1: Initiate Device Code Flow
     try:
+        # Step 1: Initiate Device Code Flow
         device_flow = app.initiate_device_flow(scopes=SCOPES)
         if "user_code" not in device_flow:
             st.error("Failed to initiate device flow.")
             return None
 
-        # Step 2: Show verification link and user code
+        # Step 2: Display login instructions to the user
         st.info(f"Go to [this URL]({device_flow['verification_uri']}) and enter the code: **{device_flow['user_code']}**")
         st.write("Waiting for you to complete the login process...")
 
         # Step 3: Poll for Access Token
-        max_retries = 60  # Wait up to 300 seconds (5 minutes)
+        max_retries = 60  # Up to 5 minutes
         for attempt in range(max_retries):
             try:
                 token = app.acquire_token_by_device_flow(device_flow)
                 if "access_token" in token:
-                    st.success("Login successful!")
                     return token
             except Exception as e:
                 if "authorization_pending" in str(e):
@@ -238,11 +236,29 @@ def login_with_device_code():
                 else:
                     st.error(f"An error occurred: {e}")
                     return None
-
             st.write(f"Retrying... ({attempt + 1}/{max_retries})")
 
         st.error("Login timed out. Please try again.")
         return None
+
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
         return None
+
+# Streamlit App Logic
+if "login_token" not in st.session_state:
+    st.session_state["login_token"] = None
+
+st.title("Azure AD Login")
+if not st.session_state["login_token"]:
+    if st.button("Log in"):
+        token = login_with_device_code()
+        if token:
+            st.session_state["login_token"] = token
+            st.success("You are now logged in!")
+        else:
+            st.error("Login failed.")
+else:
+    st.sidebar.title("Welcome")
+    st.sidebar.write("You are logged in!")
+    st.sidebar.write("Access token:", st.session_state["login_token"])
