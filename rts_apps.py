@@ -269,7 +269,7 @@ if not st.session_state["login_token"]:
 
     if st.button("🔐 Login"):
         # Redirect user to the Flask login route
-        st.markdown(f"[Click here to log in](http://localhost:5000/login)")
+        st.markdown(f"[Click here to log in](https://afc-apps-hospitality.streamlit.app)")
         st.info("Once logged in, return to this app.")
 else:
     st.sidebar.write("You are logged in!")
