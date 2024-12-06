@@ -233,6 +233,7 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()]
 )
 
+# Function to select and launch the browser
 def choose_browser():
     try:
         browser_choice = st.radio("Select your browser:", ["Chrome", "Firefox"])
@@ -254,6 +255,7 @@ def choose_browser():
         st.error(f"An error occurred while starting the browser: {e}")
         return None
 
+# Login function using MSAL and Selenium
 def login():
     flow = app.initiate_auth_code_flow(scopes=scopes, redirect_uri=redirect_uri)
 
@@ -269,10 +271,12 @@ def login():
     try:
         browser.get(auth_uri)
 
+        # Wait for Azure to redirect back with an authorization code
         WebDriverWait(browser, 300).until(EC.url_contains(redirect_uri))
         redirected_url = browser.current_url
         browser.quit()
 
+        # Parse the query parameters from the redirected URL
         url = urllib.parse.urlparse(redirected_url)
         query_params = dict(urllib.parse.parse_qsl(url.query))
 
@@ -280,6 +284,7 @@ def login():
             st.error("Authorization code not found.")
             return None
 
+        # Acquire token using the authorization code
         result = app.acquire_token_by_auth_code_flow(flow, query_params)
         if "access_token" in result:
             st.success("Logged in successfully!")
@@ -293,9 +298,29 @@ def login():
         return None
 
 # Main App Logic
-if not st.session_state.get("login_token"):
+if "login_token" not in st.session_state:
+    st.session_state["login_token"] = None
+
+if not st.session_state["login_token"]:
     st.title("🏟️ AFC Venue - MBM Hospitality")
+    st.markdown("""
+    **Welcome to the Venue Hospitality Dashboard!**  
+    Please log in using your AFC credentials to continue.
+    """)
+    
     if st.button("🔐 Login"):
         token = login()
         if token:
-            st.session
+            st.session_state["login_token"] = token
+else:
+    st.sidebar.title("🧭 Navigation")
+    app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
+    st.sidebar.write("Logged in successfully!")
+
+    # Render different views based on navigation choice
+    if app_choice == "📊 Sales Performance":
+        st.title("📊 Sales Performance")
+        st.write("This section will display sales performance data.")
+    elif app_choice == "📈 User Performance":
+        st.title("📈 User Performance")
+        st.write("This section will display user performance metrics.")
