@@ -197,83 +197,34 @@
         
 
 
-
-
-
-
 import streamlit as st
-import logging
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
-import urllib.parse
 from msal import PublicClientApplication
 
 # MSAL Configuration
 client_id = "9c350612-9d05-40f3-94e9-d348d92f446a"
-tenant_id = "068cb91a-8be0-49d7-be3a-38190b0ba021"
-redirect_uri = "https://afc-apps-hospitality.streamlit.app"
+authority = "https://login.microsoftonline.com/068cb91a-8be0-49d7-be3a-38190b0ba021"
 scopes = ["User.Read"]
-authority = f"https://login.microsoftonline.com/{tenant_id}"
 
 # Initialize MSAL app
 app = PublicClientApplication(client_id, authority=authority)
 
-# Configure logging
-logging.basicConfig(
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    level=logging.DEBUG,
-    handlers=[logging.StreamHandler()]
-)
-
-logging.debug("Starting the Streamlit app.")
-
-def login():
+def device_code_flow_login():
     """
-    Handles the Azure AD login using MSAL and Selenium (Chrome only).
+    Use MSAL's Device Code Flow for authentication without redirects.
     """
-    flow = app.initiate_auth_code_flow(scopes=scopes, redirect_uri=redirect_uri)
-
-    if "auth_uri" not in flow:
-        st.error("Failed to initialize authentication.")
-        return None
-
-    auth_uri = flow["auth_uri"]
-
-    # Configure Chrome WebDriver
-    options = Options()
-    options.add_argument("--headless")  # Run in headless mode (for server environments)
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--disable-extensions")
-    options.add_argument("--disable-background-networking")
-    options.add_argument("--disable-software-rasterizer")
-
     try:
-        # Start Chrome WebDriver
-        browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-        browser.get(auth_uri)
-
-        # Wait for redirect to your redirect_uri
-        WebDriverWait(browser, 200).until(EC.url_contains(redirect_uri))
-        redirected_url = browser.current_url
-        browser.quit()
-
-        # Parse query parameters from redirected URL
-        url = urllib.parse.urlparse(redirected_url)
-        query_params = dict(urllib.parse.parse_qsl(url.query))
-
-        if "code" not in query_params:
-            st.error("Authorization code not found in redirect URL.")
+        # Initiate device code flow
+        device_flow = app.initiate_device_flow(scopes=scopes)
+        if "user_code" not in device_flow:
+            st.error("Failed to initiate device code flow.")
             return None
 
-        # Acquire token using the auth code flow
-        result = app.acquire_token_by_auth_code_flow(flow, query_params)
+        # Show instructions to the user
+        st.info(f"To sign in, visit: {device_flow['verification_uri']}")
+        st.info(f"Enter the code: {device_flow['user_code']}")
+
+        # Poll for token
+        result = app.acquire_token_by_device_flow(device_flow)
 
         if "access_token" in result:
             st.success("Logged in successfully!")
@@ -282,8 +233,7 @@ def login():
             st.error("Failed to retrieve access token.")
             return None
     except Exception as e:
-        st.error(f"An error occurred during login: {e}")
-        logging.error(f"Error during login: {e}")
+        st.error(f"An error occurred: {e}")
         return None
 
 # Main App Logic
@@ -297,11 +247,9 @@ if not st.session_state.get("login_token"):
     """)
 
     if st.button("🔐 Login"):
-        token = login()
+        token = device_code_flow_login()
         if token:
             st.session_state["login_token"] = token
-        else:
-            st.error("Failed to login.")
 else:
     st.sidebar.title("🧭 Navigation")
     st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
