@@ -210,22 +210,23 @@ scopes = ["openid", "profile", "email", "User.Read"]
 
 # Function to handle Device Code Flow
 def login_with_device_code():
-    oauth = OAuth2Session(client_id, scope=scopes)
-    
     # Step 1: Initiate the device code flow
+    oauth = OAuth2Session(client_id, scope=scopes)
     device_code_response = oauth.fetch_token(device_code_endpoint)
+
+    # Step 2: Show verification link and user code
     verification_uri = device_code_response["verification_uri"]
     user_code = device_code_response["user_code"]
     st.info(f"Go to [this link]({verification_uri}) and enter the code: **{user_code}**")
 
-    # Step 2: Poll for the token
+    # Step 3: Poll for token
     while True:
         try:
             token = oauth.fetch_token(
                 token_endpoint,
                 grant_type="urn:ietf:params:oauth:grant-type:device_code",
                 device_code=device_code_response["device_code"],
-                client_id=client_id,  # Explicitly pass client_id to mark as public
+                client_id=client_id  # Explicitly pass client_id
             )
             return token
         except Exception as e:
@@ -241,8 +242,11 @@ if "login_token" not in st.session_state:
 
 if not st.session_state["login_token"]:
     st.title("🏟️ AFC Venue - MBM Hospitality")
-    st.markdown("Log in with your SSO credentials using the device code method.")
-    
+    st.markdown("""
+    **Welcome to the Venue Hospitality Dashboard!**  
+    Log in with your SSO credentials using the device code method.
+    """)
+
     if st.button("🔐 Login"):
         token = login_with_device_code()
         if token:
@@ -251,4 +255,11 @@ if not st.session_state["login_token"]:
 else:
     st.sidebar.write("You are logged in!")
     st.sidebar.title("Navigation")
-    st.sidebar.radio("Go to:", ["📊 Sales Performance", "📈 User Performance"])
+    app_choice = st.sidebar.radio("Go to:", ["📊 Sales Performance", "📈 User Performance"])
+
+    # Render views based on the selected section
+    if app_choice == "📊 Sales Performance":
+        st.title("📊 Sales Performance")
+        st.write("Display sales performance data here.")
+    elif app_choice == "📈 User Performance":
+        st.title("📈 User Performance")
