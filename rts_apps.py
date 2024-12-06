@@ -201,7 +201,6 @@ import streamlit as st
 from flask import Flask, redirect, request, session, jsonify
 from authlib.integrations.flask_client import OAuth
 import threading
-import socket
 
 # Azure AD Configuration
 CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
@@ -211,6 +210,7 @@ AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
 AUTHORIZE_URL = f"{AUTHORITY}/oauth2/v2.0/authorize"
 TOKEN_URL = f"{AUTHORITY}/oauth2/v2.0/token"
 SCOPES = "openid profile email User.Read"
+REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app/auth"
 
 # Flask App
 app = Flask(__name__)
@@ -228,14 +228,6 @@ azure = oauth.register(
     client_kwargs={"scope": SCOPES},
 )
 
-# Dynamically find a free port
-def find_free_port():
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("", 0))
-        return s.getsockname()[1]
-
-port = find_free_port()
-
 @app.route("/")
 def index():
     return redirect("/login")
@@ -243,8 +235,7 @@ def index():
 
 @app.route("/login")
 def login():
-    redirect_uri = f"https://afc-apps-hospitality.streamlit.app/auth"
-    return azure.authorize_redirect(redirect_uri)
+    return azure.authorize_redirect(REDIRECT_URI)
 
 
 @app.route("/auth")
@@ -255,7 +246,7 @@ def auth():
 
 # Start Flask server in a thread
 def run_flask():
-    app.run(port=port, host="0.0.0.0")
+    app.run(port=5050, host="0.0.0.0")  # Use a consistent port for deployment
 
 thread = threading.Thread(target=run_flask)
 thread.daemon = True
@@ -272,8 +263,10 @@ if not st.session_state["login_token"]:
     Log in with your SSO credentials using Azure AD.
     """)
 
+    # Link to deployed login endpoint
+    login_url = "https://afc-apps-hospitality.streamlit.app/login"
     if st.button("🔐 Login"):
-        st.markdown(f"[Click here to log in](http://localhost:{port}/login)")
+        st.markdown(f"[Click here to log in]({login_url})")
         st.info("Once logged in, return to this app.")
 else:
     st.sidebar.write("You are logged in!")
