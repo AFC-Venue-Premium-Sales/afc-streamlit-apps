@@ -225,8 +225,7 @@ def login_with_device_code():
             token = oauth.fetch_token(
                 token_endpoint,
                 grant_type="urn:ietf:params:oauth:grant-type:device_code",
-                device_code=device_code_response["device_code"],
-                client_id=client_id  # Explicitly pass client_id
+                device_code=device_code_response["device_code"]
             )
             return token
         except Exception as e:
@@ -264,3 +263,4 @@ else:
     elif app_choice == "📈 User Performance":
         st.title("📈 User Performance")
         st.write("Display user performance metrics here.")
+
