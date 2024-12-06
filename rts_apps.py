@@ -200,15 +200,14 @@
 
 
 
-
 import streamlit as st
 import logging
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.chrome.options import Options as ChromeOptions
-from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
 import urllib.parse
 from msal import PublicClientApplication
@@ -234,14 +233,11 @@ logging.basicConfig(
 def create_chrome_browser():
     try:
         options = ChromeOptions()
-        options.add_argument("--headless")  # Enable headless mode for automation
+        options.add_argument("--headless")  # Use headless mode
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
-        
-        # Automatically match the installed version of Chrome
         service = ChromeService(ChromeDriverManager().install())
         return webdriver.Chrome(service=service, options=options)
-
     except Exception as e:
         logging.error(f"Chrome browser initialization failed: {e}")
         st.error(f"An error occurred while starting Chrome: {e}")
@@ -316,4 +312,3 @@ else:
     elif app_choice == "📈 User Performance":
         st.title("📈 User Performance")
         st.write("This section will display user performance metrics.")
-
