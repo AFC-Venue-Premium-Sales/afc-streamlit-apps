@@ -196,69 +196,45 @@
         
         
 
-
 import streamlit as st
 from msal import PublicClientApplication
-import time
+import webbrowser
 
 # Azure AD Configuration
 CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
 TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"
+REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app"
 SCOPES = ["User.Read"]
 AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
 
 # MSAL Application
 app = PublicClientApplication(client_id=CLIENT_ID, authority=AUTHORITY)
 
-# Device Code Login Function
-def login_with_device_code():
-    try:
-        # Step 1: Initiate Device Code Flow
-        device_flow = app.initiate_device_flow(scopes=SCOPES)
-        if "user_code" not in device_flow:
-            st.error("Failed to initiate device flow.")
-            return None
+def login_with_browser():
+    flow = app.initiate_auth_code_flow(scopes=SCOPES, redirect_uri=REDIRECT_URI)
+    auth_url = flow["auth_uri"]
 
-        # Step 2: Display login instructions to the user
-        st.info(f"Go to [this URL]({device_flow['verification_uri']}) and enter the code: **{device_flow['user_code']}**")
-        st.write("Waiting for you to complete the login process...")
+    # Open default browser for user to log in
+    webbrowser.open(auth_url)
 
-        # Step 3: Poll for Access Token
-        max_retries = 60  # Up to 5 minutes
-        for attempt in range(max_retries):
+    st.info("Please complete login in the opened browser window.")
+
+    # Redirected URL Handling
+    redirected_url = st.text_input("Paste the URL you were redirected to after login:")
+    if redirected_url:
+        query_params = urllib.parse.urlparse(redirected_url).query
+        params = dict(urllib.parse.parse_qsl(query_params))
+        if "code" in params:
             try:
-                token = app.acquire_token_by_device_flow(device_flow)
-                if "access_token" in token:
-                    return token
+                result = app.acquire_token_by_authorization_code(
+                    code=params["code"],
+                    scopes=SCOPES,
+                    redirect_uri=REDIRECT_URI
+                )
+                if "access_token" in result:
+                    st.success("Login successful!")
+                    return result
             except Exception as e:
-                if "authorization_pending" in str(e):
-                    time.sleep(5)  # Wait for 5 seconds and retry
-                else:
-                    st.error(f"An error occurred: {e}")
-                    return None
-            st.write(f"Retrying... ({attempt + 1}/{max_retries})")
+                st.error(f"Error during login: {e}")
+                return None
 
-        st.error("Login timed out. Please try again.")
-        return None
-
-    except Exception as e:
-        st.error(f"An unexpected error occurred: {e}")
-        return None
-
-# Streamlit App Logic
-if "login_token" not in st.session_state:
-    st.session_state["login_token"] = None
-
-st.title("Azure AD Login")
-if not st.session_state["login_token"]:
-    if st.button("Log in"):
-        token = login_with_device_code()
-        if token:
-            st.session_state["login_token"] = token
-            st.success("You are now logged in!")
-        else:
-            st.error("Login failed.")
-else:
-    st.sidebar.title("Welcome")
-    st.sidebar.write("You are logged in!")
-    st.sidebar.write("Access token:", st.session_state["login_token"])
