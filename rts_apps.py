@@ -197,8 +197,6 @@
         
 
 
-
-
 import streamlit as st
 from authlib.integrations.requests_client import OAuth2Session
 import time
@@ -226,7 +224,8 @@ def login_with_device_code():
             token = oauth.fetch_token(
                 token_endpoint,
                 grant_type="urn:ietf:params:oauth:grant-type:device_code",
-                device_code=device_code_response["device_code"]
+                device_code=device_code_response["device_code"],
+                client_id=client_id,  # Explicitly pass client_id to mark as public
             )
             return token
         except Exception as e:
