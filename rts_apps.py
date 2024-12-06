@@ -199,7 +199,6 @@
 
 
 
-
 import streamlit as st
 import logging
 from selenium import webdriver
@@ -209,6 +208,7 @@ from selenium.webdriver.support import expected_conditions as EC
 import urllib.parse
 from msal import PublicClientApplication
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 
 # Configure logging
@@ -239,6 +239,21 @@ if "auth_code" not in st.session_state:
     st.session_state["auth_code"] = None
     logging.debug("Initialized session state for auth_code.")
 
+# Function to create Chrome browser with proper options
+def create_chrome_browser():
+    try:
+        options = Options()
+        options.add_argument("--headless")  # Use headless mode
+        options.add_argument("--no-sandbox")  # Required for some server environments
+        options.add_argument("--disable-dev-shm-usage")  # Prevents crashes on low-memory systems
+        options.add_argument("--disable-gpu")  # Disable GPU for compatibility
+        service = Service(ChromeDriverManager().install())
+        return webdriver.Chrome(service=service, options=options)
+    except Exception as e:
+        logging.error(f"Chrome browser initialization failed: {e}")
+        st.error(f"An error occurred while starting Chrome: {e}")
+        return None
+
 # Function to handle login
 def login():
     flow = app.initiate_auth_code_flow(scopes=scopes, redirect_uri=redirect_uri)
@@ -250,10 +265,13 @@ def login():
     auth_uri = flow["auth_uri"]
 
     # Launch browser with Selenium
-    browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
-    browser.get(auth_uri)
+    browser = create_chrome_browser()
+    if not browser:
+        return None
 
     try:
+        browser.get(auth_uri)
+
         # Wait for redirect to your redirect_uri
         WebDriverWait(browser, 200).until(EC.url_contains(redirect_uri))
         redirected_url = browser.current_url
@@ -279,6 +297,7 @@ def login():
     except Exception as e:
         browser.quit()
         st.error(f"An error occurred during login: {e}")
+        logging.error(f"Login failed with error: {e}")
         return None
 
 # Main App Logic
@@ -309,14 +328,14 @@ else:
     if app_choice == "📊 Sales Performance":
         logging.info("Navigating to Sales Performance.")
         try:
-            pass  # Placeholder for Sales Performance logic
+            st.write("Sales performance data will appear here.")
         except Exception as e:
             logging.error(f"Error in Sales Performance App: {e}")
             st.error("An error occurred in the Sales Performance section.")
     elif app_choice == "📈 User Performance":
         logging.info("Navigating to User Performance.")
         try:
-            pass  # Placeholder for User Performance logic
+            st.write("User performance metrics will appear here.")
         except Exception as e:
             logging.error(f"Error in User Performance App: {e}")
             st.error("An error occurred in the User Performance section.")
