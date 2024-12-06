@@ -204,9 +204,8 @@ import threading
 
 # Azure AD Configuration
 CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
-CLIENT_SECRET = "your_client_secret_here"  # Replace this with your client secret
+CLIENT_SECRET = "your_client_secret_here"
 TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"
-REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app"  # Must match Azure AD registration
 AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
 AUTHORIZE_URL = f"{AUTHORITY}/oauth2/v2.0/authorize"
 TOKEN_URL = f"{AUTHORITY}/oauth2/v2.0/token"
@@ -214,7 +213,7 @@ SCOPES = "openid profile email User.Read"
 
 # Flask App
 app = Flask(__name__)
-app.secret_key = "random_secret_key_for_flask"  # Replace with a secure secret key
+app.secret_key = "random_secret_key_for_flask"
 
 # OAuth Configuration
 oauth = OAuth(app)
@@ -228,17 +227,15 @@ azure = oauth.register(
     client_kwargs={"scope": SCOPES},
 )
 
-# Flask Routes
 @app.route("/")
 def index():
     return redirect("/login")
 
-
 @app.route("/login")
 def login():
-    redirect_uri = REDIRECT_URI
+    port = request.environ.get("SERVER_PORT", "80")  # Use default port 80 if not dynamically assigned
+    redirect_uri = f"https://afc-apps-hospitality.streamlit.app/auth"  # Match Azure App Registration
     return azure.authorize_redirect(redirect_uri)
-
 
 @app.route("/auth")
 def auth():
@@ -246,11 +243,9 @@ def auth():
     session["user"] = token
     return jsonify(token)
 
-
 # Start Flask server in a thread
 def run_flask():
-    app.run(port=5050, host="0.0.0.0")
-
+    app.run(port=5050, host="0.0.0.0")  # Use a fixed port to align with Streamlit deployment
 
 thread = threading.Thread(target=run_flask)
 thread.daemon = True
@@ -268,19 +263,16 @@ if not st.session_state["login_token"]:
     """)
 
     if st.button("🔐 Login"):
-        # Redirect user to the Flask login route
-        st.markdown(f"[Click here to log in](https://afc-apps-hospitality.streamlit.app)")
+        st.markdown(f"[Click here to log in](http://localhost:5050/login)")
         st.info("Once logged in, return to this app.")
 else:
     st.sidebar.write("You are logged in!")
     st.sidebar.title("Navigation")
     app_choice = st.sidebar.radio("Go to:", ["📊 Sales Performance", "📈 User Performance"])
 
-    # Render views based on the selected section
     if app_choice == "📊 Sales Performance":
         st.title("📊 Sales Performance")
         st.write("Display sales performance data here.")
     elif app_choice == "📈 User Performance":
         st.title("📈 User Performance")
         st.write("Display user performance metrics here.")
-

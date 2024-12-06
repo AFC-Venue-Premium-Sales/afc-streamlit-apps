@@ -65,8 +65,9 @@ itsdangerous ==2.2.0
 python-dotenv
 selenium
 webdriver-manager
-Flask
-Flask-OAuthlib
-werkzeug==0.16.1
+flask
+authlib
+werkzeug==3.0.3
+
 
 
