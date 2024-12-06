@@ -198,6 +198,7 @@
 
 import streamlit as st
 from msal import PublicClientApplication
+import urllib.parse
 import webbrowser
 
 # Azure AD Configuration
@@ -211,21 +212,23 @@ AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
 app = PublicClientApplication(client_id=CLIENT_ID, authority=AUTHORITY)
 
 def login_with_browser():
+    # Step 1: Initiate the Authorization Code Flow
     flow = app.initiate_auth_code_flow(scopes=SCOPES, redirect_uri=REDIRECT_URI)
     auth_url = flow["auth_uri"]
 
-    # Open default browser for user to log in
+    # Step 2: Open Browser for Login
     webbrowser.open(auth_url)
-
     st.info("Please complete login in the opened browser window.")
 
-    # Redirected URL Handling
+    # Step 3: Wait for User to Paste the Redirected URL
     redirected_url = st.text_input("Paste the URL you were redirected to after login:")
     if redirected_url:
+        # Step 4: Parse the Authorization Code from URL
         query_params = urllib.parse.urlparse(redirected_url).query
         params = dict(urllib.parse.parse_qsl(query_params))
         if "code" in params:
             try:
+                # Step 5: Exchange the Code for an Access Token
                 result = app.acquire_token_by_authorization_code(
                     code=params["code"],
                     scopes=SCOPES,
@@ -233,8 +236,31 @@ def login_with_browser():
                 )
                 if "access_token" in result:
                     st.success("Login successful!")
-                    return result
+                    return result["access_token"]
+                else:
+                    st.error("Failed to retrieve access token.")
+                    return None
             except Exception as e:
                 st.error(f"Error during login: {e}")
                 return None
 
+# Main Streamlit App Logic
+st.title("Azure AD Login")
+if "login_token" not in st.session_state:
+    st.session_state["login_token"] = None
+
+if not st.session_state["login_token"]:
+    if st.button("Log in"):
+        token = login_with_browser()
+        if token:
+            st.session_state["login_token"] = token
+else:
+    st.sidebar.title("Navigation")
+    st.sidebar.write("You are logged in!")
+    app_choice = st.sidebar.radio("Choose an option:", ["📊 Sales Performance", "📈 User Metrics"])
+    if app_choice == "📊 Sales Performance":
+        st.title("Sales Performance")
+        st.write("Display sales performance metrics here.")
+    elif app_choice == "📈 User Metrics":
+        st.title("User Metrics")
+        st.write("Display user metrics here.")
