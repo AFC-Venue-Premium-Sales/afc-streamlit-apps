@@ -68,7 +68,7 @@ webdriver-manager
 flask
 authlib
 werkzeug==3.0.3
-chromium-browser
+
 
 
 
