@@ -1,0 +1,13 @@
+chromium-browser
+libnss3
+libgconf-2-4
+libxi6
+libxcomposite1
+libxcursor1
+libxdamage1
+libxrandr2
+libxss1
+libasound2
+libatk1.0-0
+libpangocairo-1.0-0
+libgtk-3-0
