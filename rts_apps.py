@@ -198,116 +198,50 @@
 
 
 import streamlit as st
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service as ChromeService
-from selenium.webdriver.chrome.options import Options as ChromeOptions
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
-from webdriver_manager.core.utils import ChromeType
 from msal import PublicClientApplication
-import urllib.parse
+import time
 
 # Azure AD Configuration
 CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
 TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"
-REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app"
 SCOPES = ["User.Read"]
 AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
 
-# Initialize MSAL app
+# MSAL Application
 app = PublicClientApplication(client_id=CLIENT_ID, authority=AUTHORITY)
 
-# Function to create a Chrome browser
-def create_chrome_browser():
-    try:
-        options = ChromeOptions()
-        options.add_argument("--headless")  # Comment this for debugging
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-gpu")
-
-        # Match ChromeDriver to installed Chromium version
-        service = ChromeService(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
-        return webdriver.Chrome(service=service, options=options)
-    except Exception as e:
-        st.error(f"Error initializing Chrome browser: {e}")
+# Device Code Login
+def login_with_device_code():
+    device_flow = app.initiate_device_flow(scopes=SCOPES)
+    if "user_code" not in device_flow:
+        st.error("Failed to initiate device flow.")
         return None
 
-# Function to handle login
-def login():
-    # Step 1: Initiate the Authorization Code Flow
-    flow = app.initiate_auth_code_flow(scopes=SCOPES, redirect_uri=REDIRECT_URI)
+    st.info(f"Go to [this URL]({device_flow['verification_uri']}) and enter the code: **{device_flow['user_code']}**")
+    st.write("Waiting for you to complete login...")
 
-    if "auth_uri" not in flow:
-        st.error("Failed to initialize authentication.")
-        return None
-
-    auth_uri = flow["auth_uri"]
-
-    # Step 2: Open Chrome and Navigate to Login URL
-    browser = create_chrome_browser()
-    if not browser:
-        return None
-
-    try:
-        browser.get(auth_uri)
-
-        # Step 3: Wait for Azure to redirect back to the redirect URI
-        WebDriverWait(browser, 300).until(EC.url_contains(REDIRECT_URI))
-        redirected_url = browser.current_url
-        browser.quit()
-
-        # Step 4: Extract the Authorization Code from the Redirected URL
-        url = urllib.parse.urlparse(redirected_url)
-        query_params = dict(urllib.parse.parse_qsl(url.query))
-
-        if "code" not in query_params:
-            st.error("Authorization code not found.")
-            return None
-
-        # Step 5: Exchange the Authorization Code for an Access Token
-        result = app.acquire_token_by_authorization_code(
-            code=query_params["code"],
-            scopes=SCOPES,
-            redirect_uri=REDIRECT_URI
-        )
-
-        if "access_token" in result:
-            st.success("Logged in successfully!")
-            return result["access_token"]
-        else:
-            st.error("Failed to retrieve access token.")
-            return None
-    except Exception as e:
-        browser.quit()
-        st.error(f"An error occurred during login: {e}")
-        return None
+    while True:
+        try:
+            result = app.acquire_token_by_device_flow(device_flow)
+            if "access_token" in result:
+                st.success("Login successful!")
+                return result
+        except Exception as e:
+            if "authorization_pending" in str(e):
+                time.sleep(5)  # Poll every 5 seconds
+            else:
+                st.error(f"Error during login: {e}")
+                return None
 
 # Streamlit App Logic
 if "login_token" not in st.session_state:
     st.session_state["login_token"] = None
 
-st.title("🏟️ AFC Venue - MBM Hospitality")
 if not st.session_state["login_token"]:
-    st.markdown("""
-    **Welcome to the Venue Hospitality Dashboard!**  
-    Log in with your SSO credentials using Azure AD.
-    """)
-
-    if st.button("🔐 Login"):
-        token = login()
+    st.title("Azure AD Login")
+    if st.button("Log in"):
+        token = login_with_device_code()
         if token:
             st.session_state["login_token"] = token
 else:
-    st.sidebar.write("You are logged in!")
-    st.sidebar.title("Navigation")
-    app_choice = st.sidebar.radio("Go to:", ["📊 Sales Performance", "📈 User Performance"])
-
-    if app_choice == "📊 Sales Performance":
-        st.title("📊 Sales Performance")
-        st.write("Display sales performance data here.")
-    elif app_choice == "📈 User Performance":
-        st.title("📈 User Performance")
-        st.write("Display user performance metrics here.")
+    st.write("You are logged in!")
