@@ -205,6 +205,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
+from webdriver_manager.utils import ChromeType
 from msal import PublicClientApplication
 import urllib.parse
 
@@ -222,11 +223,14 @@ app = PublicClientApplication(client_id=CLIENT_ID, authority=AUTHORITY)
 def create_chrome_browser():
     try:
         options = ChromeOptions()
-        options.add_argument("--headless")  # Comment this out for debugging
+        options.add_argument("--headless")  # Comment this for debugging
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
-        return webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
+
+        # Match ChromeDriver to installed Chromium version
+        service = ChromeService(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
+        return webdriver.Chrome(service=service, options=options)
     except Exception as e:
         st.error(f"Error initializing Chrome browser: {e}")
         return None
