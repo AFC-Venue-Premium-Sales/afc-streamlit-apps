@@ -202,63 +202,123 @@
 
 
 import streamlit as st
-import msal
-import jwt
-import requests
+import logging
+from selenium import webdriver
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+import urllib.parse
+from msal import PublicClientApplication
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 
-# Azure AD configuration
-CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
-TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"
-AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
-REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app"
-SCOPES = ["User.Read", "email"]
+# Configure logging
+logging.basicConfig(
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    level=logging.DEBUG,
+    handlers=[logging.StreamHandler()]
+)
+
+logging.debug("Starting the Streamlit app.")
+
+# MSAL Configuration
+client_id = "9c350612-9d05-40f3-94e9-d348d92f446a"
+tenant_id = "068cb91a-8be0-49d7-be3a-38190b0ba021"
+redirect_uri = "https://afc-apps-hospitality.streamlit.app"
+scopes = ["User.Read"]
+authority = f"https://login.microsoftonline.com/{tenant_id}"
+
+# Initialize MSAL app
+app = PublicClientApplication(client_id, authority=authority)
 
 # Initialize session state
 if "login_token" not in st.session_state:
     st.session_state["login_token"] = None
+    logging.debug("Initialized session state for login_token.")
 
-# MSAL client setup
-msal_client = msal.PublicClientApplication(client_id=CLIENT_ID, authority=AUTHORITY)
+if "auth_code" not in st.session_state:
+    st.session_state["auth_code"] = None
+    logging.debug("Initialized session state for auth_code.")
 
-# Decode JWT token to extract claims
-def decode_token(token):
-    return jwt.decode(token, options={"verify_signature": False})
+# Function to handle login
+def login():
+    flow = app.initiate_auth_code_flow(scopes=scopes, redirect_uri=redirect_uri)
 
-# Login button and flow
-if st.session_state["login_token"] is None:
-    st.title("🔐 Login with SSO")
-    
-    if st.button("Login"):
-        auth_url = msal_client.get_authorization_request_url(
-            scopes=SCOPES,
-            redirect_uri=REDIRECT_URI
-        )
-        st.markdown(f"[Click here to login]({auth_url})")
-    
-    # Handle redirect and token exchange
-    query_params = st.experimental_get_query_params()  # Replace with st.query_params for post-April 2024
-    if "code" in query_params:
-        code = query_params["code"][0]
-        result = msal_client.acquire_token_by_authorization_code(
-            code=code,
-            scopes=SCOPES,
-            redirect_uri=REDIRECT_URI
-        )
+    if "auth_uri" not in flow:
+        st.error("Failed to initialize authentication.")
+        return None
+
+    auth_uri = flow["auth_uri"]
+
+    # Launch browser with Selenium
+    browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+    browser.get(auth_uri)
+
+    try:
+        # Wait for redirect to your redirect_uri
+        WebDriverWait(browser, 200).until(EC.url_contains(redirect_uri))
+        redirected_url = browser.current_url
+        browser.quit()
+
+        # Parse query parameters from redirected URL
+        url = urllib.parse.urlparse(redirected_url)
+        query_params = dict(urllib.parse.parse_qsl(url.query))
+
+        if "code" not in query_params:
+            st.error("Authorization code not found in redirect URL.")
+            return None
+
+        # Acquire token using the auth code flow
+        result = app.acquire_token_by_auth_code_flow(flow, query_params)
+
         if "access_token" in result:
-            st.session_state["login_token"] = result["access_token"]
-            st.success("Login successful!")
+            st.success("Logged in successfully!")
+            return result["access_token"]
         else:
-            st.error("Login failed.")
-            st.write(result)
+            st.error("Failed to retrieve access token.")
+            return None
+    except Exception as e:
+        browser.quit()
+        st.error(f"An error occurred during login: {e}")
+        return None
+
+# Main App Logic
+if not st.session_state["login_token"]:
+    st.title("🏟️ AFC Venue - MBM Hospitality")
+    st.markdown("""
+    **Welcome to the Venue Hospitality Dashboard!**  
+    This app provides insights into MBM Sales Performance and User Metrics. 
+
+    **Note:** Please log in using AFC credentials to access the app.
+    """)
+
+    # Render login button
+    if st.button("🔐 Login"):
+        token = login()
+        if token:
+            st.session_state["login_token"] = token
+        else:
+            st.error("Failed to login.")
 else:
     # User is authenticated
-    token = st.session_state["login_token"]
-    claims = decode_token(token)
-    
-    # Extract email claim
-    email = claims.get("email") or claims.get("preferred_username")
-    if email:
-        st.sidebar.success(f"Welcome, {email}!")
-    else:
-        st.error("Email address not found in token claims.")
-        st.write(claims)  # Debugging: Show all claims
+    login_token = st.session_state["login_token"]
+    st.sidebar.write("Welcome to the dashboard!")
+    st.sidebar.title("🧭 Navigation")
+    app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
+    logging.debug(f"Navigation Choice: {app_choice}")
+
+    if app_choice == "📊 Sales Performance":
+        logging.info("Navigating to Sales Performance.")
+        try:
+            pass  # Placeholder for Sales Performance logic
+        except Exception as e:
+            logging.error(f"Error in Sales Performance App: {e}")
+            st.error("An error occurred in the Sales Performance section.")
+    elif app_choice == "📈 User Performance":
+        logging.info("Navigating to User Performance.")
+        try:
+            pass  # Placeholder for User Performance logic
+        except Exception as e:
+            logging.error(f"Error in User Performance App: {e}")
+            st.error("An error occurred in the User Performance section.")
+
