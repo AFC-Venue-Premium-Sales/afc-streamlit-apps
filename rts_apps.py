@@ -206,7 +206,7 @@ import urllib.parse
 client_id = "9c350612-9d05-40f3-94e9-d348d92f446a"
 authority = "https://login.microsoftonline.com/068cb91a-8be0-49d7-be3a-38190b0ba021"
 scopes = ["User.Read"]
-redirect_uri = "http://localhost:8501"  # Use Streamlit's default local URI for testing
+redirect_uri = "https://afc-apps-hospitality.streamlit.app"  # Use Streamlit's default local URI for testing
 
 # Initialize MSAL app
 app = PublicClientApplication(client_id, authority=authority)
