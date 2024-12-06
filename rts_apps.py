@@ -205,14 +205,11 @@ import streamlit as st
 import logging
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service as ChromeService
-from selenium.webdriver.firefox.service import Service as FirefoxService
 from selenium.webdriver.chrome.options import Options as ChromeOptions
-from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
-from webdriver_manager.firefox import GeckoDriverManager
 import urllib.parse
 from msal import PublicClientApplication
 
@@ -233,26 +230,21 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()]
 )
 
-# Function to select and launch the browser
-def choose_browser():
+# Function to set up Chrome browser
+def create_chrome_browser():
     try:
-        browser_choice = st.radio("Select your browser:", ["Chrome", "Firefox"])
-
-        if browser_choice == "Chrome":
-            options = ChromeOptions()
-            options.add_argument("--headless")
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-            return webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
-
-        elif browser_choice == "Firefox":
-            options = FirefoxOptions()
-            options.add_argument("--headless")
-            return webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()), options=options)
+        options = ChromeOptions()
+        options.add_argument("--headless")  # Enable headless mode for automation
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        
+        # Automatically match the installed version of Chrome
+        service = ChromeService(ChromeDriverManager().install())
+        return webdriver.Chrome(service=service, options=options)
 
     except Exception as e:
-        logging.error(f"Browser initialization failed: {e}")
-        st.error(f"An error occurred while starting the browser: {e}")
+        logging.error(f"Chrome browser initialization failed: {e}")
+        st.error(f"An error occurred while starting Chrome: {e}")
         return None
 
 # Login function using MSAL and Selenium
@@ -264,7 +256,7 @@ def login():
         return None
 
     auth_uri = flow["auth_uri"]
-    browser = choose_browser()
+    browser = create_chrome_browser()
     if not browser:
         return None
 
@@ -324,3 +316,4 @@ else:
     elif app_choice == "📈 User Performance":
         st.title("📈 User Performance")
         st.write("This section will display user performance metrics.")
+
