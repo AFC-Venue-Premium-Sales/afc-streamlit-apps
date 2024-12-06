@@ -65,3 +65,6 @@ itsdangerous ==2.2.0
 python-dotenv
 selenium
 webdriver-manager
+Flask
+Flask-OAuthlib
+

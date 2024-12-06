@@ -198,67 +198,95 @@
 
 
 import streamlit as st
-from authlib.integrations.requests_client import OAuth2Session
-import time
+from flask import Flask, redirect, request, session, url_for
+from flask_oauthlib.client import OAuth
+import threading
 
 # Azure AD Configuration
-client_id = "9c350612-9d05-40f3-94e9-d348d92f446a"
-tenant_id = "068cb91a-8be0-49d7-be3a-38190b0ba021"
-device_code_endpoint = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/devicecode"
-token_endpoint = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
-scopes = ["openid", "profile", "email", "User.Read"]
+CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
+CLIENT_SECRET = "your_client_secret_here"  # Replace this with your client secret
+TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"
+REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app"  # Registered Redirect URI
+AUTHORIZATION_URL = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/authorize"
+TOKEN_URL = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token"
 
-def login_with_device_code():
-    oauth = OAuth2Session(client_id, scope=scopes)
-    try:
-        # Step 1: Get the device code
-        device_code_response = oauth.fetch_token(device_code_endpoint)
-        verification_uri = device_code_response["verification_uri"]
-        user_code = device_code_response["user_code"]
+# Flask App
+app = Flask(__name__)
+app.secret_key = "random_secret_key_for_flask"  # Replace with a secure secret key
 
-        # Step 2: Display instructions to the user
-        st.info(f"Go to [this link]({verification_uri}) and enter the code: **{user_code}**")
+# Flask-OAuthlib OAuth2 Configuration
+oauth = OAuth(app)
+azure = oauth.remote_app(
+    "azure",
+    consumer_key=CLIENT_ID,
+    consumer_secret=CLIENT_SECRET,
+    request_token_params={"scope": "openid profile email User.Read"},
+    base_url="https://graph.microsoft.com/v1.0/",
+    request_token_url=None,
+    access_token_method="POST",
+    access_token_url=TOKEN_URL,
+    authorize_url=AUTHORIZATION_URL,
+)
 
-        # Step 3: Poll for the token
-        while True:
-            try:
-                token = oauth.fetch_token(
-                    token_endpoint,
-                    grant_type="urn:ietf:params:oauth:grant-type:device_code",
-                    device_code=device_code_response["device_code"],
-                )
-                return token
-            except Exception as e:
-                if "authorization_pending" in str(e):
-                    time.sleep(5)  # Retry after 5 seconds
-                else:
-                    st.error(f"An error occurred: {e}")
-                    return None
-    except Exception as e:
-        st.error(f"Failed to initiate device code flow: {e}")
-        return None
+# Flask Routes
+@app.route("/")
+def index():
+    return redirect(url_for("login"))
 
-# Main App Logic
+
+@app.route("/login")
+def login():
+    return azure.authorize(callback=REDIRECT_URI)
+
+
+@app.route("/")
+def authorized():  # Match the root URI for the redirect
+    resp = azure.authorized_response()
+    if resp is None or "access_token" not in resp:
+        return f"Access denied: reason={request.args['error']} description={request.args['error_description']}"
+
+    # Store the access token in Flask session
+    session["azure_token"] = (resp["access_token"], "")
+    return "You are logged in! Return to Streamlit app."
+
+
+@azure.tokengetter
+def get_azure_oauth_token():
+    return session.get("azure_token")
+
+
+# Start Flask server in a separate thread
+def run_flask():
+    app.run(port=5000, host="0.0.0.0")
+
+
+thread = threading.Thread(target=run_flask)
+thread.daemon = True
+thread.start()
+
+# Streamlit App
 if "login_token" not in st.session_state:
     st.session_state["login_token"] = None
 
+# Streamlit Login Logic
+st.title("🏟️ AFC Venue - MBM Hospitality")
 if not st.session_state["login_token"]:
-    st.title("🏟️ AFC Venue - MBM Hospitality")
     st.markdown("""
     **Welcome to the Venue Hospitality Dashboard!**  
-    Log in with your SSO credentials using the device code method.
+    Log in with your SSO credentials using Azure AD.
     """)
 
     if st.button("🔐 Login"):
-        token = login_with_device_code()
-        if token:
-            st.session_state["login_token"] = token
-            st.success("You are logged in!")
+        # Redirect user to the Flask login route
+        web_auth_url = f"http://localhost:5000/login"
+        st.write(f"Go to [this link]({web_auth_url}) to log in.")
+        st.info("Once logged in, return to this app.")
 else:
     st.sidebar.write("You are logged in!")
     st.sidebar.title("Navigation")
     app_choice = st.sidebar.radio("Go to:", ["📊 Sales Performance", "📈 User Performance"])
 
+    # Render views based on the selected section
     if app_choice == "📊 Sales Performance":
         st.title("📊 Sales Performance")
         st.write("Display sales performance data here.")
