@@ -199,41 +199,15 @@
 
 import streamlit as st
 from authlib.integrations.requests_client import OAuth2Session
-import time
+import urllib.parse
 
 # Azure AD Configuration
 client_id = "9c350612-9d05-40f3-94e9-d348d92f446a"
 tenant_id = "068cb91a-8be0-49d7-be3a-38190b0ba021"
-device_code_endpoint = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/devicecode"
+authorization_endpoint = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/authorize"
 token_endpoint = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
+redirect_uri = "https://afc-apps-hospitality.streamlit.app"
 scopes = ["openid", "profile", "email", "User.Read"]
-
-# Function to handle Device Code Flow
-def login_with_device_code():
-    # Step 1: Initiate the device code flow
-    oauth = OAuth2Session(client_id, scope=scopes)
-    device_code_response = oauth.fetch_token(device_code_endpoint)
-
-    # Step 2: Show verification link and user code
-    verification_uri = device_code_response["verification_uri"]
-    user_code = device_code_response["user_code"]
-    st.info(f"Go to [this link]({verification_uri}) and enter the code: **{user_code}**")
-
-    # Step 3: Poll for token
-    while True:
-        try:
-            token = oauth.fetch_token(
-                token_endpoint,
-                grant_type="urn:ietf:params:oauth:grant-type:device_code",
-                device_code=device_code_response["device_code"]
-            )
-            return token
-        except Exception as e:
-            if "authorization_pending" in str(e):
-                time.sleep(5)  # Wait and poll again
-            else:
-                st.error(f"An error occurred: {e}")
-                return None
 
 # Main App Logic
 if "login_token" not in st.session_state:
@@ -243,14 +217,34 @@ if not st.session_state["login_token"]:
     st.title("🏟️ AFC Venue - MBM Hospitality")
     st.markdown("""
     **Welcome to the Venue Hospitality Dashboard!**  
-    Log in with your SSO credentials using the device code method.
+    Log in with your SSO credentials.
     """)
 
+    # Step 1: Create Authorization URL
+    oauth = OAuth2Session(client_id, redirect_uri=redirect_uri, scope=scopes)
+    authorization_url, state = oauth.create_authorization_url(authorization_endpoint)
+    st.session_state["oauth_state"] = state
+
+    # Step 2: Render Login Button
     if st.button("🔐 Login"):
-        token = login_with_device_code()
-        if token:
-            st.session_state["login_token"] = token
-            st.success("You are logged in!")
+        st.markdown(f"[Click here to log in]({authorization_url})")
+        st.info("Once logged in, return here to continue.")
+
+    # Step 3: Handle Redirect Back
+    query_params = st.experimental_get_query_params()
+    if "code" in query_params:
+        authorization_code = query_params["code"][0]
+
+        # Step 4: Exchange Authorization Code for Access Token
+        token = oauth.fetch_token(
+            token_endpoint,
+            code=authorization_code,
+            grant_type="authorization_code",
+            redirect_uri=redirect_uri,
+            client_id=client_id,
+        )
+        st.session_state["login_token"] = token
+        st.success("You are logged in!")
 else:
     st.sidebar.write("You are logged in!")
     st.sidebar.title("Navigation")
@@ -263,4 +257,3 @@ else:
     elif app_choice == "📈 User Performance":
         st.title("📈 User Performance")
         st.write("Display user performance metrics here.")
-
