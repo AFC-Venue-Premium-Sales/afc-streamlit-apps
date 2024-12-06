@@ -213,36 +213,47 @@ app = PublicClientApplication(client_id=CLIENT_ID, authority=AUTHORITY)
 
 def login_with_browser():
     # Step 1: Initiate the Authorization Code Flow
-    flow = app.initiate_auth_code_flow(scopes=SCOPES, redirect_uri=REDIRECT_URI)
-    auth_url = flow["auth_uri"]
+    try:
+        flow = app.initiate_auth_code_flow(scopes=SCOPES, redirect_uri=REDIRECT_URI)
+        if "auth_uri" not in flow:
+            st.error("Failed to generate authorization URL.")
+            return None
 
-    # Step 2: Open Browser for Login
-    webbrowser.open(auth_url)
-    st.info("Please complete login in the opened browser window.")
+        auth_url = flow["auth_uri"]
+        st.write(f"Authorization URL: {auth_url}")  # Debug: Display the URL in the app
+        st.markdown(f"[Click here to log in]({auth_url})")  # Provide clickable link
+        webbrowser.open(auth_url)  # Open browser automatically
+        st.info("Please complete login in the opened browser window.")
 
-    # Step 3: Wait for User to Paste the Redirected URL
-    redirected_url = st.text_input("Paste the URL you were redirected to after login:")
-    if redirected_url:
-        # Step 4: Parse the Authorization Code from URL
-        query_params = urllib.parse.urlparse(redirected_url).query
-        params = dict(urllib.parse.parse_qsl(query_params))
-        if "code" in params:
-            try:
-                # Step 5: Exchange the Code for an Access Token
-                result = app.acquire_token_by_authorization_code(
-                    code=params["code"],
-                    scopes=SCOPES,
-                    redirect_uri=REDIRECT_URI
-                )
-                if "access_token" in result:
-                    st.success("Login successful!")
-                    return result["access_token"]
-                else:
-                    st.error("Failed to retrieve access token.")
+        # Step 2: Wait for the user to paste the redirected URL
+        redirected_url = st.text_input("Paste the URL you were redirected to after login:")
+        if redirected_url:
+            # Step 3: Parse the Authorization Code from URL
+            query_params = urllib.parse.urlparse(redirected_url).query
+            params = dict(urllib.parse.parse_qsl(query_params))
+            if "code" in params:
+                try:
+                    # Step 4: Exchange the Code for an Access Token
+                    result = app.acquire_token_by_authorization_code(
+                        code=params["code"],
+                        scopes=SCOPES,
+                        redirect_uri=REDIRECT_URI
+                    )
+                    if "access_token" in result:
+                        st.success("Login successful!")
+                        return result["access_token"]
+                    else:
+                        st.error("Failed to retrieve access token.")
+                        return None
+                except Exception as e:
+                    st.error(f"Error during login: {e}")
                     return None
-            except Exception as e:
-                st.error(f"Error during login: {e}")
-                return None
+        else:
+            st.warning("Waiting for redirected URL...")
+            return None
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
+        return None
 
 # Main Streamlit App Logic
 st.title("Azure AD Login")
