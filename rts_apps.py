@@ -249,7 +249,7 @@ def auth():
 
 # Start Flask server in a thread
 def run_flask():
-    app.run(port=5000, host="0.0.0.0")
+    app.run(port=5050, host="0.0.0.0")
 
 
 thread = threading.Thread(target=run_flask)
