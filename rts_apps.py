@@ -199,41 +199,54 @@
 
 import streamlit as st
 from msal import PublicClientApplication
+import webbrowser
+import urllib.parse
 
 # MSAL Configuration
 client_id = "9c350612-9d05-40f3-94e9-d348d92f446a"
 authority = "https://login.microsoftonline.com/068cb91a-8be0-49d7-be3a-38190b0ba021"
 scopes = ["User.Read"]
+redirect_uri = "http://localhost:8501"  # Use Streamlit's default local URI for testing
 
 # Initialize MSAL app
 app = PublicClientApplication(client_id, authority=authority)
 
-def device_code_flow_login():
+def login_with_auth_code_flow():
     """
-    Use MSAL's Device Code Flow for authentication without redirects.
+    Use MSAL's Authorization Code Flow for seamless authentication.
     """
-    try:
-        # Initiate device code flow
-        device_flow = app.initiate_device_flow(scopes=scopes)
-        if "user_code" not in device_flow:
-            st.error("Failed to initiate device code flow.")
-            return None
+    # Initiate the flow
+    flow = app.initiate_auth_code_flow(scopes=scopes, redirect_uri=redirect_uri)
 
-        # Show instructions to the user
-        st.info(f"To sign in, visit: {device_flow['verification_uri']}")
-        st.info(f"Enter the code: {device_flow['user_code']}")
+    if "auth_uri" not in flow:
+        st.error("Failed to initiate login flow.")
+        return None
 
-        # Poll for token
-        result = app.acquire_token_by_device_flow(device_flow)
+    # Open the login page in the user's default browser
+    auth_uri = flow["auth_uri"]
+    webbrowser.open(auth_uri, new=1)
+    st.info("Please complete the login process in the browser.")
 
-        if "access_token" in result:
-            st.success("Logged in successfully!")
-            return result["access_token"]
-        else:
-            st.error("Failed to retrieve access token.")
-            return None
-    except Exception as e:
-        st.error(f"An error occurred: {e}")
+    # Wait for the user to be redirected back with the authorization code
+    query_params = st.experimental_get_query_params()
+
+    if "code" not in query_params:
+        st.warning("Waiting for login to complete...")
+        st.stop()
+
+    # Exchange the authorization code for tokens
+    code = query_params["code"][0]
+    result = app.acquire_token_by_authorization_code(
+        code=code,
+        scopes=scopes,
+        redirect_uri=redirect_uri
+    )
+
+    if "access_token" in result:
+        st.success("Logged in successfully!")
+        return result["access_token"]
+    else:
+        st.error("Failed to retrieve access token.")
         return None
 
 # Main App Logic
@@ -247,7 +260,7 @@ if not st.session_state.get("login_token"):
     """)
 
     if st.button("🔐 Login"):
-        token = device_code_flow_login()
+        token = login_with_auth_code_flow()
         if token:
             st.session_state["login_token"] = token
 else:
