@@ -211,37 +211,38 @@ AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
 app = PublicClientApplication(client_id=CLIENT_ID, authority=AUTHORITY)
 
 # Device Code Login
+# Device Code Flow Function with Enhanced Logging
 def login_with_device_code():
-    device_flow = app.initiate_device_flow(scopes=SCOPES)
-    if "user_code" not in device_flow:
-        st.error("Failed to initiate device flow.")
+    # Step 1: Initiate Device Code Flow
+    try:
+        device_flow = app.initiate_device_flow(scopes=SCOPES)
+        if "user_code" not in device_flow:
+            st.error("Failed to initiate device flow.")
+            return None
+
+        # Step 2: Show verification link and user code
+        st.info(f"Go to [this URL]({device_flow['verification_uri']}) and enter the code: **{device_flow['user_code']}**")
+        st.write("Waiting for you to complete the login process...")
+
+        # Step 3: Poll for Access Token
+        max_retries = 60  # Wait up to 300 seconds (5 minutes)
+        for attempt in range(max_retries):
+            try:
+                token = app.acquire_token_by_device_flow(device_flow)
+                if "access_token" in token:
+                    st.success("Login successful!")
+                    return token
+            except Exception as e:
+                if "authorization_pending" in str(e):
+                    time.sleep(5)  # Wait for 5 seconds and retry
+                else:
+                    st.error(f"An error occurred: {e}")
+                    return None
+
+            st.write(f"Retrying... ({attempt + 1}/{max_retries})")
+
+        st.error("Login timed out. Please try again.")
         return None
-
-    st.info(f"Go to [this URL]({device_flow['verification_uri']}) and enter the code: **{device_flow['user_code']}**")
-    st.write("Waiting for you to complete login...")
-
-    while True:
-        try:
-            result = app.acquire_token_by_device_flow(device_flow)
-            if "access_token" in result:
-                st.success("Login successful!")
-                return result
-        except Exception as e:
-            if "authorization_pending" in str(e):
-                time.sleep(5)  # Poll every 5 seconds
-            else:
-                st.error(f"Error during login: {e}")
-                return None
-
-# Streamlit App Logic
-if "login_token" not in st.session_state:
-    st.session_state["login_token"] = None
-
-if not st.session_state["login_token"]:
-    st.title("Azure AD Login")
-    if st.button("Log in"):
-        token = login_with_device_code()
-        if token:
-            st.session_state["login_token"] = token
-else:
-    st.write("You are logged in!")
+    except Exception as e:
+        st.error(f"An unexpected error occurred: {e}")
+        return None
