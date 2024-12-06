@@ -203,14 +203,22 @@
 import streamlit as st
 import logging
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service as ChromeService
-from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
-from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.support import expected_conditions as EC
 import urllib.parse
 from msal import PublicClientApplication
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+
+# Configure logging
+logging.basicConfig(
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    level=logging.DEBUG,
+    handlers=[logging.StreamHandler()]
+)
+
+logging.debug("Starting the Streamlit app.")
 
 # MSAL Configuration
 client_id = "9c350612-9d05-40f3-94e9-d348d92f446a"
@@ -222,28 +230,16 @@ authority = f"https://login.microsoftonline.com/{tenant_id}"
 # Initialize MSAL app
 app = PublicClientApplication(client_id, authority=authority)
 
-# Configure logging
-logging.basicConfig(
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    level=logging.DEBUG,
-    handlers=[logging.StreamHandler()]
-)
+# Initialize session state
+if "login_token" not in st.session_state:
+    st.session_state["login_token"] = None
+    logging.debug("Initialized session state for login_token.")
 
-# Function to set up Chrome browser
-def create_chrome_browser():
-    try:
-        options = ChromeOptions()
-        options.add_argument("--headless")  # Use headless mode
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        service = ChromeService(ChromeDriverManager().install())
-        return webdriver.Chrome(service=service, options=options)
-    except Exception as e:
-        logging.error(f"Chrome browser initialization failed: {e}")
-        st.error(f"An error occurred while starting Chrome: {e}")
-        return None
+if "auth_code" not in st.session_state:
+    st.session_state["auth_code"] = None
+    logging.debug("Initialized session state for auth_code.")
 
-# Login function using MSAL and Selenium
+# Function to handle login
 def login():
     flow = app.initiate_auth_code_flow(scopes=scopes, redirect_uri=redirect_uri)
 
@@ -252,28 +248,28 @@ def login():
         return None
 
     auth_uri = flow["auth_uri"]
-    browser = create_chrome_browser()
-    if not browser:
-        return None
+
+    # Launch browser with Selenium
+    browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+    browser.get(auth_uri)
 
     try:
-        browser.get(auth_uri)
-
-        # Wait for Azure to redirect back with an authorization code
-        WebDriverWait(browser, 300).until(EC.url_contains(redirect_uri))
+        # Wait for redirect to your redirect_uri
+        WebDriverWait(browser, 200).until(EC.url_contains(redirect_uri))
         redirected_url = browser.current_url
         browser.quit()
 
-        # Parse the query parameters from the redirected URL
+        # Parse query parameters from redirected URL
         url = urllib.parse.urlparse(redirected_url)
         query_params = dict(urllib.parse.parse_qsl(url.query))
 
         if "code" not in query_params:
-            st.error("Authorization code not found.")
+            st.error("Authorization code not found in redirect URL.")
             return None
 
-        # Acquire token using the authorization code
+        # Acquire token using the auth code flow
         result = app.acquire_token_by_auth_code_flow(flow, query_params)
+
         if "access_token" in result:
             st.success("Logged in successfully!")
             return result["access_token"]
@@ -286,29 +282,41 @@ def login():
         return None
 
 # Main App Logic
-if "login_token" not in st.session_state:
-    st.session_state["login_token"] = None
-
 if not st.session_state["login_token"]:
     st.title("🏟️ AFC Venue - MBM Hospitality")
     st.markdown("""
     **Welcome to the Venue Hospitality Dashboard!**  
-    Please log in using your AFC credentials to continue.
+    This app provides insights into MBM Sales Performance and User Metrics. 
+
+    **Note:** Please log in using AFC credentials to access the app.
     """)
-    
+
+    # Render login button
     if st.button("🔐 Login"):
         token = login()
         if token:
             st.session_state["login_token"] = token
+        else:
+            st.error("Failed to login.")
 else:
+    # User is authenticated
+    login_token = st.session_state["login_token"]
+    st.sidebar.write("Welcome to the dashboard!")
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
-    st.sidebar.write("Logged in successfully!")
+    logging.debug(f"Navigation Choice: {app_choice}")
 
-    # Render different views based on navigation choice
     if app_choice == "📊 Sales Performance":
-        st.title("📊 Sales Performance")
-        st.write("This section will display sales performance data.")
+        logging.info("Navigating to Sales Performance.")
+        try:
+            pass  # Placeholder for Sales Performance logic
+        except Exception as e:
+            logging.error(f"Error in Sales Performance App: {e}")
+            st.error("An error occurred in the Sales Performance section.")
     elif app_choice == "📈 User Performance":
-        st.title("📈 User Performance")
-        st.write("This section will display user performance metrics.")
+        logging.info("Navigating to User Performance.")
+        try:
+            pass  # Placeholder for User Performance logic
+        except Exception as e:
+            logging.error(f"Error in User Performance App: {e}")
+            st.error("An error occurred in the User Performance section.")
