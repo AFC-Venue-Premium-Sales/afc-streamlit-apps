@@ -197,57 +197,117 @@
         
 
 
+
+
+
+
 import streamlit as st
-from msal import PublicClientApplication
-import webbrowser
+import logging
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium.webdriver.firefox.service import Service as FirefoxService
+from selenium.webdriver.chrome.options import Options as ChromeOptions
+from selenium.webdriver.firefox.options import Options as FirefoxOptions
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
+from webdriver_manager.firefox import GeckoDriverManager
 import urllib.parse
+from msal import PublicClientApplication
 
 # MSAL Configuration
 client_id = "9c350612-9d05-40f3-94e9-d348d92f446a"
-authority = "https://login.microsoftonline.com/068cb91a-8be0-49d7-be3a-38190b0ba021"
+tenant_id = "068cb91a-8be0-49d7-be3a-38190b0ba021"
+redirect_uri = "https://afc-apps-hospitality.streamlit.app"
 scopes = ["User.Read"]
-redirect_uri = "https://afc-apps-hospitality.streamlit.app"  # Use Streamlit's default local URI for testing
+authority = f"https://login.microsoftonline.com/{tenant_id}"
 
 # Initialize MSAL app
 app = PublicClientApplication(client_id, authority=authority)
 
-def login_with_auth_code_flow():
+# Configure logging
+logging.basicConfig(
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    level=logging.DEBUG,
+    handlers=[logging.StreamHandler()]
+)
+
+logging.debug("Starting the Streamlit app.")
+
+def choose_browser():
     """
-    Use MSAL's Authorization Code Flow for seamless authentication.
+    Dynamically allow the user to choose their browser for the login flow.
+    Returns a configured WebDriver instance.
     """
-    # Initiate the flow
+    browser_choice = st.radio("Select your browser:", ["Chrome", "Firefox", "Safari"])
+
+    if browser_choice == "Chrome":
+        st.write("Launching Chrome...")
+        options = ChromeOptions()
+        options.add_argument("--headless")  # Uncomment for headless mode on servers
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        return webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
+
+    elif browser_choice == "Firefox":
+        st.write("Launching Firefox...")
+        options = FirefoxOptions()
+        options.add_argument("--headless")  # Uncomment for headless mode on servers
+        return webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()), options=options)
+
+    elif browser_choice == "Safari":
+        st.write("Launching Safari...")
+        return webdriver.Safari()
+
+    else:
+        st.error("Unsupported browser!")
+        return None
+
+def login():
+    """
+    Handles the Azure AD login using MSAL and Selenium.
+    """
     flow = app.initiate_auth_code_flow(scopes=scopes, redirect_uri=redirect_uri)
 
     if "auth_uri" not in flow:
-        st.error("Failed to initiate login flow.")
+        st.error("Failed to initialize authentication.")
         return None
 
-    # Open the login page in the user's default browser
     auth_uri = flow["auth_uri"]
-    st.markdown(f"[Click here to log in]({auth_uri})")  # Fallback link
-    webbrowser.open(auth_uri, new=1)
-    st.info("Please complete the login process in the browser.")
 
-    # Wait for the user to be redirected back with the authorization code
-    query_params = st.query_params  # Updated from `st.experimental_get_query_params`
+    browser = choose_browser()
+    if not browser:
+        return None
 
-    if "code" not in query_params:
-        st.warning("Waiting for login to complete...")
-        st.stop()
+    try:
+        browser.get(auth_uri)
 
-    # Exchange the authorization code for tokens
-    code = query_params["code"][0]
-    result = app.acquire_token_by_authorization_code(
-        code=code,
-        scopes=scopes,
-        redirect_uri=redirect_uri
-    )
+        # Wait for redirect to your redirect_uri
+        WebDriverWait(browser, 200).until(EC.url_contains(redirect_uri))
+        redirected_url = browser.current_url
+        browser.quit()
 
-    if "access_token" in result:
-        st.success("Logged in successfully!")
-        return result["access_token"]
-    else:
-        st.error("Failed to retrieve access token.")
+        # Parse query parameters from redirected URL
+        url = urllib.parse.urlparse(redirected_url)
+        query_params = dict(urllib.parse.parse_qsl(url.query))
+
+        if "code" not in query_params:
+            st.error("Authorization code not found in redirect URL.")
+            return None
+
+        # Acquire token using the auth code flow
+        result = app.acquire_token_by_auth_code_flow(flow, query_params)
+
+        if "access_token" in result:
+            st.success("Logged in successfully!")
+            return result["access_token"]
+        else:
+            st.error("Failed to retrieve access token.")
+            return None
+    except Exception as e:
+        browser.quit()
+        st.error(f"An error occurred during login: {e}")
         return None
 
 # Main App Logic
@@ -261,10 +321,14 @@ if not st.session_state.get("login_token"):
     """)
 
     if st.button("🔐 Login"):
-        token = login_with_auth_code_flow()
+        token = login()
         if token:
             st.session_state["login_token"] = token
+        else:
+            st.error("Failed to login.")
 else:
     st.sidebar.title("🧭 Navigation")
-    st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
+    app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
     st.sidebar.write("Logged in successfully!")
+
+
