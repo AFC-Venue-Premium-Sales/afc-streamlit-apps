@@ -200,142 +200,56 @@
 
 
 import streamlit as st
-import logging
-from selenium import webdriver
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-import urllib.parse
-from msal import PublicClientApplication
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
+from authlib.integrations.requests_client import OAuth2Session
+import time
 
-# Configure logging
-logging.basicConfig(
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    level=logging.DEBUG,
-    handlers=[logging.StreamHandler()]
-)
-
-logging.debug("Starting the Streamlit app.")
-
-# MSAL Configuration
+# Azure AD Configuration
 client_id = "9c350612-9d05-40f3-94e9-d348d92f446a"
 tenant_id = "068cb91a-8be0-49d7-be3a-38190b0ba021"
-redirect_uri = "https://afc-apps-hospitality.streamlit.app"
-scopes = ["User.Read"]
-authority = f"https://login.microsoftonline.com/{tenant_id}"
+device_code_endpoint = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/devicecode"
+token_endpoint = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
+scopes = ["openid", "profile", "email", "User.Read"]
 
-# Initialize MSAL app
-app = PublicClientApplication(client_id, authority=authority)
+# Function to handle Device Code Flow
+def login_with_device_code():
+    oauth = OAuth2Session(client_id, scope=scopes)
+    
+    # Step 1: Initiate the device code flow
+    device_code_response = oauth.fetch_token(device_code_endpoint)
+    verification_uri = device_code_response["verification_uri"]
+    user_code = device_code_response["user_code"]
+    st.info(f"Go to [this link]({verification_uri}) and enter the code: **{user_code}**")
 
-# Initialize session state
-if "login_token" not in st.session_state:
-    st.session_state["login_token"] = None
-    logging.debug("Initialized session state for login_token.")
-
-if "auth_code" not in st.session_state:
-    st.session_state["auth_code"] = None
-    logging.debug("Initialized session state for auth_code.")
-
-# Function to create Chrome browser with proper options
-def create_chrome_browser():
-    try:
-        options = Options()
-        options.add_argument("--headless")  # Use headless mode
-        options.add_argument("--no-sandbox")  # Required for some server environments
-        options.add_argument("--disable-dev-shm-usage")  # Prevents crashes on low-memory systems
-        options.add_argument("--disable-gpu")  # Disable GPU for compatibility
-        service = Service(ChromeDriverManager().install())
-        return webdriver.Chrome(service=service, options=options)
-    except Exception as e:
-        logging.error(f"Chrome browser initialization failed: {e}")
-        st.error(f"An error occurred while starting Chrome: {e}")
-        return None
-
-# Function to handle login
-def login():
-    flow = app.initiate_auth_code_flow(scopes=scopes, redirect_uri=redirect_uri)
-
-    if "auth_uri" not in flow:
-        st.error("Failed to initialize authentication.")
-        return None
-
-    auth_uri = flow["auth_uri"]
-
-    # Launch browser with Selenium
-    browser = create_chrome_browser()
-    if not browser:
-        return None
-
-    try:
-        browser.get(auth_uri)
-
-        # Wait for redirect to your redirect_uri
-        WebDriverWait(browser, 200).until(EC.url_contains(redirect_uri))
-        redirected_url = browser.current_url
-        browser.quit()
-
-        # Parse query parameters from redirected URL
-        url = urllib.parse.urlparse(redirected_url)
-        query_params = dict(urllib.parse.parse_qsl(url.query))
-
-        if "code" not in query_params:
-            st.error("Authorization code not found in redirect URL.")
-            return None
-
-        # Acquire token using the auth code flow
-        result = app.acquire_token_by_auth_code_flow(flow, query_params)
-
-        if "access_token" in result:
-            st.success("Logged in successfully!")
-            return result["access_token"]
-        else:
-            st.error("Failed to retrieve access token.")
-            return None
-    except Exception as e:
-        browser.quit()
-        st.error(f"An error occurred during login: {e}")
-        logging.error(f"Login failed with error: {e}")
-        return None
+    # Step 2: Poll for the token
+    while True:
+        try:
+            token = oauth.fetch_token(
+                token_endpoint,
+                grant_type="urn:ietf:params:oauth:grant-type:device_code",
+                device_code=device_code_response["device_code"]
+            )
+            return token
+        except Exception as e:
+            if "authorization_pending" in str(e):
+                time.sleep(5)  # Wait and poll again
+            else:
+                st.error(f"An error occurred: {e}")
+                return None
 
 # Main App Logic
+if "login_token" not in st.session_state:
+    st.session_state["login_token"] = None
+
 if not st.session_state["login_token"]:
     st.title("🏟️ AFC Venue - MBM Hospitality")
-    st.markdown("""
-    **Welcome to the Venue Hospitality Dashboard!**  
-    This app provides insights into MBM Sales Performance and User Metrics. 
-
-    **Note:** Please log in using AFC credentials to access the app.
-    """)
-
-    # Render login button
+    st.markdown("Log in with your SSO credentials using the device code method.")
+    
     if st.button("🔐 Login"):
-        token = login()
+        token = login_with_device_code()
         if token:
             st.session_state["login_token"] = token
-        else:
-            st.error("Failed to login.")
+            st.success("You are logged in!")
 else:
-    # User is authenticated
-    login_token = st.session_state["login_token"]
-    st.sidebar.write("Welcome to the dashboard!")
-    st.sidebar.title("🧭 Navigation")
-    app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
-    logging.debug(f"Navigation Choice: {app_choice}")
-
-    if app_choice == "📊 Sales Performance":
-        logging.info("Navigating to Sales Performance.")
-        try:
-            st.write("Sales performance data will appear here.")
-        except Exception as e:
-            logging.error(f"Error in Sales Performance App: {e}")
-            st.error("An error occurred in the Sales Performance section.")
-    elif app_choice == "📈 User Performance":
-        logging.info("Navigating to User Performance.")
-        try:
-            st.write("User performance metrics will appear here.")
-        except Exception as e:
-            logging.error(f"Error in User Performance App: {e}")
-            st.error("An error occurred in the User Performance section.")
+    st.sidebar.write("You are logged in!")
+    st.sidebar.title("Navigation")
+    st.sidebar.radio("Go to:", ["📊 Sales Performance", "📈 User Performance"])
