@@ -233,41 +233,28 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()]
 )
 
-logging.debug("Starting the Streamlit app.")
-
 def choose_browser():
-    """
-    Dynamically allow the user to choose their browser for the login flow.
-    Returns a configured WebDriver instance.
-    """
-    browser_choice = st.radio("Select your browser:", ["Chrome", "Firefox", "Safari"])
+    try:
+        browser_choice = st.radio("Select your browser:", ["Chrome", "Firefox"])
 
-    if browser_choice == "Chrome":
-        st.write("Launching Chrome...")
-        options = ChromeOptions()
-        options.add_argument("--headless")  # Uncomment for headless mode on servers
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        return webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
+        if browser_choice == "Chrome":
+            options = ChromeOptions()
+            options.add_argument("--headless")
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            return webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
 
-    elif browser_choice == "Firefox":
-        st.write("Launching Firefox...")
-        options = FirefoxOptions()
-        options.add_argument("--headless")  # Uncomment for headless mode on servers
-        return webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()), options=options)
+        elif browser_choice == "Firefox":
+            options = FirefoxOptions()
+            options.add_argument("--headless")
+            return webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()), options=options)
 
-    elif browser_choice == "Safari":
-        st.write("Launching Safari...")
-        return webdriver.Safari()
-
-    else:
-        st.error("Unsupported browser!")
+    except Exception as e:
+        logging.error(f"Browser initialization failed: {e}")
+        st.error(f"An error occurred while starting the browser: {e}")
         return None
 
 def login():
-    """
-    Handles the Azure AD login using MSAL and Selenium.
-    """
     flow = app.initiate_auth_code_flow(scopes=scopes, redirect_uri=redirect_uri)
 
     if "auth_uri" not in flow:
@@ -275,7 +262,6 @@ def login():
         return None
 
     auth_uri = flow["auth_uri"]
-
     browser = choose_browser()
     if not browser:
         return None
@@ -283,22 +269,18 @@ def login():
     try:
         browser.get(auth_uri)
 
-        # Wait for redirect to your redirect_uri
-        WebDriverWait(browser, 200).until(EC.url_contains(redirect_uri))
+        WebDriverWait(browser, 300).until(EC.url_contains(redirect_uri))
         redirected_url = browser.current_url
         browser.quit()
 
-        # Parse query parameters from redirected URL
         url = urllib.parse.urlparse(redirected_url)
         query_params = dict(urllib.parse.parse_qsl(url.query))
 
         if "code" not in query_params:
-            st.error("Authorization code not found in redirect URL.")
+            st.error("Authorization code not found.")
             return None
 
-        # Acquire token using the auth code flow
         result = app.acquire_token_by_auth_code_flow(flow, query_params)
-
         if "access_token" in result:
             st.success("Logged in successfully!")
             return result["access_token"]
@@ -313,22 +295,7 @@ def login():
 # Main App Logic
 if not st.session_state.get("login_token"):
     st.title("🏟️ AFC Venue - MBM Hospitality")
-    st.markdown("""
-    **Welcome to the Venue Hospitality Dashboard!**  
-    This app provides insights into MBM Sales Performance and User Metrics. 
-
-    **Note:** Please log in using AFC credentials to access the app.
-    """)
-
     if st.button("🔐 Login"):
         token = login()
         if token:
-            st.session_state["login_token"] = token
-        else:
-            st.error("Failed to login.")
-else:
-    st.sidebar.title("🧭 Navigation")
-    app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
-    st.sidebar.write("Logged in successfully!")
-
-
+            st.session
