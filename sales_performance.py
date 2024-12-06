@@ -181,10 +181,10 @@ def run_app():
         # Display results
         if not filtered_data.empty:
             st.write("### 💼 Total Accumulated Sales")
-            st.write(f"Total Accumulated Sales (Static) since June 18th : **£{static_total:,.2f}** 🎉")
+            st.write(f"Total Accumulated Sales (Static) since June 18th : **£{static_total:,.2f}** ")
 
             st.write("### 💼 Filtered Accumulated Sales")
-            st.write(f"Total Accumulated Sales (Filtered): **£{dynamic_total:,.2f}** 🎉")
+            st.write(f"Total Accumulated Sales (Filtered): **£{dynamic_total:,.2f}** ")
             
 
             # Apply discount filter to total_discount_value table
@@ -205,7 +205,7 @@ def run_app():
 
             # Total Sales Per Fixture Section
             st.write("### ⚽ Total Sales Summary")
-            st.write(f"Accumulated sales with 'Other' payments included: **£{other_sales_total:,.2f}** 🎉")
+            st.write(f"Accumulated sales with 'Other' payments included: **£{other_sales_total:,.2f}** ")
 
             # Group the data and calculate required metrics
             total_sold_per_match = (
@@ -270,19 +270,22 @@ def run_app():
                 if pd.notnull(row['Budget']) and row['Budget'] > 0 else "N/A", 
                 axis=1
             )
+
             # Format columns for display
             total_sold_per_match['RTS_Sales'] = total_sold_per_match['RTS_Sales'].apply(lambda x: f"£{x:,.0f}")
             total_sold_per_match['OtherSales'] = total_sold_per_match['OtherSales'].apply(lambda x: f"£{x:,.0f}")
-            total_sold_per_match['Budget'] = total_sold_per_match['Budget'].apply(
+            total_sold_per_match['Budget Target'] = total_sold_per_match['Budget'].apply(
                 lambda x: f"£{x:,.0f}" if pd.notnull(x) else "None"
             )
 
             # Reorder columns
             total_sold_per_match = total_sold_per_match[
-                ['Fixture Name', 'DaysToFixture', 'CoversSold', 'RTS_Sales', 'OtherSales', 'Avg Spend', 'BudgetPercentage']
+                ['Fixture Name', 'DaysToFixture', 'CoversSold', 'RTS_Sales', 'OtherSales', 'Avg Spend', 'Budget Target', 'BudgetPercentage']
             ]
+
             # Display the final table
             st.dataframe(total_sold_per_match)
+
             
             # Apply discount filter to total_discount_value table
             total_discount_value = filtered_data_without_excluded_keywords.groupby(
@@ -295,8 +298,8 @@ def run_app():
         
             
             # Other Summary Table
-            st.write("### ⚽ Sales Summary - Discount Column Analysis")
-            # Apply discount filter to total_discount_value table
+            st.write("### Other Payments")
+            # Apply discount filter to total_discsount_value table
             total_discount_value = filtered_data_without_excluded_keywords.groupby(
                 ['Order Id', 'Country Code', 'First Name', 'Surname', 'Fixture Name', 'GLCode', 'CreatedOn']
             )[['Discount', 'DiscountValue', 'TotalPrice']].sum().reset_index()
@@ -329,7 +332,7 @@ def run_app():
             )
 
             # Total Sales Per Package
-            st.write("### 🎟️ Total Sales Per Package")
+            st.write("### 🎟️ MBM Package Sales")
             total_sold_per_package = filtered_data_excluding_packages.groupby('Package Name')['TotalPrice'].sum().reset_index()
             total_sold_per_package = pd.merge(
                 total_sold_per_package,
@@ -357,7 +360,7 @@ def run_app():
             )
 
             # Total Sales Per Location
-            st.write("### 🏟️ Total Sales Per Location")
+            st.write("### 🏟️ Payment Channel")
             total_sold_per_location = filtered_data_excluding_packages.groupby('SaleLocation')['TotalPrice'].sum().reset_index()
             total_sold_per_location = pd.merge(
                 total_sold_per_location,
@@ -394,8 +397,8 @@ def run_app():
             total_covers_sold = woolwich_restaurant_data['Seats'].sum()
 
             # Display total sales revenue and covers sold
-            st.write(f"Total Sales Revenue: **£{total_sales_revenue:,.0f}** 🎉")
-            st.write(f"Total Covers Sold: **{int(total_covers_sold)}** 🎉")
+            st.write(f"Total Sales Revenue: **£{total_sales_revenue:,.0f}** ")
+            st.write(f"Total Covers Sold: **{int(total_covers_sold)}** ")
 
             # Group by Fixture Name and KickOffEventStart to calculate Covers Sold and Revenue
             woolwich_sales_summary = woolwich_restaurant_data.groupby(['Fixture Name', 'KickOffEventStart']).agg({
