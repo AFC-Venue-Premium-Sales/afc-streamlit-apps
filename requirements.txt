@@ -67,4 +67,6 @@ selenium
 webdriver-manager
 Flask
 Flask-OAuthlib
+werkzeug==0.16.1
+
 

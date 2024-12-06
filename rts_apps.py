@@ -198,64 +198,56 @@
 
 
 import streamlit as st
-from flask import Flask, redirect, request, session, url_for
-from flask_oauthlib.client import OAuth
+from flask import Flask, redirect, request, session, jsonify
+from authlib.integrations.flask_client import OAuth
 import threading
 
 # Azure AD Configuration
 CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
 CLIENT_SECRET = "your_client_secret_here"  # Replace this with your client secret
 TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"
-REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app"  # Registered Redirect URI
-AUTHORIZATION_URL = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/authorize"
-TOKEN_URL = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token"
+REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app"  # Must match Azure AD registration
+AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
+AUTHORIZE_URL = f"{AUTHORITY}/oauth2/v2.0/authorize"
+TOKEN_URL = f"{AUTHORITY}/oauth2/v2.0/token"
+SCOPES = "openid profile email User.Read"
 
 # Flask App
 app = Flask(__name__)
 app.secret_key = "random_secret_key_for_flask"  # Replace with a secure secret key
 
-# Flask-OAuthlib OAuth2 Configuration
+# OAuth Configuration
 oauth = OAuth(app)
-azure = oauth.remote_app(
+azure = oauth.register(
     "azure",
-    consumer_key=CLIENT_ID,
-    consumer_secret=CLIENT_SECRET,
-    request_token_params={"scope": "openid profile email User.Read"},
-    base_url="https://graph.microsoft.com/v1.0/",
-    request_token_url=None,
-    access_token_method="POST",
+    client_id=CLIENT_ID,
+    client_secret=CLIENT_SECRET,
+    api_base_url="https://graph.microsoft.com/v1.0/",
     access_token_url=TOKEN_URL,
-    authorize_url=AUTHORIZATION_URL,
+    authorize_url=AUTHORIZE_URL,
+    client_kwargs={"scope": SCOPES},
 )
 
 # Flask Routes
 @app.route("/")
 def index():
-    return redirect(url_for("login"))
+    return redirect("/login")
 
 
 @app.route("/login")
 def login():
-    return azure.authorize(callback=REDIRECT_URI)
+    redirect_uri = REDIRECT_URI
+    return azure.authorize_redirect(redirect_uri)
 
 
-@app.route("/")
-def authorized():  # Match the root URI for the redirect
-    resp = azure.authorized_response()
-    if resp is None or "access_token" not in resp:
-        return f"Access denied: reason={request.args['error']} description={request.args['error_description']}"
-
-    # Store the access token in Flask session
-    session["azure_token"] = (resp["access_token"], "")
-    return "You are logged in! Return to Streamlit app."
+@app.route("/auth")
+def auth():
+    token = azure.authorize_access_token()
+    session["user"] = token
+    return jsonify(token)
 
 
-@azure.tokengetter
-def get_azure_oauth_token():
-    return session.get("azure_token")
-
-
-# Start Flask server in a separate thread
+# Start Flask server in a thread
 def run_flask():
     app.run(port=5000, host="0.0.0.0")
 
@@ -268,7 +260,6 @@ thread.start()
 if "login_token" not in st.session_state:
     st.session_state["login_token"] = None
 
-# Streamlit Login Logic
 st.title("🏟️ AFC Venue - MBM Hospitality")
 if not st.session_state["login_token"]:
     st.markdown("""
@@ -278,8 +269,7 @@ if not st.session_state["login_token"]:
 
     if st.button("🔐 Login"):
         # Redirect user to the Flask login route
-        web_auth_url = f"http://localhost:5000/login"
-        st.write(f"Go to [this link]({web_auth_url}) to log in.")
+        st.markdown(f"[Click here to log in](http://localhost:5000/login)")
         st.info("Once logged in, return to this app.")
 else:
     st.sidebar.write("You are logged in!")
@@ -293,3 +283,4 @@ else:
     elif app_choice == "📈 User Performance":
         st.title("📈 User Performance")
         st.write("Display user performance metrics here.")
+
