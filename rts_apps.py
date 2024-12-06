@@ -224,11 +224,12 @@ def login_with_auth_code_flow():
 
     # Open the login page in the user's default browser
     auth_uri = flow["auth_uri"]
+    st.markdown(f"[Click here to log in]({auth_uri})")  # Fallback link
     webbrowser.open(auth_uri, new=1)
     st.info("Please complete the login process in the browser.")
 
     # Wait for the user to be redirected back with the authorization code
-    query_params = st.experimental_get_query_params()
+    query_params = st.query_params  # Updated from `st.experimental_get_query_params`
 
     if "code" not in query_params:
         st.warning("Waiting for login to complete...")
