@@ -195,79 +195,53 @@
 #         user_performance_api.run_app()
         
         
-import os
-from flask import Flask, request, redirect, session
-from onelogin.saml2.auth import OneLogin_Saml2_Auth
-import threading
 import streamlit as st
+from onelogin.saml2.auth import OneLogin_Saml2_Auth
+import base64
+import xml.etree.ElementTree as ET
+import os
 
-# Flask App Configuration
-app = Flask(__name__)
-app.secret_key = os.urandom(24)  # Secure random key for session handling
-saml_config_path = "saml_config.json"  # Ensure this file is correctly configured
+# Load SAML Configuration
+SAML_CONFIG_PATH = "saml_config.json"
 
-# Initialize SAML Authentication
-def init_saml_auth(req):
-    """
-    Initialize the SAML authentication object.
-    """
-    return OneLogin_Saml2_Auth(req, custom_base_path=".")
+# Azure AD Configuration
+SAML_ENDPOINT = "https://login.microsoftonline.com/<tenant_id>/saml2"
+ACS_URL = "https://your-streamlit-app/saml/callback"
 
-@app.route("/saml", methods=["POST", "GET"])
-def saml_acs():
-    """
-    Assertion Consumer Service (ACS) endpoint to process SAML responses.
-    """
-    req = {
-        "http_host": request.host,
-        "https": "on" if request.scheme == "https" else "off",
-        "script_name": request.path,
-        "get_data": request.args.copy(),
-        "post_data": request.form.copy(),
-    }
-    auth = init_saml_auth(req)
-    auth.process_response()
-    errors = auth.get_errors()
-    if len(errors) > 0:
-        return {"errors": errors}, 400
-
-    if not auth.is_authenticated():
-        return {"error": "User not authenticated"}, 403
-
-    # Save user information in session
-    session["user"] = auth.get_attributes()
-    session["nameid"] = auth.get_nameid()
-    return redirect("/")
-
-@app.route("/")
-def index():
-    """
-    Root route to verify the user session.
-    """
-    if "user" in session:
-        return {"status": "success", "user": session["user"]}
-    else:
-        return redirect("/saml")
-
-# Start Flask in a thread
-def run_flask():
-    app.run(port=5050, host="0.0.0.0")
-
-thread = threading.Thread(target=run_flask)
-thread.daemon = True
-thread.start()
-
-# Streamlit Integration
+# Streamlit App
 st.title("Azure AD SAML Authentication")
-if "user" not in st.session_state:
-    st.session_state["user"] = None
 
-if st.session_state["user"] is None:
-    # SAML Login Button
-    st.markdown("[Click here to log in](https://afc-apps-hospitality.streamlit.app/saml)")
-    st.info("You'll be redirected to the login page.")
+if "saml_response" not in st.session_state:
+    st.session_state["saml_response"] = None
+
+if not st.session_state["saml_response"]:
+    # Step 1: Redirect to Azure AD
+    st.markdown(f"[Click here to log in with SAML]({SAML_ENDPOINT})")
+    st.info("You'll be redirected to Azure AD for login.")
+
+    # Step 2: Paste the SAML Response for Processing
+    st.write("Paste the SAML Response returned by Azure AD:")
+    saml_response = st.text_area("SAML Response (Base64-encoded)")
+
+    if st.button("Process SAML Response"):
+        if saml_response:
+            try:
+                # Decode the Base64-encoded SAML response
+                decoded_response = base64.b64decode(saml_response)
+
+                # Parse the XML for validation
+                root = ET.fromstring(decoded_response)
+                user_info = root.find(".//{urn:oasis:names:tc:SAML:2.0:assertion}NameID").text
+                st.session_state["saml_response"] = user_info
+                st.success(f"Login successful! Welcome {user_info}")
+            except Exception as e:
+                st.error(f"Failed to process SAML Response: {e}")
+        else:
+            st.warning("Please paste a valid SAML Response.")
 else:
-    st.success(f"Logged in as: {st.session_state['user']['nameid']}")
+    # Step 3: Display Logged-in User Info
+    st.success(f"Logged in as: {st.session_state['saml_response']}")
     st.sidebar.title("Navigation")
     st.sidebar.radio("Go to:", ["Dashboard", "Settings"])
+
 
