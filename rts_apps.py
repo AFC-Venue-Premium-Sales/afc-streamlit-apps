@@ -195,83 +195,51 @@
 #         user_performance_api.run_app()
         
         
-
 import streamlit as st
-from msal import PublicClientApplication
-import urllib.parse
-import webbrowser
+from onelogin.saml2.auth import OneLogin_Saml2_Auth, OneLogin_Saml2_Settings
+import base64
+import xml.etree.ElementTree as ET
 
-# Azure AD Configuration
-CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
+# Azure AD SAML Configuration
 TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"
-REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app"
-SCOPES = ["User.Read"]
-AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
+SAML_ENDPOINT = f"https://login.microsoftonline.com/{TENANT_ID}/saml2"
+ACS_URL = "https://afc-apps-hospitality.streamlit.app/saml"  # Mock Assertion Consumer Service URL
 
-# MSAL Application
-app = PublicClientApplication(client_id=CLIENT_ID, authority=AUTHORITY)
+# Streamlit App Logic
+st.title("Azure AD SAML Authentication")
 
-def login_with_browser():
-    # Step 1: Initiate the Authorization Code Flow
-    try:
-        flow = app.initiate_auth_code_flow(scopes=SCOPES, redirect_uri=REDIRECT_URI)
-        if "auth_uri" not in flow:
-            st.error("Failed to generate authorization URL.")
-            return None
+if "saml_response" not in st.session_state:
+    st.session_state["saml_response"] = None
 
-        auth_url = flow["auth_uri"]
-        st.write(f"Authorization URL: {auth_url}")  # Debug: Display the URL in the app
-        st.markdown(f"[Click here to log in]({auth_url})")  # Provide clickable link
-        webbrowser.open(auth_url)  # Open browser automatically
-        st.info("Please complete login in the opened browser window.")
+if not st.session_state["saml_response"]:
+    # Step 1: Redirect to Azure AD's SAML Endpoint
+    st.markdown(
+        f"[Click here to log in with SAML](https://login.microsoftonline.com/{TENANT_ID}/saml2?SAMLRequest=<GENERATED_XML_REQUEST>)"
+    )
+    st.info("You'll be redirected to Azure AD for login.")
 
-        # Step 2: Wait for the user to paste the redirected URL
-        redirected_url = st.text_input("Paste the URL you were redirected to after login:")
-        if redirected_url:
-            # Step 3: Parse the Authorization Code from URL
-            query_params = urllib.parse.urlparse(redirected_url).query
-            params = dict(urllib.parse.parse_qsl(query_params))
-            if "code" in params:
-                try:
-                    # Step 4: Exchange the Code for an Access Token
-                    result = app.acquire_token_by_authorization_code(
-                        code=params["code"],
-                        scopes=SCOPES,
-                        redirect_uri=REDIRECT_URI
-                    )
-                    if "access_token" in result:
-                        st.success("Login successful!")
-                        return result["access_token"]
-                    else:
-                        st.error("Failed to retrieve access token.")
-                        return None
-                except Exception as e:
-                    st.error(f"Error during login: {e}")
-                    return None
+    # Step 2: Manually paste SAML Response for testing
+    st.write("Paste the SAML Response XML returned by Azure AD:")
+    saml_response = st.text_area("SAML Response (Base64-encoded)")
+
+    if st.button("Process SAML Response"):
+        if saml_response:
+            try:
+                # Decode the Base64-encoded SAML response
+                decoded_response = base64.b64decode(saml_response)
+
+                # Parse the XML for validation (replace with `python-saml` validation in production)
+                root = ET.fromstring(decoded_response)
+                user_info = root.find(".//{urn:oasis:names:tc:SAML:2.0:assertion}NameID").text
+                st.session_state["saml_response"] = user_info
+                st.success(f"Login successful! Welcome {user_info}")
+            except Exception as e:
+                st.error(f"Failed to process SAML Response: {e}")
         else:
-            st.warning("Waiting for redirected URL...")
-            return None
-    except Exception as e:
-        st.error(f"An error occurred: {e}")
-        return None
-
-# Main Streamlit App Logic
-st.title("Azure AD Login")
-if "login_token" not in st.session_state:
-    st.session_state["login_token"] = None
-
-if not st.session_state["login_token"]:
-    if st.button("Log in"):
-        token = login_with_browser()
-        if token:
-            st.session_state["login_token"] = token
+            st.warning("Please paste a valid SAML Response.")
 else:
+    # Step 3: User logged in
+    st.success(f"Logged in as: {st.session_state['saml_response']}")
     st.sidebar.title("Navigation")
-    st.sidebar.write("You are logged in!")
-    app_choice = st.sidebar.radio("Choose an option:", ["📊 Sales Performance", "📈 User Metrics"])
-    if app_choice == "📊 Sales Performance":
-        st.title("Sales Performance")
-        st.write("Display sales performance metrics here.")
-    elif app_choice == "📈 User Metrics":
-        st.title("User Metrics")
-        st.write("Display user metrics here.")
+    st.sidebar.radio("Go to:", ["Dashboard", "Settings"])
+
