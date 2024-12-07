@@ -195,20 +195,21 @@
 #         user_performance_api.run_app()
         
         
-import streamlit as st
+import os
 from flask import Flask, request, redirect, session
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
 import threading
-import socket
+import streamlit as st
 
-# Flask App Setup
+# Flask App Configuration
 app = Flask(__name__)
-app.secret_key = "YOUR_SECRET_KEY"  # Replace with a secure secret key
-saml_config_path = "saml_config.json"
+app.secret_key = os.urandom(24)  # Secure random key for session handling
+saml_config_path = "saml_config.json"  # Ensure this file is correctly configured
 
+# Initialize SAML Authentication
 def init_saml_auth(req):
     """
-    Initialize the SAML authentication using the request.
+    Initialize the SAML authentication object.
     """
     return OneLogin_Saml2_Auth(req, custom_base_path=".")
 
@@ -233,43 +234,40 @@ def saml_acs():
     if not auth.is_authenticated():
         return {"error": "User not authenticated"}, 403
 
+    # Save user information in session
     session["user"] = auth.get_attributes()
     session["nameid"] = auth.get_nameid()
     return redirect("/")
 
-def find_free_port():
+@app.route("/")
+def index():
     """
-    Find a free port dynamically.
+    Root route to verify the user session.
     """
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(("", 0))
-    port = s.getsockname()[1]
-    s.close()
-    return port
+    if "user" in session:
+        return {"status": "success", "user": session["user"]}
+    else:
+        return redirect("/saml")
 
-# Start the Flask app in a background thread
-flask_port = find_free_port()
-
+# Start Flask in a thread
 def run_flask():
-    """
-    Start the Flask app in a separate thread.
-    """
-    app.run(port=flask_port, host="0.0.0.0")
+    app.run(port=5050, host="0.0.0.0")
 
 thread = threading.Thread(target=run_flask)
 thread.daemon = True
 thread.start()
 
-# Streamlit App Logic
+# Streamlit Integration
 st.title("Azure AD SAML Authentication")
 if "user" not in st.session_state:
     st.session_state["user"] = None
 
 if st.session_state["user"] is None:
-    # Update login link dynamically based on Flask's port
-    st.markdown(f"[Click here to log in](http://localhost:{flask_port}/saml)")
+    # SAML Login Button
+    st.markdown("[Click here to log in](https://afc-apps-hospitality.streamlit.app/saml)")
     st.info("You'll be redirected to the login page.")
 else:
     st.success(f"Logged in as: {st.session_state['user']['nameid']}")
     st.sidebar.title("Navigation")
     st.sidebar.radio("Go to:", ["Dashboard", "Settings"])
+
