@@ -240,12 +240,17 @@ def run_flask():
     """
     Start the Flask app in a separate thread.
     """
-    app.run(port=5050, host="0.0.0.0")
+    app.run(port=0, host="0.0.0.0")
 
 # Start the Flask app in a background thread
 thread = threading.Thread(target=run_flask)
 thread.daemon = True
 thread.start()
+
+# Update Streamlit link dynamically based on the selected port
+with app.test_request_context():
+    flask_port = app.config["SERVER_PORT"]
+    st.markdown(f"[Click here to log in](http://localhost:{flask_port}/saml)")
 
 # Streamlit App Logic
 st.title("Azure AD SAML Authentication")
