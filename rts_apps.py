@@ -199,6 +199,7 @@ import streamlit as st
 from flask import Flask, request, redirect, session
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
 import threading
+import socket
 
 # Flask App Setup
 app = Flask(__name__)
@@ -236,21 +237,28 @@ def saml_acs():
     session["nameid"] = auth.get_nameid()
     return redirect("/")
 
+def find_free_port():
+    """
+    Find a free port dynamically.
+    """
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind(("", 0))
+    port = s.getsockname()[1]
+    s.close()
+    return port
+
+# Start the Flask app in a background thread
+flask_port = find_free_port()
+
 def run_flask():
     """
     Start the Flask app in a separate thread.
     """
-    app.run(port=0, host="0.0.0.0")
+    app.run(port=flask_port, host="0.0.0.0")
 
-# Start the Flask app in a background thread
 thread = threading.Thread(target=run_flask)
 thread.daemon = True
 thread.start()
-
-# Update Streamlit link dynamically based on the selected port
-with app.test_request_context():
-    flask_port = app.config["SERVER_PORT"]
-    st.markdown(f"[Click here to log in](http://localhost:{flask_port}/saml)")
 
 # Streamlit App Logic
 st.title("Azure AD SAML Authentication")
@@ -258,7 +266,8 @@ if "user" not in st.session_state:
     st.session_state["user"] = None
 
 if st.session_state["user"] is None:
-    st.markdown("[Click here to log in](http://localhost:5050/saml)")
+    # Update login link dynamically based on Flask's port
+    st.markdown(f"[Click here to log in](http://localhost:{flask_port}/saml)")
     st.info("You'll be redirected to the login page.")
 else:
     st.success(f"Logged in as: {st.session_state['user']['nameid']}")
