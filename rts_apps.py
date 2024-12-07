@@ -196,20 +196,26 @@
         
         
 import streamlit as st
-from onelogin.saml2.auth import OneLogin_Saml2_Auth
 from flask import Flask, request, redirect, session
+from onelogin.saml2.auth import OneLogin_Saml2_Auth
 import threading
 
 # Flask App Setup
 app = Flask(__name__)
-app.secret_key = "YOUR_SECRET_KEY"  # Replace with a strong secret key
+app.secret_key = "YOUR_SECRET_KEY"  # Replace with a secure secret key
 saml_config_path = "saml_config.json"
 
 def init_saml_auth(req):
+    """
+    Initialize the SAML authentication using the request.
+    """
     return OneLogin_Saml2_Auth(req, custom_base_path=".")
 
-@app.route("/saml", methods=["POST"])
+@app.route("/saml", methods=["POST", "GET"])
 def saml_acs():
+    """
+    Assertion Consumer Service (ACS) endpoint to process SAML responses.
+    """
     req = {
         "http_host": request.host,
         "https": "on" if request.scheme == "https" else "off",
@@ -231,23 +237,25 @@ def saml_acs():
     return redirect("/")
 
 def run_flask():
+    """
+    Start the Flask app in a separate thread.
+    """
     app.run(port=5050, host="0.0.0.0")
 
+# Start the Flask app in a background thread
 thread = threading.Thread(target=run_flask)
 thread.daemon = True
 thread.start()
 
-# Streamlit Logic
+# Streamlit App Logic
 st.title("Azure AD SAML Authentication")
 if "user" not in st.session_state:
     st.session_state["user"] = None
 
 if st.session_state["user"] is None:
-    # SAML Login Button
     st.markdown("[Click here to log in](http://localhost:5050/saml)")
+    st.info("You'll be redirected to the login page.")
 else:
     st.success(f"Logged in as: {st.session_state['user']['nameid']}")
     st.sidebar.title("Navigation")
     st.sidebar.radio("Go to:", ["Dashboard", "Settings"])
-
-
