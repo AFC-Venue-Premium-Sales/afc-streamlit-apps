@@ -194,10 +194,7 @@
 #     elif app_choice == "📈 User Performance":
 #         user_performance_api.run_app()
         
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
+from playwright.sync_api import sync_playwright
 import urllib.parse
 
 # Azure AD Configuration
@@ -206,41 +203,36 @@ TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"  # Replace with your Tenant I
 REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app"  # Replace with your Redirect URI
 SCOPES = ["User.Read"]
 
-def selenium_login():
-    options = Options()
-    options.add_argument("--headless")  # Run in headless mode
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
+def playwright_login():
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)  # Set headless=False for debugging
+        page = browser.new_page()
 
-    # Start Selenium with WebDriver Manager
-    browser = webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()), options=options
-    )
+        # Generate the authentication URL
+        auth_url = (
+            f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/authorize?"
+            f"client_id={CLIENT_ID}&response_type=code&redirect_uri={REDIRECT_URI}"
+            f"&response_mode=query&scope={' '.join(SCOPES)}"
+        )
+        page.goto(auth_url)
 
-    # Generate the authentication URL
-    auth_url = (
-        f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/authorize?"
-        f"client_id={CLIENT_ID}&response_type=code&redirect_uri={REDIRECT_URI}"
-        f"&response_mode=query&scope={' '.join(SCOPES)}"
-    )
-    browser.get(auth_url)
+        # Wait for the redirect to your Redirect URI
+        page.wait_for_url(f"{REDIRECT_URI}*", timeout=30000)  # Wait for up to 30 seconds
+        redirected_url = page.url
 
-    # Wait for the redirect to your Redirect URI
-    browser.implicitly_wait(30)  # Adjust timeout if needed
-    redirected_url = browser.current_url
+        # Parse the authorization code from the URL
+        parsed_url = urllib.parse.urlparse(redirected_url)
+        query_params = dict(urllib.parse.parse_qsl(parsed_url.query))
+        auth_code = query_params.get("code")
 
-    # Parse the authorization code from the URL
-    parsed_url = urllib.parse.urlparse(redirected_url)
-    query_params = dict(urllib.parse.parse_qsl(parsed_url.query))
-    auth_code = query_params.get("code")
+        browser.close()
 
-    browser.quit()
+        if not auth_code:
+            raise Exception("Failed to retrieve authorization code from the redirect URL.")
 
-    if not auth_code:
-        raise Exception("Failed to retrieve authorization code from the redirect URL.")
-
-    return auth_code
+        return auth_code
 
 # Test the script
-auth_code = selenium_login()
+auth_code = playwright_login()
 print("Authorization Code:", auth_code)
+
