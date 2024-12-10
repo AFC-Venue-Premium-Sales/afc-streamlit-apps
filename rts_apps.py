@@ -219,7 +219,7 @@ AUTH_URL = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/authorize
 TOKEN_URL = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token"
 SCOPES = "User.Read email profile openid"
 
-# Helper: Generate PKCE
+# PKCE Helper
 def generate_pkce_pair():
     code_verifier = base64.urlsafe_b64encode(os.urandom(32)).decode("utf-8").rstrip("=")
     code_challenge = base64.urlsafe_b64encode(
@@ -227,15 +227,14 @@ def generate_pkce_pair():
     ).decode("utf-8").rstrip("=")
     return code_verifier, code_challenge
 
-# Initialize Session State
+# Initialize PKCE
 if "code_verifier" not in st.session_state:
     code_verifier, code_challenge = generate_pkce_pair()
     st.session_state["code_verifier"] = code_verifier
     st.session_state["code_challenge"] = code_challenge
-else:
-    logging.debug(f"PKCE Loaded: Verifier={st.session_state['code_verifier']}")
+logging.debug(f"PKCE Initialized: Verifier={st.session_state['code_verifier']} Challenge={st.session_state['code_challenge']}")
 
-# Build Auth URL
+# Authorization URL
 def get_auth_url():
     params = {
         "client_id": CLIENT_ID,
@@ -247,7 +246,7 @@ def get_auth_url():
     }
     return f"{AUTH_URL}?{urlencode(params)}"
 
-# Exchange Token
+# Token Exchange
 def exchange_code_for_token(auth_code):
     data = {
         "client_id": CLIENT_ID,
@@ -259,19 +258,10 @@ def exchange_code_for_token(auth_code):
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     response = requests.post(TOKEN_URL, data=data, headers=headers)
     if response.status_code == 200:
+        logging.debug(f"Token Response: {response.json()}")
         return response.json()
     else:
         logging.error(f"Token Exchange Failed: {response.json()}")
-        return None
-
-# Fetch User Info
-def get_user_info():
-    headers = {"Authorization": f"Bearer {st.session_state['access_token']}"}
-    response = requests.get("https://graph.microsoft.com/v1.0/me", headers=headers)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        logging.error(f"Failed to fetch user info: {response.json()}")
         return None
 
 # App Logic
@@ -281,19 +271,14 @@ if "access_token" not in st.session_state:
 if not st.session_state["access_token"]:
     st.title("🏟️ AFC Venue - MBM Hospitality")
     st.markdown(f"[Click here to log in]({get_auth_url()})")
-
     query_params = st.experimental_get_query_params()
     if "code" in query_params:
         auth_code = query_params["code"][0]
         token_response = exchange_code_for_token(auth_code)
         if token_response:
             st.session_state["access_token"] = token_response["access_token"]
-            st.experimental_set_query_params()  # Clear query params
+            st.experimental_set_query_params()  # Clear params
             st.experimental_rerun()
 else:
     st.sidebar.title("Welcome!")
-    user_info = get_user_info()
-    if user_info:
-        st.sidebar.write(f"Hello, {user_info['displayName']}!")
-        st.write("You are logged in!")
-        st.write("User Info:", user_info)
+    st.write("You are logged in!")
