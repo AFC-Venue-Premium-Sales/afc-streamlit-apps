@@ -212,7 +212,7 @@ logging.basicConfig(
 
 # Azure AD Config
 CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
-TENANT_ID = "y068cb91a-8be0-49d7-be3a-38190b0ba021"
+TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"
 REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app"
 AUTH_URL = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/authorize"
 TOKEN_URL = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token"
