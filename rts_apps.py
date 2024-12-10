@@ -195,42 +195,51 @@
 #         user_performance_api.run_app()
         
 import streamlit as st
-from msal import PublicClientApplication
+import urllib.parse
 
 # Azure AD Configuration
 CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
 TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"
 AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
+REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app"
 SCOPES = ["User.Read"]
 
-# Initialize MSAL Application (Public Client)
-app = PublicClientApplication(client_id=CLIENT_ID, authority=AUTHORITY)
-
 # Streamlit App
-st.title("Azure AD Authentication with Device Code Flow")
+st.title("Azure AD Authentication with Implicit Flow")
 
 if "access_token" not in st.session_state:
     st.session_state["access_token"] = None
 
 if not st.session_state["access_token"]:
+    # Generate the Implicit Flow URL
     if st.button("Log in with Azure AD"):
+        auth_url = (
+            f"{AUTHORITY}/oauth2/v2.0/authorize?"
+            f"client_id={CLIENT_ID}&response_type=token&redirect_uri={REDIRECT_URI}&scope={' '.join(SCOPES)}&response_mode=fragment&state=12345"
+        )
+        st.info("Click the link below to log in:")
+        st.write(auth_url)
+
+        st.info(
+            "After logging in, you will be redirected to your app's URL with the token in the address bar. "
+            "Copy the full URL and paste it below."
+        )
+
+    # Capture the token
+    redirect_url = st.text_input("Paste the redirect URL after logging in:")
+    if st.button("Get Access Token"):
         try:
-            # Start the Device Code Flow
-            flow = app.initiate_device_flow(scopes=SCOPES)
-            if "user_code" not in flow:
-                st.error("Failed to initiate device flow. Please try again.")
+            # Parse the token from the URL fragment
+            fragment = urllib.parse.urlparse(redirect_url).fragment
+            params = dict(urllib.parse.parse_qsl(fragment))
+            access_token = params.get("access_token")
+
+            if not access_token:
+                st.error("Access token not found in the redirect URL.")
             else:
-                # Display user instructions
-                st.info(f"Go to {flow['verification_uri']} and enter the code: {flow['user_code']}")
-                st.write("Waiting for you to complete authentication...")
-                
-                # Poll for the token
-                token_response = app.acquire_token_by_device_flow(flow)
-                if "access_token" in token_response:
-                    st.session_state["access_token"] = token_response["access_token"]
-                    st.success("Login successful!")
-                else:
-                    st.error(f"Error obtaining access token: {token_response}")
+                st.session_state["access_token"] = access_token
+                st.success("Login successful!")
+                st.write(f"Access Token: {access_token[:100]}... (truncated)")
         except Exception as e:
             st.error(f"An error occurred: {e}")
 else:
