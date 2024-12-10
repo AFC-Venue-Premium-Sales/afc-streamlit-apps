@@ -50,14 +50,24 @@ def run_app():
         filtered_data = loaded_api_df.copy()
 
         if date_range:
-            # Parse date_range to pandas Timestamp
+            # Convert date_range to pandas Timestamps
             min_date = pd.Timestamp(date_range[0])
             max_date = pd.Timestamp(date_range[1]) if len(date_range) == 2 else pd.Timestamp(date_range[0])
+
+            # Ensure 'CreatedOn' is in datetime format
+            filtered_data['CreatedOn'] = pd.to_datetime(filtered_data['CreatedOn'], errors='coerce')
+
+            # Log the date values for debugging
+            st.write(f"Filtering data from {min_date} to {max_date}")
             
+            # Drop rows with invalid dates
+            filtered_data = filtered_data.dropna(subset=['CreatedOn'])
+
             # Apply date filtering
             filtered_data = filtered_data[
                 (filtered_data['CreatedOn'] >= min_date) & (filtered_data['CreatedOn'] <= max_date)
             ]
+
 
 
         if selected_users:
