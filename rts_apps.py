@@ -194,45 +194,36 @@
 #     elif app_choice == "📈 User Performance":
 #         user_performance_api.run_app()
         
-from playwright.sync_api import sync_playwright
-import urllib.parse
+import requests
+import streamlit as st
 
-# Azure AD Configuration
-CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"  # Replace with your Client ID
-TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"  # Replace with your Tenant ID
-REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app"  # Replace with your Redirect URI
-SCOPES = ["User.Read"]
+# Define your app URL
+APP_HOST = "https://afc-apps-hospitality.streamlit.app"
 
-def playwright_login():
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)  # Set headless=False for debugging
-        page = browser.new_page()
+def get_user_info():
+    """Fetch user info from Azure AD via /.auth/me."""
+    try:
+        # Call the /.auth/me endpoint
+        response = requests.get(f"{APP_HOST}/.auth/me")
+        if response.status_code == 200:
+            user_info = response.json()
+            return user_info
+        else:
+            st.error(f"Error: Unable to fetch user info (status {response.status_code})")
+            return None
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
+        return None
 
-        # Generate the authentication URL
-        auth_url = (
-            f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/authorize?"
-            f"client_id={CLIENT_ID}&response_type=code&redirect_uri={REDIRECT_URI}"
-            f"&response_mode=query&scope={' '.join(SCOPES)}"
-        )
-        page.goto(auth_url)
+# Streamlit App
+st.title("Azure AD SSO Login Test")
 
-        # Wait for the redirect to your Redirect URI
-        page.wait_for_url(f"{REDIRECT_URI}*", timeout=30000)  # Wait for up to 30 seconds
-        redirected_url = page.url
+st.info("Checking SSO login via Azure App Service Authentication")
 
-        # Parse the authorization code from the URL
-        parsed_url = urllib.parse.urlparse(redirected_url)
-        query_params = dict(urllib.parse.parse_qsl(parsed_url.query))
-        auth_code = query_params.get("code")
-
-        browser.close()
-
-        if not auth_code:
-            raise Exception("Failed to retrieve authorization code from the redirect URL.")
-
-        return auth_code
-
-# Test the script
-auth_code = playwright_login()
-print("Authorization Code:", auth_code)
-
+if st.button("Check SSO Login"):
+    user_info = get_user_info()
+    if user_info:
+        st.success("SSO Login Successful!")
+        st.json(user_info)
+    else:
+        st.warning("SSO Login Failed. Are you logged in?")
