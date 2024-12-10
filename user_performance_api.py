@@ -50,11 +50,15 @@ def run_app():
         filtered_data = loaded_api_df.copy()
 
         if date_range:
-            min_date, max_date = (pd.Timestamp(date_range[0]), pd.Timestamp(date_range[1]) if len(date_range) == 2 else pd.Timestamp(date_range[0]))
+            # Parse date_range to pandas Timestamp
+            min_date = pd.Timestamp(date_range[0])
+            max_date = pd.Timestamp(date_range[1]) if len(date_range) == 2 else pd.Timestamp(date_range[0])
+            
+            # Apply date filtering
             filtered_data = filtered_data[
-                (filtered_data['CreatedOn'] >= min_date) &
-                (filtered_data['CreatedOn'] <= max_date)
+                (filtered_data['CreatedOn'] >= min_date) & (filtered_data['CreatedOn'] <= max_date)
             ]
+
 
         if selected_users:
             filtered_data = filtered_data[filtered_data['CreatedBy'].isin(selected_users)]
