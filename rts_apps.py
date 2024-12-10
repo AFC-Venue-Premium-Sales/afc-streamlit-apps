@@ -193,34 +193,73 @@
 
 #     elif app_choice == "📈 User Performance":
 #         user_performance_api.run_app()
-import requests
-import streamlit as st
 
-# Define your app URL
-APP_HOST = "https://afc-apps-hospitality.streamlit.app"
 
-def get_user_info():
-    """Fetch user info from Azure AD via /.auth/me."""
-    try:
-        response = requests.get(f"{APP_HOST}/.auth/me")
-        if response.status_code == 200:
-            return response.json()
-        else:
-            st.error(f"Error: Unable to fetch user info (status {response.status_code})")
-            return None
-    except Exception as e:
-        st.error(f"An error occurred: {e}")
-        return None
 
-# Streamlit App
-st.title("Azure AD Authentication")
+from flask import Flask, redirect, request, jsonify
+from onelogin.saml2.auth import OneLogin_Saml2_Auth
+from onelogin.saml2.utils import OneLogin_Saml2_Utils
 
-st.info("You are accessing an Azure AD authenticated app.")
+app = Flask(__name__)
 
-if st.button("Fetch User Info"):
-    user_info = get_user_info()
-    if user_info:
-        st.success("User Info Retrieved!")
-        st.json(user_info)
-    else:
-        st.warning("No user info available. Are you logged in?")
+def prepare_flask_request(request):
+    return {
+        'https': 'on' if request.scheme == 'https' else 'off',
+        'http_host': request.host,
+        'script_name': request.path,
+        'get_data': request.args.copy(),
+        'post_data': request.form.copy()
+    }
+
+def init_saml_auth(req):
+    return OneLogin_Saml2_Auth(req, custom_base_path="./saml")
+
+@app.route("/")
+def home():
+    return "<h1>Welcome to the App</h1><a href='/sso/login'>Log in with SAML</a>"
+
+@app.route("/sso/login")
+def sso_login():
+    req = prepare_flask_request(request)
+    auth = init_saml_auth(req)
+    return redirect(auth.login())
+
+@app.route("/sso/callback", methods=["POST"])
+def sso_callback():
+    req = prepare_flask_request(request)
+    auth = init_saml_auth(req)
+    auth.process_response()
+
+    # Debugging: Check for errors
+    errors = auth.get_errors()
+    if errors:
+        return jsonify({
+            "message": "Authentication failed",
+            "errors": errors,
+            "last_error_reason": auth.get_last_error_reason()
+        }), 500
+
+    # Check if authenticated
+    if not auth.is_authenticated():
+        return jsonify({"message": "Authentication failed"}), 401
+
+    attributes = auth.get_attributes()
+    email = attributes.get('email', [''])[0]
+    given_name = attributes.get('givenname', [''])[0]
+    surname = attributes.get('surname', [''])[0]
+
+    return jsonify({
+        "message": "Authentication successful",
+        "email": email,
+        "given_name": given_name,
+        "surname": surname
+    })
+
+@app.route("/sso/logout")
+def sso_logout():
+    req = prepare_flask_request(request)
+    auth = init_saml_auth(req)
+    return redirect(auth.logout())
+
+if __name__ == "__main__":
+    app.run(debug=False, port=5000)
