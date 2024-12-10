@@ -194,28 +194,27 @@
 #     elif app_choice == "📈 User Performance":
 #         user_performance_api.run_app()
         
-        
 import streamlit as st
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
-from onelogin.saml2.utils import OneLogin_Saml2_Utils
 import base64
-import json
-import os
+import xml.etree.ElementTree as ET
 
 # Load SAML Configuration
-SAML_CONFIG_PATH = "saml_config.json"
+def init_saml_auth(req):
+    return OneLogin_Saml2_Auth(req, custom_base_path=".")
 
-# Azure AD Configuration
-ACS_URL = "https://afc-apps-hospitality.streamlit.app/saml/callback"
-
-# Helper Function: Load SAML Configuration
-def load_saml_config():
-    with open(SAML_CONFIG_PATH, "r") as file:
-        return json.load(file)
-
-# Helper Function: Initialize SAML Auth
-def init_saml_auth(request_data):
-    return OneLogin_Saml2_Auth(request_data, custom_base_path=".")
+def generate_saml_request():
+    req = {
+        "http_host": "your-domain.com",
+        "https": "on",
+        "script_name": "/saml",
+        "get_data": {},
+        "post_data": {}
+    }
+    auth = init_saml_auth(req)
+    saml_request = auth.get_request()
+    saml_url = auth.redirect_to(auth.get_sso_url(), {"SAMLRequest": saml_request})
+    return saml_url
 
 # Streamlit App
 st.title("Azure AD SAML Authentication")
@@ -224,23 +223,9 @@ if "saml_response" not in st.session_state:
     st.session_state["saml_response"] = None
 
 if not st.session_state["saml_response"]:
-    # Step 1: Generate SAMLRequest and Redirect to Azure AD
-    saml_config = load_saml_config()
-    auth = OneLogin_Saml2_Auth(
-        {
-            "http_host": "afc-apps-hospitality.streamlit.app",
-            "https": "on",
-            "script_name": "/saml/callback",
-            "get_data": {},
-            "post_data": {},
-        },
-        custom_base_path="."
-    )
-    saml_request = auth.get_request()
-    saml_request_encoded = OneLogin_Saml2_Utils.deflate_and_base64_encode(saml_request)
-    login_url = f"{saml_config['idp']['singleSignOnService']['url']}?SAMLRequest={saml_request_encoded}"
-
-    st.markdown(f"[Click here to log in with SAML]({login_url})")
+    # Step 1: Generate SAMLRequest and redirect the user
+    saml_login_url = generate_saml_request()
+    st.markdown(f"[Click here to log in with SAML]({saml_login_url})")
     st.info("You'll be redirected to Azure AD for login.")
 
     # Step 2: Paste the SAML Response for Processing
@@ -250,38 +235,15 @@ if not st.session_state["saml_response"]:
     if st.button("Process SAML Response"):
         if saml_response:
             try:
-                # Decode the Base64-encoded SAML response
                 decoded_response = base64.b64decode(saml_response)
-
-                # Initialize request for SAML Authentication
-                request_data = {
-                    "http_host": "afc-apps-hospitality.streamlit.app",
-                    "https": "on",
-                    "script_name": "/saml/callback",
-                    "get_data": {},
-                    "post_data": {"SAMLResponse": decoded_response.decode()},
-                }
-                auth = init_saml_auth(request_data)
-                auth.process_response()
-                errors = auth.get_errors()
-
-                if errors:
-                    st.error(f"SAML Errors: {errors}")
-                elif not auth.is_authenticated():
-                    st.error("SAML Authentication failed!")
-                else:
-                    user_info = auth.get_nameid()
-                    st.session_state["saml_response"] = user_info
-                    st.success(f"Login successful! Welcome {user_info}")
+                root = ET.fromstring(decoded_response)
+                user_info = root.find(".//{urn:oasis:names:tc:SAML:2.0:assertion}NameID").text
+                st.session_state["saml_response"] = user_info
+                st.success(f"Login successful! Welcome {user_info}")
             except Exception as e:
                 st.error(f"Failed to process SAML Response: {e}")
         else:
             st.warning("Please paste a valid SAML Response.")
 else:
-    # Step 3: Display Logged-in User Info
     st.success(f"Logged in as: {st.session_state['saml_response']}")
-    st.sidebar.title("Navigation")
-    st.sidebar.radio("Go to:", ["Dashboard", "Settings"])
-
-
 
