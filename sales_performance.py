@@ -68,16 +68,21 @@ def run_app():
             filtered_data[column] = pd.to_numeric(filtered_data[column], errors='coerce')
 
         # Convert 'CreatedOn' column to datetime format for both filtered_data and loaded_api_df
-        filtered_data['CreatedOn'] = pd.to_datetime(filtered_data['CreatedOn'], errors='coerce')
-        loaded_api_df['CreatedOn'] = pd.to_datetime(loaded_api_df['CreatedOn'], errors='coerce')
-        
-        #  Merge with budget data
+        filtered_data['CreatedOn'] = pd.to_datetime(
+            filtered_data['CreatedOn'], format='%d-%m-%Y %H:%M', errors='coerce'
+        )
+        loaded_api_df['CreatedOn'] = pd.to_datetime(
+            loaded_api_df['CreatedOn'], format='%d-%m-%Y %H:%M', errors='coerce'
+        )
+
+        # Merge with budget data
         filtered_data = pd.merge(filtered_data, budget_df, how="left", left_on="Fixture Name", right_on="Fixture")
 
         # Parse 'KickOffEventStart' with the correct format
         filtered_data['KickOffEventStart'] = pd.to_datetime(
             filtered_data['KickOffEventStart'], format='%d-%m-%Y %H:%M', errors='coerce'
         )
+
 
         # Add 'Days to Fixture' column
         today = pd.Timestamp.now()
