@@ -217,9 +217,9 @@ def generate_pkce_pair():
         hashlib.sha256(code_verifier.encode("utf-8")).digest()
     ).decode("utf-8").rstrip("=")
 
-    # Debugging
-    print(f"Generated code_verifier: {code_verifier}")
-    print(f"Generated code_challenge: {code_challenge}")
+    # Log generated values
+    st.write(f"Generated code_verifier: {code_verifier}")
+    st.write(f"Generated code_challenge: {code_challenge}")
     return code_verifier, code_challenge
 
 # Initialize session state for tokens and PKCE
@@ -233,6 +233,7 @@ st.title("Azure AD OAuth 2.0 Authentication (PKCE)")
 if not st.session_state["access_token"]:
     # Step 1: Start Authorization Flow
     if st.button("Log in with Azure AD"):
+        # Generate PKCE pair
         code_verifier, code_challenge = generate_pkce_pair()
         st.session_state["code_verifier"] = code_verifier
 
@@ -246,6 +247,7 @@ if not st.session_state["access_token"]:
             "code_challenge_method": "S256",
         })
 
+        st.write(f"Authorization URL: {auth_url}")  # Log the auth URL
         st.info("Redirecting to Azure AD for login...")
         st.markdown(f"[Click here to login]({auth_url})")
 
@@ -255,8 +257,8 @@ if not st.session_state["access_token"]:
         auth_code = query_params["code"]
         if auth_code and st.session_state["code_verifier"]:
             try:
-                # Log code_verifier for debugging
-                print(f"Using code_verifier: {st.session_state['code_verifier']}")
+                # Log code_verifier used during token exchange
+                st.write(f"Using code_verifier: {st.session_state['code_verifier']}")
 
                 # Manually exchange authorization code for token
                 data = {
@@ -276,6 +278,7 @@ if not st.session_state["access_token"]:
                     st.experimental_rerun()  # Refresh to show logged-in state
                 else:
                     st.error(f"Error obtaining access token: {response.json()}")
+                    st.write(f"Token Request Data: {data}")  # Log request payload
             except Exception as e:
                 st.error(f"An error occurred: {e}")
 else:
@@ -286,4 +289,5 @@ else:
     # Example of displaying user data
     st.sidebar.title("Navigation")
     st.sidebar.radio("Go to:", ["Dashboard", "Settings"])
+
 
