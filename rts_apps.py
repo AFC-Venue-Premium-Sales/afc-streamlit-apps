@@ -197,16 +197,28 @@
         
 import streamlit as st
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
+from onelogin.saml2.utils import OneLogin_Saml2_Utils
 import base64
-import xml.etree.ElementTree as ET
-import os
+import json
 
 # Load SAML Configuration
 SAML_CONFIG_PATH = "saml_config.json"
 
 # Azure AD Configuration
 SAML_ENDPOINT = "https://login.microsoftonline.com/068cb91a-8be0-49d7-be3a-38190b0ba021/saml2"
-ACS_URL = "https://https://afc-apps-hospitality.streamlit.app/saml/callback"
+ACS_URL = "https://afc-apps-hospitality.streamlit.app/saml/callback"
+
+# Load the SAML configuration from the file
+def load_saml_config():
+    with open(SAML_CONFIG_PATH, "r") as file:
+        return json.load(file)
+
+# Initialize the SAML Authentication
+def init_saml_auth(request_data):
+    """
+    Initialize SAML authentication using the request data.
+    """
+    return OneLogin_Saml2_Auth(request_data, custom_base_path=".")
 
 # Streamlit App
 st.title("Azure AD SAML Authentication")
@@ -227,13 +239,30 @@ if not st.session_state["saml_response"]:
         if saml_response:
             try:
                 # Decode the Base64-encoded SAML response
-                decoded_response = base64.b64decode(saml_response)
+                decoded_response = base64.b64decode(saml_response).decode('utf-8')
 
-                # Parse the XML for validation
-                root = ET.fromstring(decoded_response)
-                user_info = root.find(".//{urn:oasis:names:tc:SAML:2.0:assertion}NameID").text
-                st.session_state["saml_response"] = user_info
-                st.success(f"Login successful! Welcome {user_info}")
+                # Initialize request for SAML Authentication
+                request_data = {
+                    "http_host": "afc-apps-hospitality.streamlit.app",
+                    "https": "on",
+                    "script_name": "/saml/callback",
+                    "get_data": {},
+                    "post_data": {"SAMLResponse": decoded_response},
+                }
+
+                # Initialize and process the SAML authentication
+                auth = init_saml_auth(request_data)
+                auth.process_response()
+                errors = auth.get_errors()
+
+                if errors:
+                    st.error(f"SAML Errors: {errors}")
+                elif not auth.is_authenticated():
+                    st.error("SAML Authentication failed!")
+                else:
+                    user_info = auth.get_nameid()
+                    st.session_state["saml_response"] = user_info
+                    st.success(f"Login successful! Welcome {user_info}")
             except Exception as e:
                 st.error(f"Failed to process SAML Response: {e}")
         else:
