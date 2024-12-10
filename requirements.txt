@@ -75,6 +75,9 @@ flask-saml2==0.3.0
 pyOpenSSL==17.5.0
 cryptography==39.0.0
 gunicorn==20.1.0
+identity[flask]
+gunicorn
+
 
 
 
