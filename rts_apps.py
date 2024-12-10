@@ -197,6 +197,9 @@
         
 import streamlit as st
 from msal import PublicClientApplication
+import secrets
+import base64
+import hashlib
 import urllib.parse
 
 # Azure AD Configuration
@@ -206,47 +209,56 @@ AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
 REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app"
 SCOPES = ["User.Read"]
 
-# Initialize MSAL Application
-app = PublicClientApplication(client_id=CLIENT_ID, authority=AUTHORITY)
-
-# Streamlit App
-st.title("Azure AD OAuth 2.0 Authentication")
+# Generate PKCE code_verifier and code_challenge
+def generate_pkce_pair():
+    code_verifier = secrets.token_urlsafe(64)
+    code_challenge = base64.urlsafe_b64encode(
+        hashlib.sha256(code_verifier.encode('utf-8')).digest()
+    ).decode('utf-8').rstrip('=')
+    return code_verifier, code_challenge
 
 if "access_token" not in st.session_state:
     st.session_state["access_token"] = None
+if "code_verifier" not in st.session_state:
+    st.session_state["code_verifier"] = None
+
+# Initialize MSAL App as a public client
+app = PublicClientApplication(client_id=CLIENT_ID, authority=AUTHORITY)
+
+st.title("Azure AD OAuth 2.0 Authentication (PKCE)")
 
 if not st.session_state["access_token"]:
     # Step 1: Start Authorization Flow
     if st.button("Log in with Azure AD"):
+        code_verifier, code_challenge = generate_pkce_pair()
+        st.session_state["code_verifier"] = code_verifier
+
         auth_url = app.get_authorization_request_url(
-            scopes=SCOPES, redirect_uri=REDIRECT_URI
+            scopes=SCOPES,
+            redirect_uri=REDIRECT_URI,
+            code_challenge=code_challenge,
+            code_challenge_method="S256"
         )
-        st.info("Please log in through the browser and paste the redirect URL below:")
-        st.write(auth_url)
+        st.info("Redirecting to Azure AD for login...")
+        st.markdown(f"[Click here to login]({auth_url})")
 
-    # Step 2: Handle Redirect URL
-    redirect_url = st.text_input("Paste the redirect URL after logging in:")
-    if st.button("Get Access Token"):
-        try:
-            # Extract authorization code from redirect URL
-            query_params = urllib.parse.urlparse(redirect_url).query
-            params = dict(urllib.parse.parse_qsl(query_params))
-            auth_code = params.get("code")
+    # Step 2: Handle the Redirect Automatically
+    query_params = st.query_params
+    if "code" in query_params:
+        auth_code = query_params["code"]
+        if auth_code and st.session_state["code_verifier"]:
+            token_response = app.acquire_token_by_authorization_code(
+                code=auth_code,
+                scopes=SCOPES,
+                redirect_uri=REDIRECT_URI,
+                code_verifier=st.session_state["code_verifier"]
+            )
 
-            if not auth_code:
-                st.error("Authorization code not found in the redirect URL.")
+            if "access_token" in token_response:
+                st.session_state["access_token"] = token_response["access_token"]
+                st.experimental_rerun()  # Refresh to show logged-in state
             else:
-                # Exchange authorization code for access token
-                token_response = app.acquire_token_by_authorization_code(
-                    code=auth_code, scopes=SCOPES, redirect_uri=REDIRECT_URI
-                )
-                if "access_token" in token_response:
-                    st.session_state["access_token"] = token_response["access_token"]
-                    st.success("Login successful!")
-                else:
-                    st.error(f"Error obtaining access token: {token_response}")
-        except Exception as e:
-            st.error(f"An error occurred: {e}")
+                st.error(f"Error obtaining access token: {token_response}")
 else:
     # User is logged in
     st.success("You are logged in!")
