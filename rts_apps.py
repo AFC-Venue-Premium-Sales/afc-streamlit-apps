@@ -205,8 +205,8 @@ import os
 SAML_CONFIG_PATH = "saml_config.json"
 
 # Azure AD Configuration
-SAML_ENDPOINT = "https://login.microsoftonline.com/<tenant_id>/saml2"
-ACS_URL = "https://your-streamlit-app/saml/callback"
+SAML_ENDPOINT = "https://login.microsoftonline.com/068cb91a-8be0-49d7-be3a-38190b0ba021/saml2"
+ACS_URL = "https://https://afc-apps-hospitality.streamlit.app/saml/callback"
 
 # Streamlit App
 st.title("Azure AD SAML Authentication")
