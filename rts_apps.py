@@ -240,6 +240,8 @@ if not st.session_state["access_token"]:
                 token_response = app.acquire_token_by_authorization_code(
                     code=auth_code, scopes=SCOPES, redirect_uri=REDIRECT_URI
                 )
+                st.write(token_response)
+                
                 if "access_token" in token_response:
                     st.session_state["access_token"] = token_response["access_token"]
                     st.success("Login successful!")
