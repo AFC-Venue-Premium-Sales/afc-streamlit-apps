@@ -194,56 +194,64 @@
 #     elif app_choice == "📈 User Performance":
 #         user_performance_api.run_app()
         
-import streamlit as st
-from onelogin.saml2.auth import OneLogin_Saml2_Auth
-import base64
-import xml.etree.ElementTree as ET
+   import streamlit as st
+from msal import PublicClientApplication
+import webbrowser
+import urllib.parse
 
-# Load SAML Configuration
-def init_saml_auth(req):
-    return OneLogin_Saml2_Auth(req, custom_base_path=".")
+# Azure AD Configuration
+CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"  # Replace with your Azure AD Client ID
+TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"  # Replace with your Tenant ID
+AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
+REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app"  # Replace with your app URL
+SCOPES = ["User.Read"]  # Permissions requested from Azure AD
 
-def generate_saml_request():
-    req = {
-        "http_host": "your-domain.com",
-        "https": "on",
-        "script_name": "/saml",
-        "get_data": {},
-        "post_data": {}
-    }
-    auth = init_saml_auth(req)
-    saml_request = auth.get_request()
-    saml_url = auth.redirect_to(auth.get_sso_url(), {"SAMLRequest": saml_request})
-    return saml_url
+# Initialize MSAL Application
+app = PublicClientApplication(client_id=CLIENT_ID, authority=AUTHORITY)
 
 # Streamlit App
-st.title("Azure AD SAML Authentication")
+st.title("Azure AD OAuth 2.0 Authentication")
 
-if "saml_response" not in st.session_state:
-    st.session_state["saml_response"] = None
+if "access_token" not in st.session_state:
+    st.session_state["access_token"] = None
 
-if not st.session_state["saml_response"]:
-    # Step 1: Generate SAMLRequest and redirect the user
-    saml_login_url = generate_saml_request()
-    st.markdown(f"[Click here to log in with SAML]({saml_login_url})")
-    st.info("You'll be redirected to Azure AD for login.")
+if not st.session_state["access_token"]:
+    # Step 1: Start Authorization Flow
+    if st.button("Log in with Azure AD"):
+        auth_url = app.get_authorization_request_url(
+            scopes=SCOPES, redirect_uri=REDIRECT_URI
+        )
+        webbrowser.open(auth_url)
+        st.info("Please log in through the browser and paste the redirect URL below.")
 
-    # Step 2: Paste the SAML Response for Processing
-    st.write("Paste the SAML Response returned by Azure AD:")
-    saml_response = st.text_area("SAML Response (Base64-encoded)")
+    # Step 2: Handle Redirect URL
+    redirect_url = st.text_input("Paste the redirect URL after logging in:")
+    if st.button("Get Access Token"):
+        try:
+            # Extract authorization code from redirect URL
+            query_params = urllib.parse.urlparse(redirect_url).query
+            params = dict(urllib.parse.parse_qsl(query_params))
+            auth_code = params.get("code")
 
-    if st.button("Process SAML Response"):
-        if saml_response:
-            try:
-                decoded_response = base64.b64decode(saml_response)
-                root = ET.fromstring(decoded_response)
-                user_info = root.find(".//{urn:oasis:names:tc:SAML:2.0:assertion}NameID").text
-                st.session_state["saml_response"] = user_info
-                st.success(f"Login successful! Welcome {user_info}")
-            except Exception as e:
-                st.error(f"Failed to process SAML Response: {e}")
-        else:
-            st.warning("Please paste a valid SAML Response.")
+            if not auth_code:
+                st.error("Authorization code not found in the redirect URL.")
+            else:
+                # Exchange authorization code for access token
+                token_response = app.acquire_token_by_authorization_code(
+                    code=auth_code, scopes=SCOPES, redirect_uri=REDIRECT_URI
+                )
+                if "access_token" in token_response:
+                    st.session_state["access_token"] = token_response["access_token"]
+                    st.success("Login successful!")
+                else:
+                    st.error(f"Error obtaining access token: {token_response}")
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
 else:
-    st.success(f"Logged in as: {st.session_state['saml_response']}")
+    # User is logged in
+    st.success("You are logged in!")
+    st.write(f"Access Token: {st.session_state['access_token'][:100]}... (truncated)")
 
+    # Example of displaying user data
+    st.sidebar.title("Navigation")
+    st.sidebar.radio("Go to:", ["Dashboard", "Settings"])
