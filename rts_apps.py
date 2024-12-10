@@ -213,10 +213,12 @@ TOKEN_URL = f"{AUTHORITY}/oauth2/v2.0/token"
 # Generate PKCE code_verifier and code_challenge
 def generate_pkce_pair():
     code_verifier = secrets.token_urlsafe(64)
-    # Create code_challenge from code_verifier
     code_challenge = base64.urlsafe_b64encode(
         hashlib.sha256(code_verifier.encode("utf-8")).digest()
     ).decode("utf-8").rstrip("=")
+    # Debugging
+    print(f"Generated code_verifier: {code_verifier}")
+    print(f"Generated code_challenge: {code_challenge}")
     return code_verifier, code_challenge
 
 # Initialize session state for tokens and PKCE
@@ -230,6 +232,7 @@ st.title("Azure AD OAuth 2.0 Authentication (PKCE)")
 if not st.session_state["access_token"]:
     # Step 1: Start Authorization Flow
     if st.button("Log in with Azure AD"):
+        # Generate PKCE pair
         code_verifier, code_challenge = generate_pkce_pair()
         st.session_state["code_verifier"] = code_verifier
 
