@@ -194,7 +194,7 @@
 #     elif app_choice == "📈 User Performance":
 #         user_performance_api.run_app()
         
-   import streamlit as st
+import streamlit as st
 from msal import PublicClientApplication
 import webbrowser
 import urllib.parse
