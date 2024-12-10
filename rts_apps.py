@@ -196,7 +196,7 @@
         
         
 import streamlit as st
-from msal import PublicClientApplication
+import requests
 import urllib.parse
 import secrets
 import hashlib
@@ -208,6 +208,7 @@ TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"
 AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
 REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app"
 SCOPES = ["User.Read"]
+TOKEN_URL = f"{AUTHORITY}/oauth2/v2.0/token"
 
 # Generate PKCE code_verifier and code_challenge
 def generate_pkce_pair():
@@ -224,9 +225,6 @@ if "access_token" not in st.session_state:
 if "code_verifier" not in st.session_state:
     st.session_state["code_verifier"] = None
 
-# Initialize MSAL App as a public client
-app = PublicClientApplication(client_id=CLIENT_ID, authority=AUTHORITY)
-
 st.title("Azure AD OAuth 2.0 Authentication (PKCE)")
 
 if not st.session_state["access_token"]:
@@ -235,13 +233,16 @@ if not st.session_state["access_token"]:
         code_verifier, code_challenge = generate_pkce_pair()
         st.session_state["code_verifier"] = code_verifier
 
-        auth_url = app.get_authorization_request_url(
-            scopes=SCOPES,
-            redirect_uri=REDIRECT_URI,
-            code_challenge=code_challenge,
-            code_challenge_method="S256"
-        )
-        
+        # Build authorization URL
+        auth_url = f"{AUTHORITY}/oauth2/v2.0/authorize?" + urllib.parse.urlencode({
+            "client_id": CLIENT_ID,
+            "response_type": "code",
+            "redirect_uri": REDIRECT_URI,
+            "scope": " ".join(SCOPES),
+            "code_challenge": code_challenge,
+            "code_challenge_method": "S256",
+        })
+
         st.info("Redirecting to Azure AD for login...")
         st.markdown(f"[Click here to login]({auth_url})")
 
@@ -251,18 +252,24 @@ if not st.session_state["access_token"]:
         auth_code = query_params["code"]
         if auth_code and st.session_state["code_verifier"]:
             try:
-                token_response = app.acquire_token_by_authorization_code(
-                    code=auth_code,
-                    scopes=SCOPES,
-                    redirect_uri=REDIRECT_URI,
-                    code_verifier=st.session_state["code_verifier"]
-                )
+                # Manually exchange authorization code for token
+                data = {
+                    "client_id": CLIENT_ID,
+                    "grant_type": "authorization_code",
+                    "code": auth_code,
+                    "redirect_uri": REDIRECT_URI,
+                    "code_verifier": st.session_state["code_verifier"],
+                    "scope": " ".join(SCOPES),
+                }
+                headers = {"Content-Type": "application/x-www-form-urlencoded"}
+                response = requests.post(TOKEN_URL, data=data, headers=headers)
 
-                if "access_token" in token_response:
+                if response.status_code == 200:
+                    token_response = response.json()
                     st.session_state["access_token"] = token_response["access_token"]
                     st.experimental_rerun()  # Refresh to show logged-in state
                 else:
-                    st.error(f"Error obtaining access token: {token_response}")
+                    st.error(f"Error obtaining access token: {response.json()}")
             except Exception as e:
                 st.error(f"An error occurred: {e}")
 else:
