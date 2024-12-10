@@ -217,10 +217,12 @@ def build_login_url():
 
 def extract_id_token():
     """Extract the id_token from the URL fragment."""
-    query_string = st.experimental_get_query_params()
-    if "id_token" in query_string:
-        return query_string["id_token"][0]
-    return None
+    query_params = st.query_params  # Use st.query_params for the new API
+    return query_params.get("id_token", [None])[0]
+
+def clear_query_params():
+    """Clear query parameters to prevent reprocessing."""
+    st.experimental_set_query_params()  # Clear all query params
 
 # Main App Logic
 if "authenticated" not in st.session_state:
@@ -238,12 +240,12 @@ if not st.session_state["authenticated"]:
     if id_token:
         st.session_state["authenticated"] = True
         st.session_state["id_token"] = id_token
+        clear_query_params()  # Clear URL query parameters
         st.success("🎉 Login successful!")
-        # Redirect to remove id_token from URL
-        st.experimental_set_query_params()
 else:
     st.sidebar.title("🧭 Navigation")
-    st.write("You are logged in.")
+    st.sidebar.write("You are logged in.")
+    st.write("Welcome to the AFC Venue Dashboard.")
 
     if st.sidebar.button("🔓 Logout"):
         st.session_state["authenticated"] = False
