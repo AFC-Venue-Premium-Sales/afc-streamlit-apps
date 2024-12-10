@@ -233,6 +233,8 @@ if "code_verifier" not in st.session_state:
     st.session_state["code_verifier"] = code_verifier
     st.session_state["code_challenge"] = code_challenge
     logging.debug(f"Generated PKCE: Verifier: {code_verifier}, Challenge: {code_challenge}")
+else:
+    logging.debug(f"PKCE Loaded from Session: Verifier: {st.session_state['code_verifier']}, Challenge: {st.session_state['code_challenge']}")
 
 # Build Auth URL
 def get_auth_url():
@@ -258,6 +260,7 @@ def exchange_code_for_token(auth_code):
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     response = requests.post(TOKEN_URL, data=data, headers=headers)
     if response.status_code == 200:
+        logging.debug(f"Token Response: {response.json()}")
         return response.json()
     else:
         error_details = response.json()
@@ -290,3 +293,7 @@ else:
     # User is authenticated
     st.sidebar.title("Welcome!")
     st.sidebar.write("You are logged in.")
+
+    # Example protected resource (add your logic here)
+    st.write("🎉 You are successfully logged in!")
+    st.write("Access token:", st.session_state["access_token"])
