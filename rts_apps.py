@@ -197,103 +197,15 @@
 
     
 import streamlit as st
-import logging
-import hashlib
-import base64
-import os
-from urllib.parse import urlencode
-import requests
 
-# Configure logging
-logging.basicConfig(
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    level=logging.DEBUG,
-    handlers=[logging.StreamHandler()],
-)
+# Read query parameters for user authentication
+query_params = st.experimental_get_query_params()
+user_email = query_params.get("email", ["Guest"])[0]
 
-# Azure AD Config
-CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
-TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"
-REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app"
-AUTH_URL = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/authorize"
-TOKEN_URL = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token"
-SCOPES = "User.Read email profile openid"
-
-# Helper: Generate PKCE
-def generate_pkce_pair():
-    code_verifier = base64.urlsafe_b64encode(os.urandom(32)).decode("utf-8").rstrip("=")
-    code_challenge = base64.urlsafe_b64encode(
-        hashlib.sha256(code_verifier.encode("utf-8")).digest()
-    ).decode("utf-8").rstrip("=")
-    return code_verifier, code_challenge
-
-# Initialize Session State
-if "code_verifier" not in st.session_state:
-    code_verifier, code_challenge = generate_pkce_pair()
-    st.session_state["code_verifier"] = code_verifier
-    st.session_state["code_challenge"] = code_challenge
-    logging.debug(f"Generated PKCE: Verifier: {code_verifier}, Challenge: {code_challenge}")
+# Display the dashboard
+st.title("🏟️ AFC Venue - MBM Hospitality")
+if user_email != "Guest":
+    st.sidebar.write(f"Welcome, {user_email}!")
 else:
-    logging.debug(f"PKCE Loaded from Session: Verifier: {st.session_state['code_verifier']}, Challenge: {st.session_state['code_challenge']}")
-
-# Build Auth URL
-def get_auth_url():
-    params = {
-        "client_id": CLIENT_ID,
-        "response_type": "code",
-        "redirect_uri": REDIRECT_URI,
-        "scope": SCOPES,
-        "code_challenge": st.session_state["code_challenge"],
-        "code_challenge_method": "S256",
-    }
-    return f"{AUTH_URL}?{urlencode(params)}"
-
-# Exchange Token
-def exchange_code_for_token(auth_code):
-    data = {
-        "client_id": CLIENT_ID,
-        "grant_type": "authorization_code",
-        "code": auth_code,
-        "redirect_uri": REDIRECT_URI,
-        "code_verifier": st.session_state["code_verifier"],
-    }
-    headers = {"Content-Type": "application/x-www-form-urlencoded"}
-    response = requests.post(TOKEN_URL, data=data, headers=headers)
-    if response.status_code == 200:
-        logging.debug(f"Token Response: {response.json()}")
-        return response.json()
-    else:
-        error_details = response.json()
-        logging.error(f"Token Exchange Failed: {error_details}")
-        st.error(f"Token Exchange Failed: {error_details.get('error_description', 'Unknown error')}")
-        return None
-
-# App Logic
-if "access_token" not in st.session_state:
-    st.session_state["access_token"] = None
-
-if not st.session_state["access_token"]:
-    st.title("🏟️ AFC Venue - MBM Hospitality")
-    st.markdown("**Welcome to the Venue Hospitality Dashboard!**")
-    st.markdown(f"[Click here to log in]({get_auth_url()})")
-
-    query_params = st.experimental_get_query_params()  # Replace with st.query_params in April 2024
-    if "code" in query_params:
-        auth_code = query_params["code"][0]  # Retrieve the authorization code
-        logging.debug(f"Authorization Code Retrieved: {auth_code}")
-
-        # Exchange the code for a token
-        token_response = exchange_code_for_token(auth_code)
-        if token_response:
-            st.session_state["access_token"] = token_response["access_token"]
-            st.session_state["id_token"] = token_response.get("id_token", {})
-            st.set_query_params()  # Clear query parameters
-            st.experimental_rerun()
-else:
-    # User is authenticated
-    st.sidebar.title("Welcome!")
-    st.sidebar.write("You are logged in.")
-
-    # Example protected resource (add your logic here)
-    st.write("🎉 You are successfully logged in!")
-    st.write("Access token:", st.session_state["access_token"])
+    st.sidebar.write("Please log in through SSO.")
+    st.stop()  # Prevent unauthorized access
