@@ -196,15 +196,14 @@
         
 import streamlit as st
 from msal import PublicClientApplication
-import webbrowser
 import urllib.parse
 
 # Azure AD Configuration
-CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"  # Replace with your Azure AD Client ID
-TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"  # Replace with your Tenant ID
+CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
+TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"
 AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
-REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app"  # Replace with your app URL
-SCOPES = ["User.Read"]  # Permissions requested from Azure AD
+REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app"
+SCOPES = ["User.Read"]
 
 # Initialize MSAL Application
 app = PublicClientApplication(client_id=CLIENT_ID, authority=AUTHORITY)
@@ -221,8 +220,8 @@ if not st.session_state["access_token"]:
         auth_url = app.get_authorization_request_url(
             scopes=SCOPES, redirect_uri=REDIRECT_URI
         )
-        webbrowser.open(auth_url)
-        st.info("Please log in through the browser and paste the redirect URL below.")
+        st.info("Please log in through the browser and paste the redirect URL below:")
+        st.write(auth_url)
 
     # Step 2: Handle Redirect URL
     redirect_url = st.text_input("Paste the redirect URL after logging in:")
@@ -240,8 +239,6 @@ if not st.session_state["access_token"]:
                 token_response = app.acquire_token_by_authorization_code(
                     code=auth_code, scopes=SCOPES, redirect_uri=REDIRECT_URI
                 )
-                st.write(token_response)
-                
                 if "access_token" in token_response:
                     st.session_state["access_token"] = token_response["access_token"]
                     st.success("Login successful!")
@@ -257,3 +254,4 @@ else:
     # Example of displaying user data
     st.sidebar.title("Navigation")
     st.sidebar.radio("Go to:", ["Dashboard", "Settings"])
+
