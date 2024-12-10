@@ -194,92 +194,46 @@
 #     elif app_choice == "📈 User Performance":
 #         user_performance_api.run_app()
         
-import streamlit as st
-import hashlib
-import base64
-import os
 import requests
-import urllib.parse
+import streamlit as st
 
-# Azure AD Configuration
-CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
-TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"
-AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
-REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app"
-SCOPES = "User.Read"
+# Azure App Service URL
+APP_HOST = "https://afc-apps-hospitality.streamlit.app"
 
-# PKCE: Generate a Code Verifier and Challenge
-def generate_pkce():
-    code_verifier = base64.urlsafe_b64encode(os.urandom(32)).rstrip(b"=").decode("utf-8")
-    code_challenge = base64.urlsafe_b64encode(
-        hashlib.sha256(code_verifier.encode("utf-8")).digest()
-    ).rstrip(b"=").decode("utf-8")
-    return code_verifier, code_challenge
+def get_user_info(headers):
+    """Retrieve user info from the /.auth/me endpoint using the AppServiceAuthSession cookie."""
+    try:
+        # Extract the AppServiceAuthSession cookie
+        cookies = headers.get("Cookie", "").split("; ")
+        auth_cookie = {}
+        for cookie in cookies:
+            key, value = cookie.split("=", 1)
+            if key == "AppServiceAuthSession":
+                auth_cookie = {"AppServiceAuthSession": value}
+
+        # Send a request to the /.auth/me endpoint
+        response = requests.get(f"{APP_HOST}/.auth/me", cookies=auth_cookie)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            st.error(f"Failed to retrieve user info: {response.status_code}")
+            st.write(response.text)
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
+    return None
 
 # Streamlit App
-st.title("Azure AD Authentication with PKCE")
+st.title("Azure AD Authentication with App Service")
 
-if "access_token" not in st.session_state:
-    st.session_state["access_token"] = None
+st.info("Ensure you are logged in to the app using Azure AD authentication.")
 
-if not st.session_state["access_token"]:
-    # Step 1: Start Authorization Flow
-    if st.button("Log in with Azure AD"):
-        # Generate PKCE code verifier and challenge
-        code_verifier, code_challenge = generate_pkce()
-        st.session_state["code_verifier"] = code_verifier
+if st.button("Get User Info"):
+    # Use Streamlit's experimental header retrieval for debugging
+    headers = st.experimental_get_query_params()  # Get headers for debugging purposes
+    user_info = get_user_info(headers)
+    if user_info:
+        st.success("Successfully retrieved user info!")
+        st.json(user_info)
 
-        # Generate Authorization URL
-        auth_url = (
-            f"{AUTHORITY}/oauth2/v2.0/authorize?"
-            f"client_id={CLIENT_ID}&response_type=code&redirect_uri={REDIRECT_URI}"
-            f"&scope={SCOPES}&code_challenge={code_challenge}&code_challenge_method=S256"
-        )
-        st.info("Click the link below to log in:")
-        st.write(auth_url)
-
-        st.info("After logging in, you will be redirected to your app's URL. Copy the full URL and paste it below.")
-
-    # Step 2: Capture Redirect URL and Extract Authorization Code
-    redirect_url = st.text_input("Paste the redirect URL after logging in:")
-    if st.button("Get Access Token"):
-        try:
-            # Parse the authorization code from the redirect URL
-            query_params = urllib.parse.urlparse(redirect_url).query
-            params = dict(urllib.parse.parse_qsl(query_params))
-            auth_code = params.get("code")
-
-            if not auth_code:
-                st.error("Authorization code not found in the redirect URL.")
-            else:
-                # Step 3: Exchange Authorization Code for Access Token
-                token_url = f"{AUTHORITY}/oauth2/v2.0/token"
-                data = {
-                    "client_id": CLIENT_ID,
-                    "scope": SCOPES,
-                    "code": auth_code,
-                    "redirect_uri": REDIRECT_URI,
-                    "grant_type": "authorization_code",
-                    "code_verifier": st.session_state["code_verifier"],
-                }
-                response = requests.post(token_url, data=data)
-                token_response = response.json()
-
-                if "access_token" in token_response:
-                    st.session_state["access_token"] = token_response["access_token"]
-                    st.success("Login successful!")
-                    st.write(f"Access Token: {st.session_state['access_token'][:100]}... (truncated)")
-                else:
-                    st.error(f"Error obtaining access token: {token_response}")
-        except Exception as e:
-            st.error(f"An error occurred: {e}")
-else:
-    # User is logged in
-    st.success("You are logged in!")
-    st.write(f"Access Token: {st.session_state['access_token'][:100]}... (truncated)")
-
-    # Example of displaying user data
-    st.sidebar.title("Navigation")
-    st.sidebar.radio("Go to:", ["Dashboard", "Settings"])
 
 
