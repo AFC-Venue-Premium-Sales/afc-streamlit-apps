@@ -273,9 +273,19 @@ if not st.session_state["access_token"]:
     st.markdown(f"[Click here to log in]({get_auth_url()})")
 
     query_params = st.experimental_get_query_params()  # Replace with st.query_params in April 2024
+    # ... (rest of the code)
+
     if "code" in query_params:
-        auth_code = query_params["code"][0]  # Retrieve the authorization code
+        auth_code = query_params["code"][0]
         logging.debug(f"Authorization Code Retrieved: {auth_code}")
+
+        # Log the PKCE values for debugging
+        logging.debug(f"Code Verifier: {st.session_state['code_verifier']}")
+        logging.debug(f"Code Challenge: {st.session_state['code_challenge']}")
+
+        # Exchange the code for a token
+        token_response = exchange_code_for_token(auth_code)
+        # ... (rest of the code)
 
         # Exchange the code for a token
         token_response = exchange_code_for_token(auth_code)
