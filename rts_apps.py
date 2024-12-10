@@ -250,7 +250,7 @@ if st.button("Log in with Azure AD"):
         st.success("Login successful!")
         st.write(f"Access Token: {token_result['access_token'][:100]}... (truncated)")
     else:
-        st.error("Login failed. Please try again."
+        st.error("Login failed. Please try again.")
 
 
 
