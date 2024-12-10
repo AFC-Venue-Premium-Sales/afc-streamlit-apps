@@ -23,3 +23,14 @@ def get_saml_config():
         
         },
     }
+
+
+import hashlib
+import base64
+
+code_verifier = "_rRWqgkPskJNgAYR4-U4LbDnx-PYGOGa0sBkIowL8ao5_OuKgIwvxFSP5Oss1QqJYShsh61iqLd1Jsf4W1dGSA"
+code_challenge = base64.urlsafe_b64encode(
+    hashlib.sha256(code_verifier.encode("utf-8")).digest()
+).decode("utf-8").rstrip("=")
+
+print(f"Expected code_challenge: {code_challenge}")

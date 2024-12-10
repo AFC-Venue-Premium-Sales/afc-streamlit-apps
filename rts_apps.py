@@ -196,90 +196,46 @@
         
         
 import streamlit as st
-import requests
-import urllib.parse
-import secrets
-import hashlib
-import base64
+from msal import PublicClientApplication
 
 # Azure AD Configuration
 CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
 TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"
 AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
-REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app"
 SCOPES = ["User.Read"]
-TOKEN_URL = f"{AUTHORITY}/oauth2/v2.0/token"
 
-# Generate PKCE code_verifier and code_challenge
-def generate_pkce_pair():
-    code_verifier = secrets.token_urlsafe(64)
-    code_challenge = base64.urlsafe_b64encode(
-        hashlib.sha256(code_verifier.encode("utf-8")).digest()
-    ).decode("utf-8").rstrip("=")
+# Initialize MSAL App as a Public Client
+app = PublicClientApplication(client_id=CLIENT_ID, authority=AUTHORITY)
 
-    # Debugging: Log PKCE values
-    st.write(f"Generated code_verifier: {code_verifier}")
-    st.write(f"Generated code_challenge: {code_challenge}")
-    return code_verifier, code_challenge
+# Streamlit App
+st.title("Azure AD Authentication - Device Code Flow")
 
-# Initialize session state for tokens and PKCE
 if "access_token" not in st.session_state:
     st.session_state["access_token"] = None
-if "code_verifier" not in st.session_state:
-    st.session_state["code_verifier"] = None
-
-st.title("Azure AD OAuth 2.0 Authentication (PKCE)")
 
 if not st.session_state["access_token"]:
-    # Step 1: Start Authorization Flow
     if st.button("Log in with Azure AD"):
-        code_verifier, code_challenge = generate_pkce_pair()
-        st.session_state["code_verifier"] = code_verifier
+        try:
+            # Step 1: Request a device code
+            device_flow = app.initiate_device_flow(scopes=SCOPES)
+            if "user_code" not in device_flow:
+                st.error("Failed to initiate device flow. Check app registration.")
+            else:
+                # Prompt the user to authenticate
+                st.write("Visit the following URL to authenticate:")
+                st.markdown(f"[{device_flow['verification_uri']}]({device_flow['verification_uri']})")
+                st.write(f"Enter the code: `{device_flow['user_code']}`")
 
-        # Build authorization URL
-        auth_url = f"{AUTHORITY}/oauth2/v2.0/authorize?" + urllib.parse.urlencode({
-            "client_id": CLIENT_ID,
-            "response_type": "code",
-            "redirect_uri": REDIRECT_URI,
-            "scope": " ".join(SCOPES),
-            "code_challenge": code_challenge,
-            "code_challenge_method": "S256",
-        })
-
-        st.write(f"Authorization URL: {auth_url}")  # Debugging: Log auth URL
-        st.info("Redirecting to Azure AD for login...")
-        st.markdown(f"[Click here to login]({auth_url})")
-
-    # Step 2: Handle Redirect Automatically
-    query_params = st.query_params
-    if "code" in query_params:
-        auth_code = query_params["code"]
-        if auth_code and st.session_state["code_verifier"]:
-            try:
-                # Debugging: Log code_verifier used in token request
-                st.write(f"Using code_verifier: {st.session_state['code_verifier']}")
-
-                # Manually exchange authorization code for token
-                data = {
-                    "client_id": CLIENT_ID,
-                    "grant_type": "authorization_code",
-                    "code": auth_code,
-                    "redirect_uri": REDIRECT_URI,
-                    "code_verifier": st.session_state["code_verifier"],
-                    "scope": " ".join(SCOPES),
-                }
-                headers = {"Content-Type": "application/x-www-form-urlencoded"}
-                response = requests.post(TOKEN_URL, data=data, headers=headers)
-
-                if response.status_code == 200:
-                    token_response = response.json()
+                # Step 2: Poll for token
+                st.info("Waiting for authentication...")
+                token_response = app.acquire_token_by_device_flow(device_flow)
+                if "access_token" in token_response:
                     st.session_state["access_token"] = token_response["access_token"]
-                    st.experimental_rerun()  # Refresh to show logged-in state
+                    st.success("Login successful!")
                 else:
-                    st.error(f"Error obtaining access token: {response.json()}")
-                    st.write(f"Token Request Data: {data}")  # Debugging: Log token request payload
-            except Exception as e:
-                st.error(f"An error occurred: {e}")
+                    st.error(f"Error obtaining access token: {token_response}")
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
 else:
     # User is logged in
     st.success("You are logged in!")
@@ -288,5 +244,3 @@ else:
     # Example of displaying user data
     st.sidebar.title("Navigation")
     st.sidebar.radio("Go to:", ["Dashboard", "Settings"])
-
-
