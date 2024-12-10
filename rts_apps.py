@@ -197,88 +197,81 @@
 
     
 import streamlit as st
-import logging
-import hashlib
-import base64
-import os
-from urllib.parse import urlencode
 import requests
+from urllib.parse import urlencode
 
-# Configure logging
-logging.basicConfig(
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    level=logging.DEBUG,
-    handlers=[logging.StreamHandler()],
-)
-
-# Azure AD Config
-CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
-TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"
+# Azure AD Configuration
+CLIENT_ID = "your-client-id"
+CLIENT_SECRET = "your-client-secret"
+TENANT_ID = "your-tenant-id"
 REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app"
 AUTH_URL = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/authorize"
 TOKEN_URL = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token"
-SCOPES = "User.Read email profile openid"
+SCOPES = "https://graph.microsoft.com/User.Read"
 
-# PKCE Helper
-def generate_pkce_pair():
-    code_verifier = base64.urlsafe_b64encode(os.urandom(32)).decode("utf-8").rstrip("=")
-    code_challenge = base64.urlsafe_b64encode(
-        hashlib.sha256(code_verifier.encode("utf-8")).digest()
-    ).decode("utf-8").rstrip("=")
-    return code_verifier, code_challenge
+# App State Initialization
+if "access_token" not in st.session_state:
+    st.session_state["access_token"] = None
 
-# Initialize PKCE
-if "code_verifier" not in st.session_state:
-    code_verifier, code_challenge = generate_pkce_pair()
-    st.session_state["code_verifier"] = code_verifier
-    st.session_state["code_challenge"] = code_challenge
-logging.debug(f"PKCE Initialized: Verifier={st.session_state['code_verifier']} Challenge={st.session_state['code_challenge']}")
-
-# Authorization URL
+# Build Authorization URL
 def get_auth_url():
     params = {
         "client_id": CLIENT_ID,
         "response_type": "code",
         "redirect_uri": REDIRECT_URI,
         "scope": SCOPES,
-        "code_challenge": st.session_state["code_challenge"],
-        "code_challenge_method": "S256",
+        "response_mode": "query",  # Ensure the response is returned as a query param
     }
     return f"{AUTH_URL}?{urlencode(params)}"
 
-# Token Exchange
+# Exchange Authorization Code for Token
 def exchange_code_for_token(auth_code):
     data = {
         "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,  # Use client secret directly
         "grant_type": "authorization_code",
         "code": auth_code,
         "redirect_uri": REDIRECT_URI,
-        "code_verifier": st.session_state["code_verifier"],
     }
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     response = requests.post(TOKEN_URL, data=data, headers=headers)
     if response.status_code == 200:
-        logging.debug(f"Token Response: {response.json()}")
         return response.json()
     else:
-        logging.error(f"Token Exchange Failed: {response.json()}")
+        st.error("Failed to exchange token.")
+        st.error(response.json())
         return None
 
-# App Logic
-if "access_token" not in st.session_state:
-    st.session_state["access_token"] = None
+# Fetch User Info
+def get_user_info():
+    headers = {"Authorization": f"Bearer {st.session_state['access_token']}"}
+    response = requests.get("https://graph.microsoft.com/v1.0/me", headers=headers)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        st.error("Failed to fetch user info.")
+        st.error(response.json())
+        return None
 
-if not st.session_state["access_token"]:
+# Main Application Logic
+if st.session_state["access_token"] is None:
     st.title("🏟️ AFC Venue - MBM Hospitality")
+    st.markdown("Welcome to the Venue Hospitality Dashboard!")
     st.markdown(f"[Click here to log in]({get_auth_url()})")
+
+    # Handle Redirect and Token Exchange
     query_params = st.experimental_get_query_params()
     if "code" in query_params:
         auth_code = query_params["code"][0]
         token_response = exchange_code_for_token(auth_code)
-        if token_response:
+        if token_response and "access_token" in token_response:
             st.session_state["access_token"] = token_response["access_token"]
-            st.experimental_set_query_params()  # Clear params
-            st.experimental_rerun()
+            st.experimental_rerun()  # Refresh the app after login
 else:
-    st.sidebar.title("Welcome!")
-    st.write("You are logged in!")
+    # User is authenticated
+    user_info = get_user_info()
+    if user_info:
+        st.sidebar.title(f"Welcome, {user_info['displayName']}!")
+        st.sidebar.write(f"Email: {user_info['mail']}")
+        st.write("🎉 You are successfully logged in!")
+
