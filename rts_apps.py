@@ -197,6 +197,8 @@
 
 import streamlit as st
 from authlib.integrations.requests_client import OAuth2Session
+import hashlib
+import base64
 import requests
 
 # Azure AD Configuration
@@ -205,30 +207,45 @@ TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"
 REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app"
 AUTH_URL = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/authorize"
 TOKEN_URL = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token"
-SCOPES = "https://graph.microsoft.com/User.Read"
+SCOPES = "openid profile email https://graph.microsoft.com/User.Read"
 
-# Authentication Logic
+# Generate code verifier and challenge
+def generate_pkce_pair():
+    """Generate a code verifier and code challenge for PKCE."""
+    code_verifier = base64.urlsafe_b64encode(hashlib.sha256().digest()).decode("utf-8").rstrip("=")
+    code_challenge = base64.urlsafe_b64encode(
+        hashlib.sha256(code_verifier.encode("utf-8")).digest()
+    ).decode("utf-8").rstrip("=")
+    return code_verifier, code_challenge
+
+# Handle authentication
 def authenticate_user():
-    """Handle Azure AD authentication."""
+    """Start Azure AD authentication."""
+    code_verifier, code_challenge = generate_pkce_pair()
     oauth = OAuth2Session(CLIENT_ID, redirect_uri=REDIRECT_URI, scope=SCOPES)
-    authorization_url, state = oauth.create_authorization_url(AUTH_URL)
+    authorization_url, state = oauth.create_authorization_url(
+        AUTH_URL,
+        code_challenge=code_challenge,
+        code_challenge_method="S256",
+    )
 
     # Display login link
     st.markdown(f"[Click here to login with Azure AD]({authorization_url})")
 
     # Handle redirect response
-    query_params = st.experimental_get_query_params()
+    query_params = st.query_params
     if "code" in query_params:
-        code = query_params["code"][0]
+        code = query_params["code"]
         token = oauth.fetch_token(
             TOKEN_URL,
             code=code,
-            include_client_id=True,  # PKCE does not require a client secret
+            code_verifier=code_verifier,
+            include_client_id=True,
         )
         return token
     return None
 
-# Function to fetch user information
+# Fetch user info
 def get_user_info(access_token):
     """Fetch user info from Microsoft Graph API."""
     headers = {"Authorization": f"Bearer {access_token}"}
