@@ -194,46 +194,63 @@
 #     elif app_choice == "📈 User Performance":
 #         user_performance_api.run_app()
         
-import requests
 import streamlit as st
+import urllib.parse
+from selenium import webdriver
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
+from msal import PublicClientApplication
 
-# Azure App Service URL
-APP_HOST = "https://afc-apps-hospitality.streamlit.app"
+# Azure AD Configuration
+CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
+TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"
+AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
+REDIRECT_URI = "http://localhost:8000"  # Can be a local redirect
+SCOPES = ["User.Read"]
 
-def get_user_info(headers):
-    """Retrieve user info from the /.auth/me endpoint using the AppServiceAuthSession cookie."""
-    try:
-        # Extract the AppServiceAuthSession cookie
-        cookies = headers.get("Cookie", "").split("; ")
-        auth_cookie = {}
-        for cookie in cookies:
-            key, value = cookie.split("=", 1)
-            if key == "AppServiceAuthSession":
-                auth_cookie = {"AppServiceAuthSession": value}
+# Initialize MSAL Application
+app = PublicClientApplication(client_id=CLIENT_ID, authority=AUTHORITY)
 
-        # Send a request to the /.auth/me endpoint
-        response = requests.get(f"{APP_HOST}/.auth/me", cookies=auth_cookie)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            st.error(f"Failed to retrieve user info: {response.status_code}")
-            st.write(response.text)
-    except Exception as e:
-        st.error(f"An error occurred: {e}")
-    return None
+def login():
+    """Automate Azure AD login using Selenium and MSAL."""
+    # Start the authentication code flow
+    flow = app.initiate_auth_code_flow(scopes=SCOPES, redirect_uri=REDIRECT_URI)
+
+    if "auth_uri" not in flow:
+        st.error("Failed to generate authentication URI")
+        return None
+
+    # Open the authentication URL in Selenium
+    auth_uri = flow["auth_uri"]
+    browser = webdriver.Chrome()  # Use your WebDriver setup (e.g., Firefox, Edge)
+    browser.get(auth_uri)
+
+    # Wait for redirection to the redirect URI
+    WebDriverWait(browser, 300).until(EC.url_contains(REDIRECT_URI))
+
+    # Get the redirected URL with the authorization code
+    redirected_url = browser.current_url
+    browser.quit()
+
+    # Parse the authorization code from the redirected URL
+    url = urllib.parse.urlparse(redirected_url)
+    query_params = dict(urllib.parse.parse_qsl(url.query))
+
+    # Exchange the authorization code for an access token
+    result = app.acquire_token_by_auth_code_flow(flow, query_params, scopes=SCOPES)
+    return result
 
 # Streamlit App
-st.title("Azure AD Authentication with App Service")
+st.title("Azure AD Authentication with Selenium and MSAL")
 
-st.info("Ensure you are logged in to the app using Azure AD authentication.")
-
-if st.button("Get User Info"):
-    # Use Streamlit's experimental header retrieval for debugging
-    headers = st.experimental_get_query_params()  # Get headers for debugging purposes
-    user_info = get_user_info(headers)
-    if user_info:
-        st.success("Successfully retrieved user info!")
-        st.json(user_info)
+if st.button("Log in with Azure AD"):
+    token_result = login()
+    if token_result and "access_token" in token_result:
+        st.success("Login successful!")
+        st.write(f"Access Token: {token_result['access_token'][:100]}... (truncated)")
+    else:
+        st.error("Login failed. Please try again."
 
 
 
