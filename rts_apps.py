@@ -195,6 +195,7 @@
 #         user_performance_api.run_app()
 
 
+    
 import streamlit as st
 import logging
 import hashlib
@@ -254,7 +255,8 @@ def exchange_code_for_token(auth_code):
         "redirect_uri": REDIRECT_URI,
         "code_verifier": st.session_state["code_verifier"],
     }
-    response = requests.post(TOKEN_URL, data=data)
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    response = requests.post(TOKEN_URL, data=data, headers=headers)
     if response.status_code == 200:
         return response.json()
     else:
@@ -273,19 +275,9 @@ if not st.session_state["access_token"]:
     st.markdown(f"[Click here to log in]({get_auth_url()})")
 
     query_params = st.experimental_get_query_params()  # Replace with st.query_params in April 2024
-    # ... (rest of the code)
-
     if "code" in query_params:
-        auth_code = query_params["code"][0]
+        auth_code = query_params["code"][0]  # Retrieve the authorization code
         logging.debug(f"Authorization Code Retrieved: {auth_code}")
-
-        # Log the PKCE values for debugging
-        logging.debug(f"Code Verifier: {st.session_state['code_verifier']}")
-        logging.debug(f"Code Challenge: {st.session_state['code_challenge']}")
-
-        # Exchange the code for a token
-        token_response = exchange_code_for_token(auth_code)
-        # ... (rest of the code)
 
         # Exchange the code for a token
         token_response = exchange_code_for_token(auth_code)
@@ -298,10 +290,3 @@ else:
     # User is authenticated
     st.sidebar.title("Welcome!")
     st.sidebar.write("You are logged in.")
-
-    # Use the access token to make API calls to Azure AD or other protected resources
-    # Example:
-    # headers = {"Authorization": f"Bearer {st.session_state['access_token']}"}
-    # response = requests.get("https://graph.microsoft.com/v1.0/me", headers=headers)
-    # user_info = response.json()
-    # st.write(f"Welcome, {user_info['displayName']}!")
