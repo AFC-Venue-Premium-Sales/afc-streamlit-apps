@@ -196,11 +196,8 @@
 
 
 import streamlit as st
+from authlib.integrations.requests_client import OAuth2Session
 import requests
-import hashlib
-import base64
-import os
-from urllib.parse import urlencode
 
 # Azure AD Configuration
 CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
@@ -210,82 +207,66 @@ AUTH_URL = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/authorize
 TOKEN_URL = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token"
 SCOPES = "https://graph.microsoft.com/User.Read"
 
-# Helper: Generate PKCE Verifier and Challenge
-def generate_pkce_pair():
-    code_verifier = base64.urlsafe_b64encode(os.urandom(32)).decode("utf-8").rstrip("=")
-    code_challenge = base64.urlsafe_b64encode(
-        hashlib.sha256(code_verifier.encode("utf-8")).digest()
-    ).decode("utf-8").rstrip("=")
-    return code_verifier, code_challenge
+# Authentication Logic
+def authenticate_user():
+    """Handle Azure AD authentication."""
+    oauth = OAuth2Session(CLIENT_ID, redirect_uri=REDIRECT_URI, scope=SCOPES)
+    authorization_url, state = oauth.create_authorization_url(AUTH_URL)
 
-# Initialize PKCE Pair
-if "code_verifier" not in st.session_state:
-    code_verifier, code_challenge = generate_pkce_pair()
-    st.session_state["code_verifier"] = code_verifier
-    st.session_state["code_challenge"] = code_challenge
+    # Display login link
+    st.markdown(f"[Click here to login with Azure AD]({authorization_url})")
 
-# Build Authorization URL
-def get_auth_url():
-    params = {
-        "client_id": CLIENT_ID,
-        "response_type": "code",
-        "redirect_uri": REDIRECT_URI,
-        "scope": SCOPES,
-        "code_challenge": st.session_state["code_challenge"],
-        "code_challenge_method": "S256",  # PKCE method
-        "response_mode": "query",
-    }
-    return f"{AUTH_URL}?{urlencode(params)}"
-
-# Exchange Authorization Code for Token
-def exchange_code_for_token(auth_code):
-    data = {
-        "client_id": CLIENT_ID,
-        "grant_type": "authorization_code",
-        "code": auth_code,
-        "redirect_uri": REDIRECT_URI,
-        "code_verifier": st.session_state["code_verifier"],  # Send PKCE verifier
-    }
-    headers = {"Content-Type": "application/x-www-form-urlencoded"}
-    response = requests.post(TOKEN_URL, data=data, headers=headers)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        st.error("Failed to exchange token.")
-        st.error(response.json())
-        return None
-
-# Fetch User Info
-def get_user_info():
-    headers = {"Authorization": f"Bearer {st.session_state['access_token']}"}
-    response = requests.get("https://graph.microsoft.com/v1.0/me", headers=headers)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        st.error("Failed to fetch user info.")
-        st.error(response.json())
-        return None
-
-# Main Application Logic
-if st.session_state.get("access_token") is None:
-    st.title("🏟️ AFC Venue - MBM Hospitality")
-    st.markdown("Welcome to the Venue Hospitality Dashboard!")
-    st.markdown(f"[Click here to log in]({get_auth_url()})")
-
-    # Handle Redirect and Token Exchange
+    # Handle redirect response
     query_params = st.experimental_get_query_params()
     if "code" in query_params:
-        auth_code = query_params["code"][0]
-        token_response = exchange_code_for_token(auth_code)
-        if token_response and "access_token" in token_response:
-            st.session_state["access_token"] = token_response["access_token"]
-            st.experimental_rerun()  # Refresh the app after login
+        code = query_params["code"][0]
+        token = oauth.fetch_token(
+            TOKEN_URL,
+            code=code,
+            include_client_id=True,  # PKCE does not require a client secret
+        )
+        return token
+    return None
+
+# Function to fetch user information
+def get_user_info(access_token):
+    """Fetch user info from Microsoft Graph API."""
+    headers = {"Authorization": f"Bearer {access_token}"}
+    user_info = requests.get("https://graph.microsoft.com/v1.0/me", headers=headers)
+    if user_info.status_code == 200:
+        return user_info.json()
+    else:
+        st.error("Failed to fetch user information.")
+        return None
+
+# Main app logic
+if "authenticated" not in st.session_state:
+    st.session_state["authenticated"] = False
+
+if not st.session_state["authenticated"]:
+    st.title("🏟️ AFC Venue - MBM Hospitality")
+    st.markdown("Please log in using Azure AD.")
+
+    token = authenticate_user()
+    if token:
+        st.session_state["authenticated"] = True
+        st.session_state["token"] = token
+        user_info = get_user_info(token["access_token"])
+        if user_info:
+            st.session_state["user_info"] = user_info
+            st.success(f"🎉 Login successful! Welcome {user_info['displayName']}.")
+        else:
+            st.error("Authentication failed. Please try again.")
 else:
-    # User is authenticated
-    user_info = get_user_info()
-    if user_info:
-        st.sidebar.title(f"Welcome, {user_info['displayName']}!")
-        st.sidebar.write(f"Email: {user_info['mail']}")
-        st.write("🎉 You are successfully logged in!")
+    st.sidebar.title("🧭 Navigation")
+    user_info = st.session_state.get("user_info", {})
+    st.sidebar.write(f"Logged in as: {user_info.get('displayName', 'User')}")
+
+    app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
+    st.write(f"You selected: {app_choice}")
+
+    if st.sidebar.button("🔓 Logout"):
+        st.session_state["authenticated"] = False
+        st.experimental_rerun()
 
 
