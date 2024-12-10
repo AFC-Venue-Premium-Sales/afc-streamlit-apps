@@ -193,7 +193,6 @@
 
 #     elif app_choice == "📈 User Performance":
 #         user_performance_api.run_app()
-        
 import requests
 import streamlit as st
 
@@ -203,11 +202,9 @@ APP_HOST = "https://afc-apps-hospitality.streamlit.app"
 def get_user_info():
     """Fetch user info from Azure AD via /.auth/me."""
     try:
-        # Call the /.auth/me endpoint
         response = requests.get(f"{APP_HOST}/.auth/me")
         if response.status_code == 200:
-            user_info = response.json()
-            return user_info
+            return response.json()
         else:
             st.error(f"Error: Unable to fetch user info (status {response.status_code})")
             return None
@@ -216,14 +213,14 @@ def get_user_info():
         return None
 
 # Streamlit App
-st.title("Azure AD SSO Login Test")
+st.title("Azure AD Authentication")
 
-st.info("Checking SSO login via Azure App Service Authentication")
+st.info("You are accessing an Azure AD authenticated app.")
 
-if st.button("Check SSO Login"):
+if st.button("Fetch User Info"):
     user_info = get_user_info()
     if user_info:
-        st.success("SSO Login Successful!")
+        st.success("User Info Retrieved!")
         st.json(user_info)
     else:
-        st.warning("SSO Login Failed. Are you logged in?")
+        st.warning("No user info available. Are you logged in?")
