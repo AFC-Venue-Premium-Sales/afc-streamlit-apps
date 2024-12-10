@@ -196,6 +196,7 @@
 
 
 import streamlit as st
+from urllib.parse import urlparse, parse_qs
 
 # Azure AD Configuration
 CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
@@ -214,6 +215,13 @@ def build_login_url():
         f"&nonce=12345"
     )
 
+def extract_id_token():
+    """Extract the id_token from the URL fragment."""
+    query_string = st.experimental_get_query_params()
+    if "id_token" in query_string:
+        return query_string["id_token"][0]
+    return None
+
 # Main App Logic
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
@@ -225,10 +233,14 @@ if not st.session_state["authenticated"]:
     login_url = build_login_url()
     st.markdown(f"[Click here to login with Azure AD]({login_url})")
 
-    # Handle the redirect response
-    if "id_token" in st.experimental_get_query_params():
+    # Extract id_token and authenticate the user
+    id_token = extract_id_token()
+    if id_token:
         st.session_state["authenticated"] = True
+        st.session_state["id_token"] = id_token
         st.success("🎉 Login successful!")
+        # Redirect to remove id_token from URL
+        st.experimental_set_query_params()
 else:
     st.sidebar.title("🧭 Navigation")
     st.write("You are logged in.")
