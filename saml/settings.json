@@ -1,23 +1,17 @@
+
+
 {
   "strict": true,
   "debug": true,
   "sp": {
     "entityId": "https://afc-apps-hospitality.streamlit.app",
     "assertionConsumerService": {
-      "url": "https://afc-apps-hospitality.streamlit.app",
+      "url": "https://afc-apps-hospitality.streamlit.app/sso/callback",
       "binding": "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
     },
     "singleLogoutService": {
       "url": "https://afc-apps-hospitality.streamlit.app/sso/logout",
       "binding": "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
-    },
-    "attributeConsumingService": {
-      "serviceName": "Streamlit App",
-      "requestedAttributes": [
-        { "name": "email" },
-        { "name": "givenname" },
-        { "name": "surname" }
-      ]
     }
   },
   "idp": {
@@ -30,17 +24,13 @@
       "url": "https://login.microsoftonline.com/068cb91a-8be0-49d7-be3a-38190b0ba021/saml2",
       "binding": "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
     },
-    "x509cert": "MIIC8DCCAdigAwIBAgIQHN0vcluvILZJUTuxnTTIujANBgkqhkiG9w0BAQsFADA0MTIwMAYDVQQDEylNaWNyb3NvZnQgQXp1cmUgRmVkZXJhdGVkIFNTTyBDZXJ0aWZpY2F0ZTAeFw0yNDExMjAxMTQ0NDVaFw0yNzExMjAxMTQ0NDVaMDQxMjAwBgNVBAMTKU1pY3Jvc29mdCBBenVyZSBGZWRlcmF0ZWQgU1NPIENlcnRpZmljYXRlMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1Ebt2O11eNicWX1rDIhLwEp9Y3kyHLSHNmhYex6yApp94Uq6y+BuVewwUVJU63OJ1wRtouliU2fgLYVet9beqRsLaSpIa0slGc2KtH1Htc3sdEF5mjFinQ4dUIbhElIBkGyluZraFn2htH0FbGXHJfuAJ5l2APVeso2CXxHb4qiwKinOAqSv3H2vPkZfG2qq6A4mjdtg/n9ncMnQpxvBgof8Er+tLxiT9UppyoShqbgHnj/KexvIwluiMuwQMZQtMa/miffapHWAiEPSjdtWxiiIIO8Eu7TstDNDhyOoqoFITzAr6b8ltwHxQmNMHflDyAB96EMhjVdynf+vQEB+PQIDAQABMA0GCSqGSIb3DQEBCwUAA4IBAQAU32jkHcfuebnqBfRh0v7tP0jiulQ5rx9kjzAJ5mrUsEUP77ZMTY3mHt1m/LrIKo1HncM86ttdBrXKMj02l2cy7fX64l+TQSTYZnCwTfBar2xMvK5uqHLQLUX8/5U7P9hsJQkU/RrGzs2WuZ11tQg7u0hl1uYpC7lzHi0G40LX5RW6r4JQAaMiZ6WxxXXORgC9a7t4Eph5D28g3ayBAxVqeJhR/zVuT3xvSG4gFalsWq80Mizlmq/YwFuVoabchS69HhcQIzUC8PBXTQgWUhBw+7kCLa92fQH0K/lk67D5IJ1ArhNWNK/zK4hsxs2sas9twJ6gmgW1yAtIf6/rReVn"
+    "x509cert": "-----BEGIN CERTIFICATE-----\nMIIC8DCCAdigAwIBAgIQHN0vcluvILZJUTuxnTTIujANBgkqhkiG9w0BAQsFADA0MTIwMAYDVQQDEylNaWNyb3NvZnQgQXp1cmUgRmVkZXJhdGVkIFNTTyBDZXJ0aWZpY2F0ZTAeFw0yNDExMjAxMTQ0NDVaFw0yNzExMjAxMTQ0NDVaMDQxMjAwBgNVBAMTKU1pY3Jvc29mdCBBenVyZSBGZWRlcmF0ZWQgU1NPIENlcnRpZmljYXRlMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1Ebt2O11eNicWX1rDIhLwEp9Y3kyHLSHNmhYex6yApp94Uq6y\n-----END CERTIFICATE-----"
   },
   "security": {
-    "nameIdEncrypted": false,
     "authnRequestsSigned": false,
-    "logoutRequestSigned": true,
-    "logoutResponseSigned": true,
-    "wantMessagesSigned": false,
+    "logoutRequestSigned": false,
+    "logoutResponseSigned": false,
     "wantAssertionsSigned": true,
-    "wantAssertionsEncrypted": false,
-    "wantNameId": true,
     "signatureAlgorithm": "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256",
     "digestAlgorithm": "http://www.w3.org/2001/04/xmlenc#sha256"
   }
