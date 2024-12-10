@@ -197,10 +197,10 @@
         
 import streamlit as st
 from msal import PublicClientApplication
-import secrets
-import base64
-import hashlib
 import urllib.parse
+import secrets
+import hashlib
+import base64
 
 # Azure AD Configuration
 CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
@@ -212,11 +212,13 @@ SCOPES = ["User.Read"]
 # Generate PKCE code_verifier and code_challenge
 def generate_pkce_pair():
     code_verifier = secrets.token_urlsafe(64)
+    # Create code_challenge from code_verifier
     code_challenge = base64.urlsafe_b64encode(
-        hashlib.sha256(code_verifier.encode('utf-8')).digest()
-    ).decode('utf-8').rstrip('=')
+        hashlib.sha256(code_verifier.encode("utf-8")).digest()
+    ).decode("utf-8").rstrip("=")
     return code_verifier, code_challenge
 
+# Initialize session state for tokens and PKCE
 if "access_token" not in st.session_state:
     st.session_state["access_token"] = None
 if "code_verifier" not in st.session_state:
@@ -239,26 +241,30 @@ if not st.session_state["access_token"]:
             code_challenge=code_challenge,
             code_challenge_method="S256"
         )
+        
         st.info("Redirecting to Azure AD for login...")
         st.markdown(f"[Click here to login]({auth_url})")
 
-    # Step 2: Handle the Redirect Automatically
+    # Step 2: Handle Redirect Automatically
     query_params = st.query_params
     if "code" in query_params:
         auth_code = query_params["code"]
         if auth_code and st.session_state["code_verifier"]:
-            token_response = app.acquire_token_by_authorization_code(
-                code=auth_code,
-                scopes=SCOPES,
-                redirect_uri=REDIRECT_URI,
-                code_verifier=st.session_state["code_verifier"]
-            )
+            try:
+                token_response = app.acquire_token_by_authorization_code(
+                    code=auth_code,
+                    scopes=SCOPES,
+                    redirect_uri=REDIRECT_URI,
+                    code_verifier=st.session_state["code_verifier"]
+                )
 
-            if "access_token" in token_response:
-                st.session_state["access_token"] = token_response["access_token"]
-                st.experimental_rerun()  # Refresh to show logged-in state
-            else:
-                st.error(f"Error obtaining access token: {token_response}")
+                if "access_token" in token_response:
+                    st.session_state["access_token"] = token_response["access_token"]
+                    st.experimental_rerun()  # Refresh to show logged-in state
+                else:
+                    st.error(f"Error obtaining access token: {token_response}")
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
 else:
     # User is logged in
     st.success("You are logged in!")
