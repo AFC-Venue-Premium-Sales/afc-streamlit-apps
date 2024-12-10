@@ -193,85 +193,65 @@
 
 #     elif app_choice == "📈 User Performance":
 #         user_performance_api.run_app()
-
-
-    
+        
+        
 import streamlit as st
-import requests
-from urllib.parse import urlencode
-import os
+from msal import PublicClientApplication
+import urllib.parse
 
 # Azure AD Configuration
-CLIENT_ID = os.getenv("CLIENT_ID")
-CLIENT_SECRET = os.getenv("CLIENT_SECRET")  # Use environment variable for client secret
-TENANT_ID = os.getenv("TENANT_ID")
+CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
+TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"
+AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
 REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app"
-AUTH_URL = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/authorize"
-TOKEN_URL = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token"
-SCOPES = "https://graph.microsoft.com/User.Read"
+SCOPES = ["User.Read"]
 
-# App State Initialization
+# Initialize MSAL Application
+app = PublicClientApplication(client_id=CLIENT_ID, authority=AUTHORITY)
+
+# Streamlit App
+st.title("Azure AD OAuth 2.0 Authentication")
+
 if "access_token" not in st.session_state:
     st.session_state["access_token"] = None
 
-# Build Authorization URL
-def get_auth_url():
-    params = {
-        "client_id": CLIENT_ID,
-        "response_type": "code",
-        "redirect_uri": REDIRECT_URI,
-        "scope": SCOPES,
-        "response_mode": "query",  # Ensure the response is returned as a query param
-    }
-    return f"{AUTH_URL}?{urlencode(params)}"
+if not st.session_state["access_token"]:
+    # Step 1: Start Authorization Flow
+    if st.button("Log in with Azure AD"):
+        auth_url = app.get_authorization_request_url(
+            scopes=SCOPES, redirect_uri=REDIRECT_URI
+        )
+        st.info("Please log in through the browser and paste the redirect URL below:")
+        st.write(auth_url)
 
-# Exchange Authorization Code for Token
-def exchange_code_for_token(auth_code):
-    data = {
-        "client_id": CLIENT_ID,
-        "client_secret": CLIENT_SECRET,  # Use client secret directly
-        "grant_type": "authorization_code",
-        "code": auth_code,
-        "redirect_uri": REDIRECT_URI,
-    }
-    headers = {"Content-Type": "application/x-www-form-urlencoded"}
-    response = requests.post(TOKEN_URL, data=data, headers=headers)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        st.error("Failed to exchange token.")
-        st.error(response.json())
-        return None
+    # Step 2: Handle Redirect URL
+    redirect_url = st.text_input("Paste the redirect URL after logging in:")
+    if st.button("Get Access Token"):
+        try:
+            # Extract authorization code from redirect URL
+            query_params = urllib.parse.urlparse(redirect_url).query
+            params = dict(urllib.parse.parse_qsl(query_params))
+            auth_code = params.get("code")
 
-# Fetch User Info
-def get_user_info():
-    headers = {"Authorization": f"Bearer {st.session_state['access_token']}"}
-    response = requests.get("https://graph.microsoft.com/v1.0/me", headers=headers)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        st.error("Failed to fetch user info.")
-        st.error(response.json())
-        return None
-
-# Main Application Logic
-if st.session_state["access_token"] is None:
-    st.title("🏟️ AFC Venue - MBM Hospitality")
-    st.markdown("Welcome to the Venue Hospitality Dashboard!")
-    st.markdown(f"[Click here to log in]({get_auth_url()})")
-
-    # Handle Redirect and Token Exchange
-    query_params = st.query_params  # Use the new API to get query params
-    if "code" in query_params:
-        auth_code = query_params["code"]
-        token_response = exchange_code_for_token(auth_code)
-        if token_response and "access_token" in token_response:
-            st.session_state["access_token"] = token_response["access_token"]
-            st.experimental_rerun()  # Refresh the app after login
+            if not auth_code:
+                st.error("Authorization code not found in the redirect URL.")
+            else:
+                # Exchange authorization code for access token
+                token_response = app.acquire_token_by_authorization_code(
+                    code=auth_code, scopes=SCOPES, redirect_uri=REDIRECT_URI
+                )
+                if "access_token" in token_response:
+                    st.session_state["access_token"] = token_response["access_token"]
+                    st.success("Login successful!")
+                else:
+                    st.error(f"Error obtaining access token: {token_response}")
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
 else:
-    # User is authenticated
-    user_info = get_user_info()
-    if user_info:
-        st.sidebar.title(f"Welcome, {user_info['displayName']}!")
-        st.sidebar.write(f"Email: {user_info['mail']}")
-        st.write("🎉 You are successfully logged in!")
+    # User is logged in
+    st.success("You are logged in!")
+    st.write(f"Access Token: {st.session_state['access_token'][:100]}... (truncated)")
+
+    # Example of displaying user data
+    st.sidebar.title("Navigation")
+    st.sidebar.radio("Go to:", ["Dashboard", "Settings"])
