@@ -200,24 +200,21 @@ from onelogin.saml2.auth import OneLogin_Saml2_Auth
 from onelogin.saml2.utils import OneLogin_Saml2_Utils
 import base64
 import json
+import os
 
 # Load SAML Configuration
 SAML_CONFIG_PATH = "saml_config.json"
 
 # Azure AD Configuration
-SAML_ENDPOINT = "https://login.microsoftonline.com/068cb91a-8be0-49d7-be3a-38190b0ba021/saml2"
 ACS_URL = "https://afc-apps-hospitality.streamlit.app/saml/callback"
 
-# Load the SAML configuration from the file
+# Helper Function: Load SAML Configuration
 def load_saml_config():
     with open(SAML_CONFIG_PATH, "r") as file:
         return json.load(file)
 
-# Initialize the SAML Authentication
+# Helper Function: Initialize SAML Auth
 def init_saml_auth(request_data):
-    """
-    Initialize SAML authentication using the request data.
-    """
     return OneLogin_Saml2_Auth(request_data, custom_base_path=".")
 
 # Streamlit App
@@ -227,8 +224,23 @@ if "saml_response" not in st.session_state:
     st.session_state["saml_response"] = None
 
 if not st.session_state["saml_response"]:
-    # Step 1: Redirect to Azure AD
-    st.markdown(f"[Click here to log in with SAML]({SAML_ENDPOINT})")
+    # Step 1: Generate SAMLRequest and Redirect to Azure AD
+    saml_config = load_saml_config()
+    auth = OneLogin_Saml2_Auth(
+        {
+            "http_host": "afc-apps-hospitality.streamlit.app",
+            "https": "on",
+            "script_name": "/saml/callback",
+            "get_data": {},
+            "post_data": {},
+        },
+        custom_base_path="."
+    )
+    saml_request = auth.get_request()
+    saml_request_encoded = OneLogin_Saml2_Utils.deflate_and_base64_encode(saml_request)
+    login_url = f"{saml_config['idp']['singleSignOnService']['url']}?SAMLRequest={saml_request_encoded}"
+
+    st.markdown(f"[Click here to log in with SAML]({login_url})")
     st.info("You'll be redirected to Azure AD for login.")
 
     # Step 2: Paste the SAML Response for Processing
@@ -239,7 +251,7 @@ if not st.session_state["saml_response"]:
         if saml_response:
             try:
                 # Decode the Base64-encoded SAML response
-                decoded_response = base64.b64decode(saml_response).decode('utf-8')
+                decoded_response = base64.b64decode(saml_response)
 
                 # Initialize request for SAML Authentication
                 request_data = {
@@ -247,10 +259,8 @@ if not st.session_state["saml_response"]:
                     "https": "on",
                     "script_name": "/saml/callback",
                     "get_data": {},
-                    "post_data": {"SAMLResponse": decoded_response},
+                    "post_data": {"SAMLResponse": decoded_response.decode()},
                 }
-
-                # Initialize and process the SAML authentication
                 auth = init_saml_auth(request_data)
                 auth.process_response()
                 errors = auth.get_errors()
@@ -272,5 +282,6 @@ else:
     st.success(f"Logged in as: {st.session_state['saml_response']}")
     st.sidebar.title("Navigation")
     st.sidebar.radio("Go to:", ["Dashboard", "Settings"])
+
 
 
