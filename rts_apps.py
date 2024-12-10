@@ -195,71 +195,119 @@
 #         user_performance_api.run_app()
 
 
+import streamlit as st
+import logging
+import user_performance_api
+import sales_performance
+import hashlib
+import base64
+import os
+from urllib.parse import urlencode
+import requests
 
-from flask import Flask, redirect, request, jsonify
-from onelogin.saml2.auth import OneLogin_Saml2_Auth
-from onelogin.saml2.utils import OneLogin_Saml2_Utils
+# Configure logging
+logging.basicConfig(
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    level=logging.DEBUG,
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
 
-app = Flask(__name__)
+logging.debug("Starting the Streamlit app.")
 
-def prepare_flask_request(request):
-    return {
-        'https': 'on' if request.scheme == 'https' else 'off',
-        'http_host': request.host,
-        'script_name': request.path,
-        'get_data': request.args.copy(),
-        'post_data': request.form.copy()
+# Azure app configuration
+client_id = "9c350612-9d05-40f3-94e9-d348d92f446a"
+redirect_uri = "https://afc-apps-hospitality.streamlit.app"
+auth_url = "https://login.microsoftonline.com/068cb91a-8be0-49d7-be3a-38190b0ba021/oauth2/v2.0/authorize"
+token_url = "https://login.microsoftonline.com/068cb91a-8be0-49d7-be3a-38190b0ba021/oauth2/v2.0/token"
+
+# PKCE helper functions
+def generate_pkce_pair():
+    code_verifier = base64.urlsafe_b64encode(os.urandom(32)).decode("utf-8").rstrip("=")
+    code_challenge = base64.urlsafe_b64encode(
+        hashlib.sha256(code_verifier.encode("utf-8")).digest()
+    ).decode("utf-8").rstrip("=")
+    return code_verifier, code_challenge
+
+# Initialize PKCE and session state
+if "code_verifier" not in st.session_state or "code_challenge" not in st.session_state:
+    code_verifier, code_challenge = generate_pkce_pair()
+    st.session_state["code_verifier"] = code_verifier
+    st.session_state["code_challenge"] = code_challenge
+    logging.debug(f"PKCE Code Verifier: {code_verifier}")
+    logging.debug(f"PKCE Code Challenge: {code_challenge}")
+
+# Build the authorization URL with PKCE
+def get_auth_url():
+    params = {
+        "client_id": client_id,
+        "response_type": "code",
+        "redirect_uri": redirect_uri,
+        "scope": "User.Read",
+        "code_challenge": st.session_state["code_challenge"],  # Use session state
+        "code_challenge_method": "S256",
     }
+    url = f"{auth_url}?{urlencode(params)}"
+    logging.debug(f"Authorization URL: {url}")
+    return url
 
-def init_saml_auth(req):
-    return OneLogin_Saml2_Auth(req, custom_base_path="./saml")
+# Exchange authorization code for access token
+def exchange_code_for_token(auth_code):
+    data = {
+        "client_id": client_id,
+        "grant_type": "authorization_code",
+        "code": auth_code,
+        "redirect_uri": redirect_uri,
+        "code_verifier": st.session_state["code_verifier"],  # Use session state
+    }
+    response = requests.post(token_url, data=data)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        logging.error(f"Token Exchange Failed! {response.json()}")
+        st.error("Failed to exchange token.")
+        return None
 
-@app.route("/")
-def home():
-    return "<h1>Welcome to the App</h1><a href='/sso/login'>Log in with SAML</a>"
+# Streamlit app logic
+if "auth_code" not in st.session_state:
+    st.session_state["auth_code"] = None
 
-@app.route("/sso/login")
-def sso_login():
-    req = prepare_flask_request(request)
-    auth = init_saml_auth(req)
-    return redirect(auth.login())
+if "access_token" not in st.session_state:
+    st.session_state["access_token"] = None
 
-@app.route("/sso/callback", methods=["POST"])
-def sso_callback():
-    req = prepare_flask_request(request)
-    auth = init_saml_auth(req)
-    auth.process_response()
+if not st.session_state["access_token"]:
+    st.title("🏟️ AFC Venue - MBM Hospitality")
+    st.markdown("""
+    **Welcome to the Venue Hospitality Dashboard!**  
+    This app provides insights into MBM Sales Performance and User Metrics. 
 
-    # Debugging: Check for errors
-    errors = auth.get_errors()
-    if errors:
-        return jsonify({
-            "message": "Authentication failed",
-            "errors": errors,
-            "last_error_reason": auth.get_last_error_reason()
-        }), 500
+    **MBM Sales Performance**:  
+    Analyse sales from MBM hospitality. 
 
-    # Check if authenticated
-    if not auth.is_authenticated():
-        return jsonify({"message": "Authentication failed"}), 401
+    **Premium Exec Metrics**:  
+    View and evaluate performance metrics from the Premium Team.
+    """)
+    # Display the login link
+    st.markdown(f"[Click here to log in]({get_auth_url()})")
 
-    attributes = auth.get_attributes()
-    email = attributes.get('email', [''])[0]
-    given_name = attributes.get('givenname', [''])[0]
-    surname = attributes.get('surname', [''])[0]
+    query_params = st.query_params  # Corrected to use st.query_params
+    if "code" in query_params:
+        auth_code = query_params["code"]
+        st.session_state["auth_code"] = auth_code
+        logging.debug(f"Authorization Code Retrieved: {auth_code}")
 
-    return jsonify({
-        "message": "Authentication successful",
-        "email": email,
-        "given_name": given_name,
-        "surname": surname
-    })
+        token_response = exchange_code_for_token(auth_code)
+        if token_response:
+            st.session_state["access_token"] = token_response["access_token"]
+            st.success("Successfully authenticated!")
+            st.experimental_rerun()
+else:
+    # User is authenticated
+    st.sidebar.title("🧭 Navigation")
+    app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
 
-@app.route("/sso/logout")
-def sso_logout():
-    req = prepare_flask_request(request)
-    auth = init_saml_auth(req)
-    return redirect(auth.logout())
-
-if __name__ == "__main__":
-    app.run(debug=False, port=5000)
+    # if app_choice == "📊 Sales Performance":
+    #     sales_performance.run_app()
+    # elif app_choice == "📈 User Performance":
+    #     user_performance_api.run_app()
