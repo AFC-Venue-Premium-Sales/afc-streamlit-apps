@@ -216,6 +216,7 @@ def generate_pkce_pair():
     code_challenge = base64.urlsafe_b64encode(
         hashlib.sha256(code_verifier.encode("utf-8")).digest()
     ).decode("utf-8").rstrip("=")
+
     # Debugging
     print(f"Generated code_verifier: {code_verifier}")
     print(f"Generated code_challenge: {code_challenge}")
@@ -232,7 +233,6 @@ st.title("Azure AD OAuth 2.0 Authentication (PKCE)")
 if not st.session_state["access_token"]:
     # Step 1: Start Authorization Flow
     if st.button("Log in with Azure AD"):
-        # Generate PKCE pair
         code_verifier, code_challenge = generate_pkce_pair()
         st.session_state["code_verifier"] = code_verifier
 
@@ -255,6 +255,9 @@ if not st.session_state["access_token"]:
         auth_code = query_params["code"]
         if auth_code and st.session_state["code_verifier"]:
             try:
+                # Log code_verifier for debugging
+                print(f"Using code_verifier: {st.session_state['code_verifier']}")
+
                 # Manually exchange authorization code for token
                 data = {
                     "client_id": CLIENT_ID,
@@ -283,3 +286,4 @@ else:
     # Example of displaying user data
     st.sidebar.title("Navigation")
     st.sidebar.radio("Go to:", ["Dashboard", "Settings"])
+
