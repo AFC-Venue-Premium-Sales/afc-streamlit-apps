@@ -232,9 +232,8 @@ if "code_verifier" not in st.session_state:
     code_verifier, code_challenge = generate_pkce_pair()
     st.session_state["code_verifier"] = code_verifier
     st.session_state["code_challenge"] = code_challenge
-    logging.debug(f"Generated PKCE: Verifier: {code_verifier}, Challenge: {code_challenge}")
 else:
-    logging.debug(f"PKCE Loaded from Session: Verifier: {st.session_state['code_verifier']}, Challenge: {st.session_state['code_challenge']}")
+    logging.debug(f"PKCE Loaded: Verifier={st.session_state['code_verifier']}")
 
 # Build Auth URL
 def get_auth_url():
@@ -260,12 +259,19 @@ def exchange_code_for_token(auth_code):
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     response = requests.post(TOKEN_URL, data=data, headers=headers)
     if response.status_code == 200:
-        logging.debug(f"Token Response: {response.json()}")
         return response.json()
     else:
-        error_details = response.json()
-        logging.error(f"Token Exchange Failed: {error_details}")
-        st.error(f"Token Exchange Failed: {error_details.get('error_description', 'Unknown error')}")
+        logging.error(f"Token Exchange Failed: {response.json()}")
+        return None
+
+# Fetch User Info
+def get_user_info():
+    headers = {"Authorization": f"Bearer {st.session_state['access_token']}"}
+    response = requests.get("https://graph.microsoft.com/v1.0/me", headers=headers)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        logging.error(f"Failed to fetch user info: {response.json()}")
         return None
 
 # App Logic
@@ -274,26 +280,20 @@ if "access_token" not in st.session_state:
 
 if not st.session_state["access_token"]:
     st.title("🏟️ AFC Venue - MBM Hospitality")
-    st.markdown("**Welcome to the Venue Hospitality Dashboard!**")
     st.markdown(f"[Click here to log in]({get_auth_url()})")
 
-    query_params = st.experimental_get_query_params()  # Replace with st.query_params in April 2024
+    query_params = st.experimental_get_query_params()
     if "code" in query_params:
-        auth_code = query_params["code"][0]  # Retrieve the authorization code
-        logging.debug(f"Authorization Code Retrieved: {auth_code}")
-
-        # Exchange the code for a token
+        auth_code = query_params["code"][0]
         token_response = exchange_code_for_token(auth_code)
         if token_response:
             st.session_state["access_token"] = token_response["access_token"]
-            st.session_state["id_token"] = token_response.get("id_token", {})
-            st.set_query_params()  # Clear query parameters
+            st.experimental_set_query_params()  # Clear query params
             st.experimental_rerun()
 else:
-    # User is authenticated
     st.sidebar.title("Welcome!")
-    st.sidebar.write("You are logged in.")
-
-    # Example protected resource (add your logic here)
-    st.write("🎉 You are successfully logged in!")
-    st.write("Access token:", st.session_state["access_token"])
+    user_info = get_user_info()
+    if user_info:
+        st.sidebar.write(f"Hello, {user_info['displayName']}!")
+        st.write("You are logged in!")
+        st.write("User Info:", user_info)
