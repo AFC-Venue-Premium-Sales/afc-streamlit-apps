@@ -202,7 +202,7 @@ import os
 import sales_performance
 import user_performance_api
 
-# Load environment variables from .env file
+# Load environment variables
 load_dotenv()
 
 # Azure AD Configuration
@@ -213,12 +213,22 @@ REDIRECT_URI = os.getenv("REDIRECT_URI")
 AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
 SCOPES = ["User.Read"]
 
+# Debugging: Print environment variables
+print(f"TENANT_ID: {TENANT_ID}")
+print(f"CLIENT_ID: {CLIENT_ID}")
+print(f"AUTHORITY: {AUTHORITY}")
+print(f"REDIRECT_URI: {REDIRECT_URI}")
+
 # MSAL Confidential Client Application
-app = ConfidentialClientApplication(
-    client_id=CLIENT_ID,
-    client_credential=CLIENT_SECRET,
-    authority=AUTHORITY
-)
+try:
+    app = ConfidentialClientApplication(
+        client_id=CLIENT_ID,
+        client_credential=CLIENT_SECRET,
+        authority=AUTHORITY
+    )
+    print("MSAL initialized successfully.")
+except Exception as e:
+    print(f"Error initializing MSAL: {e}")
 
 # Initialize session states
 if "authenticated" not in st.session_state:
@@ -252,9 +262,11 @@ if not st.session_state["authenticated"]:
         st.markdown(f"[Click here to log in]({login_url})")
 
     # Step 2: Auto-fetch Query Params for Authorization Code
-    query_params = st.query_params
+    query_params = st.experimental_get_query_params()
+    print(f"Query Params: {query_params}")  # Debugging query parameters
     if "code" in query_params:
         auth_code = query_params["code"]
+        print(f"Authorization Code: {auth_code}")  # Debugging authorization code
         try:
             # Exchange code for token
             result = app.acquire_token_by_authorization_code(
@@ -262,6 +274,7 @@ if not st.session_state["authenticated"]:
                 scopes=SCOPES,
                 redirect_uri=REDIRECT_URI
             )
+            print(f"Token Result: {result}")  # Debugging token result
             if "access_token" in result:
                 st.session_state["access_token"] = result["access_token"]
                 st.session_state["authenticated"] = True
@@ -271,7 +284,7 @@ if not st.session_state["authenticated"]:
                 st.error(f"Error: {result.get('error_description')}")
         except Exception as e:
             st.error(f"An error occurred: {e}")
-
+            print(f"Error acquiring token: {e}")
 else:
     # Authenticated User View
     st.sidebar.title("🧭 Navigation")
@@ -290,3 +303,13 @@ else:
         st.session_state["authenticated"] = False
         st.session_state["access_token"] = None
         st.rerun()
+
+# Test token acquisition directly
+try:
+    token_result = app.acquire_token_for_client(scopes=["https://graph.microsoft.com/.default"])
+    if "access_token" in token_result:
+        print("Direct Token Acquisition Successful")
+    else:
+        print(f"Error during direct token acquisition: {token_result.get('error_description')}")
+except Exception as e:
+    print(f"Error during direct token acquisition: {e}")
