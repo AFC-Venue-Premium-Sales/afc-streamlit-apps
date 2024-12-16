@@ -204,7 +204,7 @@ import urllib.parse
 CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
 TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"
 AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
-REDIRECT_URI = "http://localhost:8501"  # Ensure this matches the Azure AD redirect URI
+REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app"  # Ensure this matches the Azure AD redirect URI
 SCOPES = ["User.Read"]
 
 # Initialize MSAL Public Client Application
