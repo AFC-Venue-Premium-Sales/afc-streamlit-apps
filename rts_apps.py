@@ -265,28 +265,21 @@ if not st.session_state["authenticated"]:
             if "access_token" in result:
                 st.session_state["access_token"] = result["access_token"]
                 st.session_state["authenticated"] = True
-                st.success("🎉 Login successful!")
-                st.rerun()  # Refresh to display authenticated view
+
+                # Clear query parameters and show success message
+                st.success("🎉 Login successful with SSO!")
+                st.experimental_set_query_params()  # Clear URL query params
+                st.rerun()
+
             else:
                 st.error(f"Error: {result.get('error_description')}")
         except Exception as e:
             st.error(f"An error occurred: {e}")
 
-else:
-    # Authenticated User View
-    st.sidebar.title("🧭 Navigation")
-    app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
-
-    if app_choice == "📊 Sales Performance":
-        st.write("Running Sales Performance Module...")
-        sales_performance.run_app()
-
-    elif app_choice == "📈 User Performance":
-        st.write("Running User Performance Module...")
-        user_performance_api.run_app()
-
-    # Logout Button
+    # Logout Block
     if st.sidebar.button("🔓 Logout"):
         st.session_state["authenticated"] = False
         st.session_state["access_token"] = None
+        st.experimental_set_query_params()  # Clear query params on logout
+        st.success("✅ You have logged out successfully.")
         st.rerun()
