@@ -199,7 +199,7 @@ import streamlit as st
 from msal import ConfidentialClientApplication
 import requests
 import sales_performance
-import user_performance
+import user_performance_api
 
 # Azure AD Configuration
 CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
@@ -279,7 +279,7 @@ else:
 
     elif app_choice == "📈 User Performance":
         st.write("Running User Performance Module...")
-        user_performance.run_app()
+        user_performance_api.run_app()
 
     # Logout Button
     if st.sidebar.button("🔓 Logout"):
