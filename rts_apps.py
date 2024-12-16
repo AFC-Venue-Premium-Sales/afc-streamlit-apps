@@ -205,38 +205,62 @@ CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
 TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"
 CLIENT_SECRET = "s2a8Q~2Mz7_4CWwCFoVyItzzCQIov8KPs00JmaGk"  # Client secret
 AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
-REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app"  # Replace with your production URL
+REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app"
 SCOPES = ["User.Read"]
 
-# Initialize MSAL Confidential Client Application
+# MSAL Confidential Client Application
 app = ConfidentialClientApplication(
     client_id=CLIENT_ID,
     client_credential=CLIENT_SECRET,
     authority=AUTHORITY
 )
 
-# Streamlit Session State for Access Token
+# Streamlit Session State for Login Management
+if "authenticated" not in st.session_state:
+    st.session_state["authenticated"] = False
 if "access_token" not in st.session_state:
     st.session_state["access_token"] = None
+if "login_clicked" not in st.session_state:
+    st.session_state["login_clicked"] = False
 
-# Streamlit App UI
-st.title("Azure AD SSO Authentication in Production")
-
-# Step 1: Generate Authorization URL
-if not st.session_state["access_token"]:
-    st.write("### Log in to Azure AD")
+# Azure AD Login Function
+def azure_ad_login():
     auth_url = app.get_authorization_request_url(scopes=SCOPES, redirect_uri=REDIRECT_URI)
-    st.markdown(f"[Click here to log in]({auth_url})")
+    return auth_url
 
-    # Step 2: Handle Redirect and Retrieve Token
+# App Header
+st.title("🏟️ AFC Venue - MBM Hospitality")
+
+if not st.session_state["authenticated"]:
+    # Description of the app
+    st.markdown("""
+    **Welcome to the Venue Hospitality Dashboard!**  
+    This app provides insights into MBM Sales Performance and User Metrics.
+
+    **MBM Sales Performance**:  
+    Analyse sales from MBM hospitality.
+
+    **Premium Exec Metrics**:  
+    View and evaluate performance metrics from the Premium Team.
+
+    **Note:** You will need to hit the submit button again after successfully logging in.
+    """)
+
+    # Login Button Logic
+    if not st.session_state["login_clicked"]:
+        if st.button("🔐 Login with Azure AD"):
+            st.session_state["login_clicked"] = True
+            st.markdown(f"[Click here to log in]({azure_ad_login()})")
+
+    # Handle Redirect and Fetch Access Token
     redirect_url = st.text_input("Paste the redirect URL after logging in:")
-    if st.button("Get Access Token"):
-        try:
-            parsed_url = urllib.parse.urlparse(redirect_url)
-            query_params = dict(urllib.parse.parse_qsl(parsed_url.query))
-            auth_code = query_params.get("code")
+    if st.button("Submit Redirect URL"):
+        parsed_url = urllib.parse.urlparse(redirect_url)
+        query_params = dict(urllib.parse.parse_qsl(parsed_url.query))
+        auth_code = query_params.get("code")
 
-            if auth_code:
+        if auth_code:
+            try:
                 # Exchange Authorization Code for Access Token
                 result = app.acquire_token_by_authorization_code(
                     code=auth_code,
@@ -244,26 +268,33 @@ if not st.session_state["access_token"]:
                     redirect_uri=REDIRECT_URI
                 )
                 if "access_token" in result:
+                    st.session_state["authenticated"] = True
                     st.session_state["access_token"] = result["access_token"]
-                    st.success("Login successful!")
+                    st.success("🎉 Login successful!")
                 else:
                     st.error(f"Error: {result.get('error_description')}")
-            else:
-                st.error("Authorization code not found in the redirect URL.")
-        except Exception as e:
-            st.error(f"An error occurred: {e}")
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
+        else:
+            st.error("No authorization code found in the URL.")
+
 else:
-    # Step 3: Use Access Token to Fetch User Data
-    st.success("You are already logged in!")
-    access_token = st.session_state["access_token"]
-    st.write(f"Access Token: {access_token[:100]}... (truncated)")
+    # User is Authenticated
+    st.sidebar.title("🧭 Navigation")
+    app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
 
-    headers = {"Authorization": f"Bearer {access_token}"}
-    response = requests.get("https://graph.microsoft.com/v1.0/me", headers=headers)
+    if app_choice == "📊 Sales Performance":
+        st.write("Running Sales Performance Module...")
+        # Replace with your function call
+        # sales_performance.run_app()
 
-    if response.status_code == 200:
-        st.write("### User Profile:")
-        st.json(response.json())
-    else:
-        st.error(f"Failed to fetch user profile data: {response.status_code}")
-        st.write(response.json())
+    elif app_choice == "📈 User Performance":
+        st.write("Running User Performance Module...")
+        # Replace with your function call
+        # user_performance_api.run_app()
+
+    # Add Logout Button
+    if st.sidebar.button("🔓 Logout"):
+        st.session_state["authenticated"] = False
+        st.session_state["access_token"] = None
+        st.experimental_rerun()
