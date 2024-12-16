@@ -243,7 +243,7 @@ if not st.session_state["authenticated"]:
     """)
 
     # Step 1: Login Button
-    if st.button("🔐 Login with Azure AD"):
+    if st.button("🔐 Login with SSO"):
         login_url = azure_ad_login()
         st.markdown(f"[Click here to log in]({login_url})")
 
