@@ -199,39 +199,26 @@ import streamlit as st
 from msal import ConfidentialClientApplication
 from dotenv import load_dotenv
 import os
+import sales_performance
+import user_performance_api
 
-# Explicitly load the .env file
-load_dotenv("/Users/cmunthali/Documents/PYTHON/APPS/.env")
+# Load environment variables from .env file
+load_dotenv()
 
-# Debugging: Confirm environment variable values
+# Azure AD Configuration
 CLIENT_ID = os.getenv("CLIENT_ID")
 TENANT_ID = os.getenv("TENANT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 REDIRECT_URI = os.getenv("REDIRECT_URI")
 AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
-
-print(f"Current working directory: {os.getcwd()}")
-print(f"TENANT_ID: {TENANT_ID}")
-print(f"CLIENT_ID: {CLIENT_ID}")
-print(f"CLIENT_SECRET: {'[REDACTED]' if CLIENT_SECRET else 'None'}")
-print(f"REDIRECT_URI: {REDIRECT_URI}")
-print(f"AUTHORITY: {AUTHORITY}")
-
-# Check if all variables are loaded
-if not CLIENT_ID or not CLIENT_SECRET or not TENANT_ID or not REDIRECT_URI:
-    raise ValueError("One or more environment variables are missing. Please check your .env file.")
+SCOPES = ["User.Read"]
 
 # MSAL Confidential Client Application
-try:
-    app = ConfidentialClientApplication(
-        client_id=CLIENT_ID,
-        client_credential=CLIENT_SECRET,
-        authority=AUTHORITY
-    )
-    print("MSAL initialized successfully.")
-except Exception as e:
-    print(f"Error initializing MSAL: {e}")
-    st.error("An error occurred during app initialization.")
+app = ConfidentialClientApplication(
+    client_id=CLIENT_ID,
+    client_credential=CLIENT_SECRET,
+    authority=AUTHORITY
+)
 
 # Initialize session states
 if "authenticated" not in st.session_state:
@@ -241,31 +228,65 @@ if "access_token" not in st.session_state:
 
 # Azure AD Login URL Generation
 def azure_ad_login():
-    return app.get_authorization_request_url(scopes=["User.Read"], redirect_uri=REDIRECT_URI)
+    return app.get_authorization_request_url(scopes=SCOPES, redirect_uri=REDIRECT_URI)
 
 # App Header
 st.title("🏟️ AFC Venue - MBM Hospitality")
 
 if not st.session_state["authenticated"]:
+    # Description
     st.markdown("""
     **Welcome to the Venue Hospitality Dashboard!**  
     This app provides insights into MBM Sales Performance and User Metrics.
+
+    **MBM Sales Performance**:  
+    Analyse sales from MBM hospitality.
+
+    **Premium Exec Metrics**:  
+    View and evaluate performance metrics from the Premium Team.
     """)
+
+    # Step 1: Login Button
     if st.button("🔐 Login with SSO"):
         login_url = azure_ad_login()
         st.markdown(f"[Click here to log in]({login_url})")
+
+    # Step 2: Auto-fetch Query Params for Authorization Code
+    query_params = st.query_params
+    if "code" in query_params:
+        auth_code = query_params["code"]
+        try:
+            # Exchange code for token
+            result = app.acquire_token_by_authorization_code(
+                code=auth_code,
+                scopes=SCOPES,
+                redirect_uri=REDIRECT_URI
+            )
+            if "access_token" in result:
+                st.session_state["access_token"] = result["access_token"]
+                st.session_state["authenticated"] = True
+                st.success("🎉 Login successful!")
+                st.rerun()  # Refresh to display authenticated view
+            else:
+                st.error(f"Error: {result.get('error_description')}")
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
+
 else:
+    # Authenticated User View
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
 
     if app_choice == "📊 Sales Performance":
         st.write("Running Sales Performance Module...")
-        # sales_performance.run_app()  # Uncomment when module is ready
+        sales_performance.run_app()
 
     elif app_choice == "📈 User Performance":
         st.write("Running User Performance Module...")
-        # user_performance_api.run_app()  # Uncomment when module is ready
+        user_performance_api.run_app()
 
+    # Logout Button
     if st.sidebar.button("🔓 Logout"):
         st.session_state["authenticated"] = False
+        st.session_state["access_token"] = None
         st.rerun()
