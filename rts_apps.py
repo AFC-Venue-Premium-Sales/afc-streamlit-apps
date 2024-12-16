@@ -196,54 +196,71 @@
         
         
 import streamlit as st
-from msal import ConfidentialClientApplication
+from msal import PublicClientApplication
 import requests
+import urllib.parse
 
 # Azure AD Configuration
 CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
 TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"
-CLIENT_SECRET = "s2a8Q~2Mz7_4CWwCFoVyItzzCQIov8KPs00JmaGk"
 AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
-SCOPES = ["https://graph.microsoft.com/.default"]  # Fix: Correct scope
+REDIRECT_URI = "http://localhost:8501"  # Ensure this matches the Azure AD redirect URI
+SCOPES = ["User.Read"]
 
-# MSAL Confidential Client Application
-app = ConfidentialClientApplication(
-    client_id=CLIENT_ID,
-    client_credential=CLIENT_SECRET,
-    authority=AUTHORITY
-)
+# Initialize MSAL Public Client Application
+app = PublicClientApplication(client_id=CLIENT_ID, authority=AUTHORITY)
+
+# Session State for Tokens
+if "access_token" not in st.session_state:
+    st.session_state["access_token"] = None
+
+# Authorization URL
+def get_auth_url():
+    return app.get_authorization_request_url(scopes=SCOPES, redirect_uri=REDIRECT_URI)
 
 # Streamlit UI
 st.title("Azure AD SSO Authentication")
 
-if "access_token" not in st.session_state:
-    st.session_state["access_token"] = None
-
+# Step 1: Generate Auth URL and Login
 if not st.session_state["access_token"]:
-    st.write("### Log in to continue:")
-    if st.button("Log in with Azure AD"):
-        try:
-            # Acquire token using client credentials
-            result = app.acquire_token_for_client(scopes=SCOPES)
+    st.write("### Log in with Azure AD")
+    auth_url = get_auth_url()
+    st.markdown(f"[Click here to log in]({auth_url})")
 
-            if "access_token" in result:
-                st.session_state["access_token"] = result["access_token"]
-                st.success("Login successful!")
+    # Handle Redirect
+    redirect_url = st.text_input("Paste the redirect URL after logging in:")
+    if st.button("Get Access Token"):
+        try:
+            # Extract Authorization Code
+            parsed_url = urllib.parse.urlparse(redirect_url)
+            query_params = dict(urllib.parse.parse_qsl(parsed_url.query))
+            auth_code = query_params.get("code")
+
+            # Exchange Authorization Code for Token
+            if auth_code:
+                result = app.acquire_token_by_authorization_code(
+                    code=auth_code, scopes=SCOPES, redirect_uri=REDIRECT_URI
+                )
+                if "access_token" in result:
+                    st.session_state["access_token"] = result["access_token"]
+                    st.success("Login successful!")
+                else:
+                    st.error(f"Error: {result.get('error_description')}")
             else:
-                st.error(f"Error: {result.get('error_description')}")
+                st.error("Authorization code not found.")
         except Exception as e:
             st.error(f"An error occurred: {e}")
 else:
+    # Step 2: Use the Access Token
     st.success("You are already logged in!")
     access_token = st.session_state["access_token"]
     st.write(f"Access Token: {access_token[:100]}... (truncated)")
 
-    # Fetch data using Microsoft Graph API
-    st.write("### Fetching Application API Data:")
+    # Fetch User Profile Data
     headers = {"Authorization": f"Bearer {access_token}"}
-    response = requests.get("https://graph.microsoft.com/v1.0/users", headers=headers)
+    response = requests.get("https://graph.microsoft.com/v1.0/me", headers=headers)
     if response.status_code == 200:
         st.json(response.json())
     else:
-        st.error(f"Failed to fetch data: {response.status_code}")
+        st.error("Failed to fetch user profile data.")
         st.write(response.json())
