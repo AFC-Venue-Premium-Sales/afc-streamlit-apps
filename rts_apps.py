@@ -201,6 +201,7 @@ from msal import PublicClientApplication
 # Azure AD Configuration
 CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
 TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"
+CLIENT_SECRET = "s2a8Q~2Mz7_4CWwCFoVyItzzCQIov8KPs00JmaGk"
 AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
 SCOPES = ["User.Read"]
 
