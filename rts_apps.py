@@ -204,8 +204,7 @@ CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
 TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"
 CLIENT_SECRET = "s2a8Q~2Mz7_4CWwCFoVyItzzCQIov8KPs00JmaGk"
 AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
-SCOPES = ["https://graph.microsoft.com/.default"]
-
+SCOPES = ["https://graph.microsoft.com/.default"]  # Fix: Correct scope
 
 # MSAL Confidential Client Application
 app = ConfidentialClientApplication(
@@ -224,14 +223,12 @@ if not st.session_state["access_token"]:
     st.write("### Log in to continue:")
     if st.button("Log in with Azure AD"):
         try:
-            # Acquire token silently or via client credentials
-            result = app.acquire_token_silent(SCOPES, account=None)
-            if not result:
-                result = app.acquire_token_for_client(scopes=SCOPES)
-            
+            # Acquire token using client credentials
+            result = app.acquire_token_for_client(scopes=SCOPES)
+
             if "access_token" in result:
                 st.session_state["access_token"] = result["access_token"]
-                st.success("Login successful with SSO!")
+                st.success("Login successful!")
             else:
                 st.error(f"Error: {result.get('error_description')}")
         except Exception as e:
@@ -241,10 +238,12 @@ else:
     access_token = st.session_state["access_token"]
     st.write(f"Access Token: {access_token[:100]}... (truncated)")
 
-    # Fetch user info from Microsoft Graph API
+    # Fetch data using Microsoft Graph API
+    st.write("### Fetching Application API Data:")
     headers = {"Authorization": f"Bearer {access_token}"}
-    response = requests.get("https://graph.microsoft.com/v1.0/me", headers=headers)
+    response = requests.get("https://graph.microsoft.com/v1.0/users", headers=headers)
     if response.status_code == 200:
         st.json(response.json())
     else:
-        st.error("Failed to fetch user profile data.")
+        st.error(f"Failed to fetch data: {response.status_code}")
+        st.write(response.json())
