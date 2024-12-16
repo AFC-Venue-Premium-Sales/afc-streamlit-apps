@@ -197,16 +197,20 @@
         
 import streamlit as st
 from msal import ConfidentialClientApplication
-import requests
+from dotenv import load_dotenv
+import os
 import sales_performance
 import user_performance_api
 
+# Load environment variables from .env file
+load_dotenv()
+
 # Azure AD Configuration
-CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
-TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"
-CLIENT_SECRET = "s2a8Q~2Mz7_4CWwCFoVyItzzCQIov8KPs00JmaGk"
+CLIENT_ID = os.getenv("CLIENT_ID")
+TENANT_ID = os.getenv("TENANT_ID")
+CLIENT_SECRET = os.getenv("CLIENT_SECRET")
+REDIRECT_URI = os.getenv("REDIRECT_URI")
 AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
-REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app"
 SCOPES = ["User.Read"]
 
 # MSAL Confidential Client Application
