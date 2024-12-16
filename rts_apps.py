@@ -196,7 +196,8 @@
         
         
 import streamlit as st
-from msal import PublicClientApplication
+from msal import ConfidentialClientApplication
+import requests
 
 # Azure AD Configuration
 CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
@@ -205,43 +206,44 @@ CLIENT_SECRET = "s2a8Q~2Mz7_4CWwCFoVyItzzCQIov8KPs00JmaGk"
 AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
 SCOPES = ["User.Read"]
 
-# Initialize MSAL App as a Public Client
-app = PublicClientApplication(client_id=CLIENT_ID, authority=AUTHORITY)
+# MSAL Confidential Client Application
+app = ConfidentialClientApplication(
+    client_id=CLIENT_ID,
+    client_credential=CLIENT_SECRET,
+    authority=AUTHORITY
+)
 
-# Streamlit App
-st.title("Azure AD Authentication - Device Code Flow")
+# Streamlit UI
+st.title("Azure AD SSO Authentication")
 
 if "access_token" not in st.session_state:
     st.session_state["access_token"] = None
 
 if not st.session_state["access_token"]:
+    st.write("### Log in to continue:")
     if st.button("Log in with Azure AD"):
         try:
-            # Step 1: Request a device code
-            device_flow = app.initiate_device_flow(scopes=SCOPES)
-            if "user_code" not in device_flow:
-                st.error("Failed to initiate device flow. Check app registration.")
+            # Acquire token silently or via client credentials
+            result = app.acquire_token_silent(SCOPES, account=None)
+            if not result:
+                result = app.acquire_token_for_client(scopes=SCOPES)
+            
+            if "access_token" in result:
+                st.session_state["access_token"] = result["access_token"]
+                st.success("Login successful with SSO!")
             else:
-                # Prompt the user to authenticate
-                st.write("Visit the following URL to authenticate:")
-                st.markdown(f"[{device_flow['verification_uri']}]({device_flow['verification_uri']})")
-                st.write(f"Enter the code: `{device_flow['user_code']}`")
-
-                # Step 2: Poll for token
-                st.info("Waiting for authentication...")
-                token_response = app.acquire_token_by_device_flow(device_flow)
-                if "access_token" in token_response:
-                    st.session_state["access_token"] = token_response["access_token"]
-                    st.success("Login successful!")
-                else:
-                    st.error(f"Error obtaining access token: {token_response}")
+                st.error(f"Error: {result.get('error_description')}")
         except Exception as e:
             st.error(f"An error occurred: {e}")
 else:
-    # User is logged in
-    st.success("You are logged in!")
-    st.write(f"Access Token: {st.session_state['access_token'][:100]}... (truncated)")
+    st.success("You are already logged in!")
+    access_token = st.session_state["access_token"]
+    st.write(f"Access Token: {access_token[:100]}... (truncated)")
 
-    # Example of displaying user data
-    st.sidebar.title("Navigation")
-    st.sidebar.radio("Go to:", ["Dashboard", "Settings"])
+    # Fetch user info from Microsoft Graph API
+    headers = {"Authorization": f"Bearer {access_token}"}
+    response = requests.get("https://graph.microsoft.com/v1.0/me", headers=headers)
+    if response.status_code == 200:
+        st.json(response.json())
+    else:
+        st.error("Failed to fetch user profile data.")
