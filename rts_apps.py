@@ -198,12 +198,13 @@
 import streamlit as st
 from msal import ConfidentialClientApplication
 import requests
-import urllib.parse
+import sales_performance
+import user_performance
 
 # Azure AD Configuration
 CLIENT_ID = "9c350612-9d05-40f3-94e9-d348d92f446a"
 TENANT_ID = "068cb91a-8be0-49d7-be3a-38190b0ba021"
-CLIENT_SECRET = "s2a8Q~2Mz7_4CWwCFoVyItzzCQIov8KPs00JmaGk"  # Client secret
+CLIENT_SECRET = "s2a8Q~2Mz7_4CWwCFoVyItzzCQIov8KPs00JmaGk"
 AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
 REDIRECT_URI = "https://afc-apps-hospitality.streamlit.app"
 SCOPES = ["User.Read"]
@@ -215,24 +216,21 @@ app = ConfidentialClientApplication(
     authority=AUTHORITY
 )
 
-# Streamlit Session State for Login Management
+# Initialize session states
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 if "access_token" not in st.session_state:
     st.session_state["access_token"] = None
-if "login_clicked" not in st.session_state:
-    st.session_state["login_clicked"] = False
 
-# Azure AD Login Function
+# Azure AD Login URL Generation
 def azure_ad_login():
-    auth_url = app.get_authorization_request_url(scopes=SCOPES, redirect_uri=REDIRECT_URI)
-    return auth_url
+    return app.get_authorization_request_url(scopes=SCOPES, redirect_uri=REDIRECT_URI)
 
 # App Header
 st.title("🏟️ AFC Venue - MBM Hospitality")
 
 if not st.session_state["authenticated"]:
-    # Description of the app
+    # Description
     st.markdown("""
     **Welcome to the Venue Hospitality Dashboard!**  
     This app provides insights into MBM Sales Performance and User Metrics.
@@ -242,59 +240,49 @@ if not st.session_state["authenticated"]:
 
     **Premium Exec Metrics**:  
     View and evaluate performance metrics from the Premium Team.
-
-    **Note:** You will need to hit the submit button again after successfully logging in.
     """)
 
-    # Login Button Logic
-    if not st.session_state["login_clicked"]:
-        if st.button("🔐 Login with Azure AD"):
-            st.session_state["login_clicked"] = True
-            st.markdown(f"[Click here to log in]({azure_ad_login()})")
+    # Step 1: Login Button
+    if st.button("🔐 Login with Azure AD"):
+        login_url = azure_ad_login()
+        st.markdown(f"[Click here to log in]({login_url})")
 
-    # Handle Redirect and Fetch Access Token
-    redirect_url = st.text_input("Paste the redirect URL after logging in:")
-    if st.button("Submit Redirect URL"):
-        parsed_url = urllib.parse.urlparse(redirect_url)
-        query_params = dict(urllib.parse.parse_qsl(parsed_url.query))
-        auth_code = query_params.get("code")
-
-        if auth_code:
-            try:
-                # Exchange Authorization Code for Access Token
-                result = app.acquire_token_by_authorization_code(
-                    code=auth_code,
-                    scopes=SCOPES,
-                    redirect_uri=REDIRECT_URI
-                )
-                if "access_token" in result:
-                    st.session_state["authenticated"] = True
-                    st.session_state["access_token"] = result["access_token"]
-                    st.success("🎉 Login successful!")
-                else:
-                    st.error(f"Error: {result.get('error_description')}")
-            except Exception as e:
-                st.error(f"An error occurred: {e}")
-        else:
-            st.error("No authorization code found in the URL.")
+    # Step 2: Auto-fetch Query Params for Authorization Code
+    query_params = st.query_params
+    if "code" in query_params:
+        auth_code = query_params["code"]
+        try:
+            # Exchange code for token
+            result = app.acquire_token_by_authorization_code(
+                code=auth_code,
+                scopes=SCOPES,
+                redirect_uri=REDIRECT_URI
+            )
+            if "access_token" in result:
+                st.session_state["access_token"] = result["access_token"]
+                st.session_state["authenticated"] = True
+                st.success("🎉 Login successful!")
+                st.rerun()  # Refresh to display authenticated view
+            else:
+                st.error(f"Error: {result.get('error_description')}")
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
 
 else:
-    # User is Authenticated
+    # Authenticated User View
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
 
     if app_choice == "📊 Sales Performance":
         st.write("Running Sales Performance Module...")
-        # Replace with your function call
-        # sales_performance.run_app()
+        sales_performance.run_app()
 
     elif app_choice == "📈 User Performance":
         st.write("Running User Performance Module...")
-        # Replace with your function call
-        # user_performance_api.run_app()
+        user_performance.run_app()
 
-    # Add Logout Button
+    # Logout Button
     if st.sidebar.button("🔓 Logout"):
         st.session_state["authenticated"] = False
         st.session_state["access_token"] = None
-        st.experimental_rerun()
+        st.rerun()
