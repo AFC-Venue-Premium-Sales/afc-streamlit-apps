@@ -213,12 +213,16 @@ REDIRECT_URI = os.getenv("REDIRECT_URI")
 AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
 SCOPES = ["User.Read"]
 
-# Debug: Print environment variables
+# Debugging: Print loaded values
 print(f"TENANT_ID: {TENANT_ID}")
 print(f"CLIENT_ID: {CLIENT_ID}")
 print(f"CLIENT_SECRET: {'[REDACTED]' if CLIENT_SECRET else 'None'}")
 print(f"REDIRECT_URI: {REDIRECT_URI}")
 print(f"AUTHORITY: {AUTHORITY}")
+
+# Check if all variables are loaded
+if not CLIENT_ID or not CLIENT_SECRET or not TENANT_ID or not REDIRECT_URI:
+    raise ValueError("One or more environment variables are missing. Please check your .env file.")
 
 # MSAL Confidential Client Application
 try:
@@ -230,6 +234,7 @@ try:
     print("MSAL initialized successfully.")
 except Exception as e:
     print(f"Error initializing MSAL: {e}")
+    st.error("An error occurred during app initialization.")
 
 # Initialize session states
 if "authenticated" not in st.session_state:
@@ -304,3 +309,4 @@ else:
         st.session_state["authenticated"] = False
         st.session_state["access_token"] = None
         st.rerun()
+
