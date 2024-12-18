@@ -241,7 +241,7 @@ if not st.session_state["authenticated"]:
     # Instructions for SSO Login
     st.markdown("""
     ### 👋 Welcome to the Venue Hospitality App!  
-    **Please log in using your SSO (Single Sign-On) credentials to access the following modules:**
+    **Please log in using AFC credentials to access the following modules:**
 
     - **📊 Sales Performance**: Analyze and track sales data.
     - **📈 User Performance**: Monitor and evaluate team performance metrics.
@@ -310,11 +310,17 @@ else:
     # Logout Button
     st.sidebar.markdown("---")
     if st.sidebar.button("🔓 Logout"):
-        st.session_state["authenticated"] = False
-        st.session_state["access_token"] = None
-        st.session_state["redirected"] = False
-        st.success("🔓 Logged out successfully!")
-        st.rerun()
+        with st.spinner("🔄 Logging out..."):
+            # Clear session state
+            st.session_state["authenticated"] = False
+            st.session_state["access_token"] = None
+            st.session_state.clear()  # Clears all session state values
+            st.success("✅ You have been logged out successfully!")
+            
+            # Redirect to the login screen
+            st.experimental_set_query_params()  # Clears query params to prevent re-login issues
+            st.experimental_rerun()
+
 
 # Footer Section
 st.markdown("---")
