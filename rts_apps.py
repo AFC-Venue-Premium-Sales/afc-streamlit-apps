@@ -225,8 +225,6 @@ if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 if "access_token" not in st.session_state:
     st.session_state["access_token"] = None
-if "redirected" not in st.session_state:
-    st.session_state["redirected"] = False
 
 # Azure AD Login URL
 def azure_ad_login():
@@ -248,28 +246,27 @@ if not st.session_state["authenticated"]:
     
     If you experience login issues, please contact [cmunthali@arsenal.co.uk](mailto:cmunthali@arsenal.co.uk).
     """)
-    
+
     # Login Section
     login_url = azure_ad_login()
     st.markdown(f"""
         <div style="text-align:center;">
-            <a href="{azure_ad_login()}" target="_blank" style="
+            <a href="{login_url}" target="_self" style="
                 text-decoration:none;
                 color:white;
                 background-color:#FF4B4B;
                 padding:10px 20px;
                 border-radius:5px;
                 font-size:16px;">
-                🔐 Log in Miscrosoft Entra ID
+                🔐 Log in with Microsoft Entra ID
             </a>
         </div>
     """, unsafe_allow_html=True)
 
-
     # Process login
-    query_params = st.experimental_get_query_params()
-    if "code" in query_params and not st.session_state["redirected"]:
-        auth_code = query_params["code"][0]
+    query_params = st.query_params
+    if "code" in query_params:
+        auth_code = query_params["code"]
         with st.spinner("🔄 Logging you in..."):
             try:
                 result = app.acquire_token_by_authorization_code(
@@ -280,9 +277,8 @@ if not st.session_state["authenticated"]:
                 if "access_token" in result:
                     st.session_state["access_token"] = result["access_token"]
                     st.session_state["authenticated"] = True
-                    st.session_state["redirected"] = True
                     st.success("🎉 Login successful! Redirecting...")
-                    st.rerun()  # Reload the app to show authenticated view
+                    st.rerun()  # Refresh app to display authenticated view
                 else:
                     st.error("❌ Failed to log in. Please try again.")
             except Exception as e:
@@ -291,7 +287,7 @@ else:
     # User Profile Card
     st.sidebar.markdown("### 👤 Logged in User")
     st.sidebar.info("User: **Azure AD User**\nRole: **Premium Exec**")
-    
+
     # Navigation Sidebar
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio(
@@ -312,15 +308,9 @@ else:
     if st.sidebar.button("🔓 Logout"):
         with st.spinner("🔄 Logging out..."):
             # Clear session state
-            st.session_state["authenticated"] = False
-            st.session_state["access_token"] = None
-            st.session_state.clear()  # Clears all session state values
+            st.session_state.clear()
             st.success("✅ You have been logged out successfully!")
-            
-            # Redirect to the login screen
-            st.experimental_set_query_params()  # Clears query params to prevent re-login issues
-            st.experimental_rerun()
-
+            st.rerun()  # Reload the app to show login screen
 
 # Footer Section
 st.markdown("---")
@@ -330,4 +320,3 @@ st.markdown("""
         Need help? Contact [cmunthali@arsenal.co.uk]
     </div>
 """, unsafe_allow_html=True)
-
