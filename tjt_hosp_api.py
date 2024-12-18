@@ -306,10 +306,12 @@ TOKEN_URL = 'https://www.tjhub3.com/export_arsenal/token'
 USERNAME = 'hospitality'
 PASSWORD = 'OkMessageSectionType000!'
 GRANT_TYPE = 'password'
-TOKEN_URL = "https://your-auth-url.com/token"
 BASE_URL = "https://www.tjhub3.com/export_arsenal"
 HEADERS = {'Content-Type': 'application/json'}
 
+# Token management
+access_token = None
+token_expiry_time = None
 
 def get_access_token():
     """
@@ -359,117 +361,68 @@ def fetch_data_from_api(endpoint):
         raise Exception(f"Failed to fetch data from {endpoint}")
 
 
-def fetch_accounts():
+def fetch_filtered_df_without_seats():
     """
-    Fetches account data from the API.
+    Fetches the full dataset from the API and processes it to exclude seating information.
+    Returns:
+        pd.DataFrame: The filtered dataset.
     """
-    accounts_data = fetch_data_from_api("Accounts/List")
-    return pd.DataFrame(accounts_data.get('Data', {}).get('Guests', []))
+    try:
+        # Step 1: Fetch accounts
+        accounts_data = fetch_data_from_api("Accounts/List")
+        accounts_df = pd.DataFrame(accounts_data.get('Data', {}).get('Guests', []))
 
+        # Step 2: Fetch events
+        events_data = fetch_data_from_api("Events/List")
+        events = events_data.get('Data', {}).get('Events', [])
 
-def fetch_events():
-    """
-    Fetches event data from the API.
-    """
-    events_data = fetch_data_from_api("Events/List")
-    return events_data.get('Data', {}).get('Events', [])
+        # Step 3: Fetch transactions for each event and merge
+        merged_data = []
+        for event in events:
+            event_id = event['Id']
+            fixture_name = event['Name']
 
+            transactions_data = fetch_data_from_api(f"HospitalitySaleTransactions/List?EventId={event_id}")
+            transactions = transactions_data.get('Data', {}).get('HospitalitySaleTransactions', [])
 
-def fetch_transactions(event_id):
-    """
-    Fetches transaction data for a specific event ID from the API.
-    """
-    endpoint = f"HospitalitySaleTransactions/List?EventId={event_id}"
-    transactions_data = fetch_data_from_api(endpoint)
-    return transactions_data.get('Data', {}).get('HospitalitySaleTransactions', [])
+            for transaction in transactions:
+                merged_record = {"Fixture Name": fixture_name, **event, **transaction}
 
+                # Merge with accounts data
+                guest_info = accounts_df[accounts_df['GuestId'] == transaction.get('GuestId')].to_dict(orient='records')
+                if guest_info:
+                    merged_record.update({
+                        "First Name": guest_info[0].get("FirstName", ""),
+                        "Surname": guest_info[0].get("Surname", ""),
+                        "Email": guest_info[0].get("Email", ""),
+                        "Country Code": guest_info[0].get("CountryCode", ""),
+                        "PostCode": guest_info[0].get("PostCode", ""),
+                        "City": guest_info[0].get("City", ""),
+                        "CompanyName": guest_info[0].get("CompanyName", ""),
+                        "DOB": guest_info[0].get("DOB", ""),
+                        "GuestId": guest_info[0].get("GuestId", ""),
+                        "Status": guest_info[0].get("Status", ""),
+                        "IsSeasonal": guest_info[0].get("IsSeasonal", "")
+                    })
 
-def parse_datetime(date_str):
-    """
-    Helper function to parse date strings into a consistent format.
-    """
-    formats = [
-        "%Y-%m-%dT%H:%M:%S.%f",
-        "%Y-%m-%dT%H:%M:%S",
-        "%Y-%m-%dT%H:%M:%S.%f%z",
-        "%Y-%m-%dT%H:%M:%S%z"
-    ]
-    for fmt in formats:
-        try:
-            dt = datetime.strptime(date_str, fmt)
-            return dt.strftime("%d-%m-%Y %H:%M")
-        except ValueError:
-            continue
-    return date_str
+                merged_data.append(merged_record)
 
+        # Convert merged data to DataFrame
+        final_df = pd.DataFrame(merged_data)
 
-def process_and_merge_data():
-    """
-    Fetches and processes accounts, events, and transactions, then merges the data.
-    """
-    # Fetch accounts and events
-    accounts_df = fetch_accounts()
-    events = fetch_events()
+        # Step 4: Filter the DataFrame to exclude seating data
+        filtered_columns = [
+            "Order Id", "KickOffEventStart", "EventCategory", "EventCompetition", "Fixture Name", "Type", "Package Name",
+            "LocationName", "PackageId", "EventId", "GuestId", "Seats", "CRCCode", "Price", "Discount",
+            "DiscountValue", "IsPaid", "PaymentTime", "CreatedOn", "CreatedBy", "TotalPrice", "GLCode", "SaleLocation",
+            "CompanyName", "DOB", "GuestId", "Status", "IsSeasonal", "First Name", "Surname", "Email", "Country Code",
+            "PostCode", "City"
+        ]
+        filtered_columns_without_seats = [col for col in final_df.columns if col in filtered_columns]
+        filtered_df_without_seats = final_df[filtered_columns_without_seats].drop_duplicates()
 
-    # Initialize merged data
-    merged_data = []
+        return filtered_df_without_seats
 
-    for event in events:
-        event_id = event['Id']
-        fixture_name = event['Name']
-
-        # Fetch transactions for the event
-        transactions = fetch_transactions(event_id)
-        for transaction in transactions:
-            # Merge event details with transaction data
-            merged_record = {"Fixture Name": fixture_name, **event, **transaction}
-
-            # Merge with account data based on GuestId
-            guest_info = accounts_df[accounts_df['GuestId'] == transaction.get('GuestId')].to_dict(orient='records')
-            if guest_info:
-                merged_record.update({
-                    "First Name": guest_info[0].get("FirstName", ""),
-                    "Surname": guest_info[0].get("Surname", ""),
-                    "Email": guest_info[0].get("Email", ""),
-                    "Country Code": guest_info[0].get("CountryCode", ""),
-                    "PostCode": guest_info[0].get("PostCode", ""),
-                    "City": guest_info[0].get("City", ""),
-                    "CompanyName": guest_info[0].get("CompanyName", ""),
-                    "DOB": guest_info[0].get("DOB", ""),
-                    "GuestId": guest_info[0].get("GuestId", ""),
-                    "Status": guest_info[0].get("Status", ""),
-                    "IsSeasonal": guest_info[0].get("IsSeasonal", "")
-                })
-
-            merged_data.append(merged_record)
-
-    return pd.DataFrame(merged_data)
-
-
-def save_to_excel(df, filename="filtered_hosp_data.xlsx"):
-    """
-    Saves the processed DataFrame to an Excel file.
-    """
-    with pd.ExcelWriter(filename) as writer:
-        df.to_excel(writer, sheet_name="Without seating information", index=False)
-    print(f"Data saved to {filename}")
-
-
-if __name__ == "__main__":
-    # Fetch, process, and merge data
-    final_df = process_and_merge_data()
-
-    # Define columns for filtering
-    filtered_columns = [
-        "Order Id", "KickOffEventStart", "EventCategory", "EventCompetition", "Fixture Name", "Type", "Package Name",
-        "LocationName", "PackageId", "EventId", "GuestId", "Seats", "CRCCode", "Price", "Discount",
-        "DiscountValue", "IsPaid", "PaymentTime", "CreatedOn", "CreatedBy", "TotalPrice", "GLCode", "SaleLocation",
-        "CompanyName", "DOB", "GuestId", "Status", "IsSeasonal", "First Name", "Surname", "Email", "Country Code",
-        "PostCode", "City"
-    ]
-
-    # Filter DataFrame to include only desired columns
-    filtered_df_without_seats = final_df[filtered_columns].drop_duplicates()
-
-    # Save the final data
-    save_to_excel(filtered_df_without_seats)
+    except Exception as e:
+        print(f"Error fetching or processing data: {e}")
+        raise
