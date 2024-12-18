@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from io import BytesIO
 import re
-from tjt_hosp_api import filtered_df_without_seats
+from tjt_hosp_api import fetch_filtered_df_without_seats
 
 def run_app():
     # Your existing User Performance code
@@ -19,7 +19,7 @@ def run_app():
     This application provides detailed Exec Sales Metrics ONLY, derived from RTS data. The data is retrieved from TJT's MBM sales API. The app allows you to filter results by date, user, and fixture for tailored insights.
     """)
 
-    loaded_api_df = filtered_df_without_seats
+    loaded_api_df = fetch_filtered_df_without_seats
 
     if loaded_api_df is not None:
         st.sidebar.success("✅ Data retrieved successfully.")
