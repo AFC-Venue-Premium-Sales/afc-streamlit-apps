@@ -202,7 +202,7 @@ import os
 import sales_performance
 import user_performance_api
 
-# Load environment variables from .env file
+# Load environment variables
 load_dotenv()
 
 # Azure AD Configuration
@@ -226,67 +226,96 @@ if "authenticated" not in st.session_state:
 if "access_token" not in st.session_state:
     st.session_state["access_token"] = None
 
-# Azure AD Login URL Generation
+# Azure AD Login URL
 def azure_ad_login():
     return app.get_authorization_request_url(scopes=SCOPES, redirect_uri=REDIRECT_URI)
 
-# App Header
+# App Header with a logo
+st.image("https://via.placeholder.com/120x60.png?text=AFC+Venue", width=250)  # Placeholder for the logo
 st.title("🏟️ AFC Venue - MBM Hospitality")
+st.markdown("---")  # A horizontal line for better UI
 
 if not st.session_state["authenticated"]:
-    # Description
+    # Instructions for SSO Login
     st.markdown("""
-    **Welcome to the Venue Hospitality Dashboard!**  
-    This app provides insights into MBM Sales Performance and User Metrics.
+    ### 👋 Welcome to the Venue Hospitality Dashboard!  
+    **Please log in using your SSO (Single Sign-On) credentials to access the following modules:**
 
-    **MBM Sales Performance**:  
-    Analyse sales from MBM hospitality.
-
-    **Premium Exec Metrics**:  
-    View and evaluate performance metrics from the Premium Team.
+    - **📊 Sales Performance**: Analyze and track sales data.
+    - **📈 User Performance**: Monitor and evaluate team performance metrics.
+    
+    If you experience login issues, please contact [support@afcvenue.com](mailto:support@afcvenue.com).
     """)
+    
+    # Login Section
+    st.markdown("""
+        <div style="text-align:center;">
+            <a href="#" style="
+                text-decoration:none;
+                color:white;
+                background-color:#FF4B4B;
+                padding:10px 20px;
+                border-radius:5px;
+                font-size:16px;">
+                🔐 Log in with SSO
+            </a>
+        </div>
+    """, unsafe_allow_html=True)
 
-    # Step 1: Login Button
-    if st.button("🔐 Login with SSO"):
-        login_url = azure_ad_login()
-        st.markdown(f"[Click here to log in]({login_url})")
-
-    # Step 2: Auto-fetch Query Params for Authorization Code
+    # Process login
     query_params = st.query_params
     if "code" in query_params:
         auth_code = query_params["code"]
-        try:
-            # Exchange code for token
-            result = app.acquire_token_by_authorization_code(
-                code=auth_code,
-                scopes=SCOPES,
-                redirect_uri=REDIRECT_URI
-            )
-            if "access_token" in result:
-                st.session_state["access_token"] = result["access_token"]
-                st.session_state["authenticated"] = True
-                st.success("🎉 Login successful!")
-                st.rerun()  # Refresh to display authenticated view
-            else:
-                st.error(f"Error: {result.get('error_description')}")
-        except Exception as e:
-            st.error(f"An error occurred: {e}")
-
+        with st.spinner("🔄 Logging you in..."):
+            try:
+                result = app.acquire_token_by_authorization_code(
+                    code=auth_code,
+                    scopes=SCOPES,
+                    redirect_uri=REDIRECT_URI
+                )
+                if "access_token" in result:
+                    st.session_state["access_token"] = result["access_token"]
+                    st.session_state["authenticated"] = True
+                    st.success("🎉 Login successful!")
+                    st.experimental_rerun()
+                else:
+                    st.error("❌ Failed to log in. Please try again.")
+            except Exception as e:
+                st.error(f"❌ An error occurred: {str(e)}")
 else:
-    # Authenticated User View
+    # User Profile Card
+    st.sidebar.markdown("### 👤 Logged in User")
+    st.sidebar.info("User: **Azure AD User**\nRole: **Premium Exec**")
+    
+    # Navigation Sidebar
     st.sidebar.title("🧭 Navigation")
-    app_choice = st.sidebar.radio("Go to", ["📊 Sales Performance", "📈 User Performance"])
+    app_choice = st.sidebar.radio(
+        "Choose Module",
+        ["📊 Sales Performance", "📈 User Performance"],
+        format_func=lambda x: x.split(" ")[1],  # Display just the module names
+    )
 
-    if app_choice == "📊 Sales Performance":
-        st.write("Running Sales Performance Module...")
-        sales_performance.run_app()
-
-    elif app_choice == "📈 User Performance":
-        st.write("Running User Performance Module...")
-        user_performance_api.run_app()
+    # Add Loading Indicator
+    with st.spinner("🔄 Loading..."):
+        if app_choice == "📊 Sales Performance":
+            sales_performance.run_app()
+        elif app_choice == "📈 User Performance":
+            user_performance_api.run_app()
 
     # Logout Button
+    st.sidebar.markdown("---")
     if st.sidebar.button("🔓 Logout"):
         st.session_state["authenticated"] = False
         st.session_state["access_token"] = None
-        st.rerun()
+        st.success("🔓 Logged out successfully!")
+        st.experimental_rerun()
+
+# Footer Section
+st.markdown("---")
+st.markdown("""
+    <div style="text-align:center; font-size:12px; color:gray;">
+        🏟️ **AFC Venue Hospitality Dashboard** | All Rights Reserved © 2024  
+        Need help? Contact [cmunthali@arsenal.co.uk]
+    </div>
+""", unsafe_allow_html=True)
+
