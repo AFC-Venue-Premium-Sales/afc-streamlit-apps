@@ -231,7 +231,7 @@ def azure_ad_login():
     return app.get_authorization_request_url(scopes=SCOPES, redirect_uri=REDIRECT_URI)
 
 # App Header with a logo
-st.image("/Users/cmunthali/Documents/PYTHON/APPS/assets/arsenal-logo.png", width=250)  # Placeholder for the logo
+st.image("assets/arsenal-logo.png", width=250)  # Placeholder for the logo
 st.title("🏟️ AFC Venue - MBM Hospitality")
 st.markdown("---")  # A horizontal line for better UI
 
@@ -248,9 +248,10 @@ if not st.session_state["authenticated"]:
     """)
     
     # Login Section
-    st.markdown("""
+    login_url = azure_ad_login()  # Generate the Azure AD login URL
+    st.markdown(f"""
         <div style="text-align:center;">
-            <a href="#" style="
+            <a href="{login_url}" target="_self" style="
                 text-decoration:none;
                 color:white;
                 background-color:#FF4B4B;
@@ -261,6 +262,7 @@ if not st.session_state["authenticated"]:
             </a>
         </div>
     """, unsafe_allow_html=True)
+
 
     # Process login
     query_params = st.query_params
