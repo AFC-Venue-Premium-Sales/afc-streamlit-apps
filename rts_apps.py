@@ -244,7 +244,7 @@ if not st.session_state["authenticated"]:
     - **📊 Sales Performance**: Analyze and track sales data.
     - **📈 User Performance**: Monitor and evaluate team performance metrics.
     
-    If you experience login issues, please contact [support@afcvenue.com](mailto:support@afcvenue.com).
+    If you experience login issues, please contact [cmunthali@arsenal.co.uk](mailto:cmunthali@arsenal.co.uk).
     """)
     
     # Login Section
