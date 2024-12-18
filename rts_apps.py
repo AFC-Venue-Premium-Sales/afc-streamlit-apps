@@ -326,7 +326,7 @@ else:
 st.markdown("---")
 st.markdown("""
     <div style="text-align:center; font-size:12px; color:gray;">
-        🏟️ **AFC Venue Hospitality Dashboard** | All Rights Reserved © 2024  
+        🏟️ **Arsenal Property** | All Rights Reserved © 2024  
         Need help? Contact [cmunthali@arsenal.co.uk]
     </div>
 """, unsafe_allow_html=True)
