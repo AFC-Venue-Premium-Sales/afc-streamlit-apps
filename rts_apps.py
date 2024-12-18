@@ -253,17 +253,18 @@ if not st.session_state["authenticated"]:
     login_url = azure_ad_login()
     st.markdown(f"""
         <div style="text-align:center;">
-            <a href="{login_url}" target="_self" style="
+            <a href="{azure_ad_login()}" target="_blank" style="
                 text-decoration:none;
                 color:white;
                 background-color:#FF4B4B;
                 padding:10px 20px;
                 border-radius:5px;
                 font-size:16px;">
-                🔐 Log in with Microsoft Entra ID
+                🔐 Log in Miscrosoft Entra ID
             </a>
         </div>
     """, unsafe_allow_html=True)
+
 
     # Process login
     query_params = st.experimental_get_query_params()
