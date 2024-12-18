@@ -56,7 +56,7 @@ def run_app():
         progress_bar.progress(100)
 
         # Initialize filtered_data with processed_data
-        filtered_data = loaded_api_df.copy()
+        filtered_data = loaded_api_df
 
         # Ensure 'Discount' column is treated as strings
         filtered_data['Discount'] = filtered_data['Discount'].astype(str)
