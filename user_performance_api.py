@@ -3,12 +3,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from io import BytesIO
 import re
-# # from user_performance_calc import (
-# #     load_data, remove_grand_total_row, filter_columns, clean_numeric_columns, 
-# #     split_CreatedBy_column, add_additional_info, split_guest_column, convert_date_format,
-# #     columns_to_keep, competition_fixture, total_budget_packages_data,
-# #     total_budget_target_data
-# )
 from tjt_hosp_api import filtered_df_without_seats
 
 def run_app():
@@ -18,7 +12,7 @@ def run_app():
 
     arsenal_gold = '#DAA520'
 
-    st.title('👤 AFC Premium Exec Dashboard 👤')
+    st.title('👤AFC Premium Exec Dashboard👤')
 
     st.markdown("""
     ### ℹ️ About
