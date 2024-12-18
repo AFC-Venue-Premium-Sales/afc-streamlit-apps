@@ -231,7 +231,7 @@ def azure_ad_login():
     return app.get_authorization_request_url(scopes=SCOPES, redirect_uri=REDIRECT_URI)
 
 # App Header with a logo
-st.image("assets/arsenal-logo.png", width=250)  # Ensure the image is accessible
+st.image("assets/arsenal-logo.png", width=250)  # Placeholder for the logo
 st.title("🏟️ AFC Venue - MBM Hospitality")
 st.markdown("---")  # A horizontal line for better UI
 
@@ -246,22 +246,28 @@ if not st.session_state["authenticated"]:
     
     If you experience login issues, please contact [cmunthali@arsenal.co.uk](mailto:cmunthali@arsenal.co.uk).
     """)
-
+    
     # Login Section
     if st.button("🔐 Log in with SSO"):
         login_url = azure_ad_login()  # Generate the Azure AD login URL
-        st.write("Redirecting to login...")
-        st.experimental_set_query_params(login_url=login_url)
+        st.markdown(f"""
+            <div style="text-align:center;">
+                <a href="{login_url}" target="_self" style="
+                    text-decoration:none;
+                    color:white;
+                    background-color:#FF4B4B;
+                    padding:10px 20px;
+                    border-radius:5px;
+                    font-size:16px;">
+                    🔐 Log in with SSO
+                </a>
+            </div>
+        """, unsafe_allow_html=True)
 
-    # Check for the login URL and redirect to Azure AD
-    query_params = st.experimental_get_query_params()
-    if "login_url" in query_params:
-        login_url = query_params["login_url"][0]
-        st.markdown(f'<meta http-equiv="refresh" content="0;url={login_url}">', unsafe_allow_html=True)
-
-    # Process login
+    # Process login directly based on the "code" query parameter
+    query_params = st.experimental_get_query_params()  # Revert to experimental function for compatibility
     if "code" in query_params:
-        auth_code = query_params["code"]
+        auth_code = query_params["code"][0]  # Extract the authorization code
         with st.spinner("🔄 Logging you in..."):
             try:
                 result = app.acquire_token_by_authorization_code(
@@ -273,7 +279,7 @@ if not st.session_state["authenticated"]:
                     st.session_state["access_token"] = result["access_token"]
                     st.session_state["authenticated"] = True
                     st.success("🎉 Login successful!")
-                    st.experimental_rerun()
+                    st.experimental_rerun()  # Refresh to display authenticated view
                 else:
                     st.error("❌ Failed to log in. Please try again.")
             except Exception as e:
