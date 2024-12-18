@@ -225,6 +225,8 @@ if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 if "access_token" not in st.session_state:
     st.session_state["access_token"] = None
+if "redirected" not in st.session_state:
+    st.session_state["redirected"] = False
 
 # Azure AD Login URL
 def azure_ad_login():
@@ -248,26 +250,25 @@ if not st.session_state["authenticated"]:
     """)
     
     # Login Section
-    if st.button("🔐 Log in with SSO"):
-        login_url = azure_ad_login()  # Generate the Azure AD login URL
-        st.markdown(f"""
-            <div style="text-align:center;">
-                <a href="{login_url}" target="_self" style="
-                    text-decoration:none;
-                    color:white;
-                    background-color:#FF4B4B;
-                    padding:10px 20px;
-                    border-radius:5px;
-                    font-size:16px;">
-                    🔐 Log in with SSO
-                </a>
-            </div>
-        """, unsafe_allow_html=True)
+    login_url = azure_ad_login()
+    st.markdown(f"""
+        <div style="text-align:center;">
+            <a href="{login_url}" target="_self" style="
+                text-decoration:none;
+                color:white;
+                background-color:#FF4B4B;
+                padding:10px 20px;
+                border-radius:5px;
+                font-size:16px;">
+                🔐 Log in with SSO
+            </a>
+        </div>
+    """, unsafe_allow_html=True)
 
-    # Process login directly based on the "code" query parameter
-    query_params = st.experimental_get_query_params()  # Revert to experimental function for compatibility
-    if "code" in query_params:
-        auth_code = query_params["code"][0]  # Extract the authorization code
+    # Process login
+    query_params = st.experimental_get_query_params()
+    if "code" in query_params and not st.session_state["redirected"]:
+        auth_code = query_params["code"][0]
         with st.spinner("🔄 Logging you in..."):
             try:
                 result = app.acquire_token_by_authorization_code(
@@ -278,8 +279,9 @@ if not st.session_state["authenticated"]:
                 if "access_token" in result:
                     st.session_state["access_token"] = result["access_token"]
                     st.session_state["authenticated"] = True
-                    st.success("🎉 Login successful!")
-                    st.experimental_rerun()  # Refresh to display authenticated view
+                    st.session_state["redirected"] = True
+                    st.success("🎉 Login successful! Redirecting...")
+                    st.rerun()  # Reload the app to show authenticated view
                 else:
                     st.error("❌ Failed to log in. Please try again.")
             except Exception as e:
@@ -309,8 +311,9 @@ else:
     if st.sidebar.button("🔓 Logout"):
         st.session_state["authenticated"] = False
         st.session_state["access_token"] = None
+        st.session_state["redirected"] = False
         st.success("🔓 Logged out successfully!")
-        st.experimental_rerun()
+        st.rerun()
 
 # Footer Section
 st.markdown("---")
@@ -320,3 +323,4 @@ st.markdown("""
         Need help? Contact [cmunthali@arsenal.co.uk]
     </div>
 """, unsafe_allow_html=True)
+
