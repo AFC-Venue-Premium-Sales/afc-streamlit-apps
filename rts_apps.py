@@ -260,7 +260,7 @@ if not st.session_state["authenticated"]:
                 padding:10px 20px;
                 border-radius:5px;
                 font-size:16px;">
-                🔐 Log in with SSO
+                🔐 Log in with Microsoft Entra ID
             </a>
         </div>
     """, unsafe_allow_html=True)
