@@ -231,7 +231,7 @@ def azure_ad_login():
     return app.get_authorization_request_url(scopes=SCOPES, redirect_uri=REDIRECT_URI)
 
 # App Header with a logo
-st.image("https://via.placeholder.com/120x60.png?text=AFC+Venue", width=250)  # Placeholder for the logo
+st.image("/Users/cmunthali/Documents/PYTHON/APPS/assets/arsenal-logo.png", width=250)  # Placeholder for the logo
 st.title("🏟️ AFC Venue - MBM Hospitality")
 st.markdown("---")  # A horizontal line for better UI
 
