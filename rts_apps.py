@@ -231,14 +231,14 @@ def azure_ad_login():
     return app.get_authorization_request_url(scopes=SCOPES, redirect_uri=REDIRECT_URI)
 
 # App Header with a logo
-st.image("assets/arsenal-logo.png", width=250)  # Placeholder for the logo
+st.image("assets/arsenal-logo.png", width=250)  # Ensure the image is accessible
 st.title("🏟️ AFC Venue - MBM Hospitality")
 st.markdown("---")  # A horizontal line for better UI
 
 if not st.session_state["authenticated"]:
     # Instructions for SSO Login
     st.markdown("""
-    ### 👋 Welcome to the Venue Hospitality Dashboard!  
+    ### 👋 Welcome to the Venue Hospitality App!  
     **Please log in using your SSO (Single Sign-On) credentials to access the following modules:**
 
     - **📊 Sales Performance**: Analyze and track sales data.
@@ -246,26 +246,20 @@ if not st.session_state["authenticated"]:
     
     If you experience login issues, please contact [cmunthali@arsenal.co.uk](mailto:cmunthali@arsenal.co.uk).
     """)
-    
-    # Login Section
-    login_url = azure_ad_login()  # Generate the Azure AD login URL
-    st.markdown(f"""
-        <div style="text-align:center;">
-            <a href="{login_url}" target="_self" style="
-                text-decoration:none;
-                color:white;
-                background-color:#FF4B4B;
-                padding:10px 20px;
-                border-radius:5px;
-                font-size:16px;">
-                🔐 Log in with SSO
-            </a>
-        </div>
-    """, unsafe_allow_html=True)
 
+    # Login Section
+    if st.button("🔐 Log in with SSO"):
+        login_url = azure_ad_login()  # Generate the Azure AD login URL
+        st.write("Redirecting to login...")
+        st.experimental_set_query_params(login_url=login_url)
+
+    # Check for the login URL and redirect to Azure AD
+    query_params = st.experimental_get_query_params()
+    if "login_url" in query_params:
+        login_url = query_params["login_url"][0]
+        st.markdown(f'<meta http-equiv="refresh" content="0;url={login_url}">', unsafe_allow_html=True)
 
     # Process login
-    query_params = st.query_params
     if "code" in query_params:
         auth_code = query_params["code"]
         with st.spinner("🔄 Logging you in..."):
@@ -320,4 +314,3 @@ st.markdown("""
         Need help? Contact [cmunthali@arsenal.co.uk]
     </div>
 """, unsafe_allow_html=True)
-
