@@ -110,6 +110,8 @@ def run_app():
 
         valid_usernames = [user for user in specified_users if user in pd.unique(filtered_data['CreatedBy'])]
         event_names = pd.unique(filtered_data['Fixture Name'])
+        event_categories = pd.unique(filtered_data['EventCompetition'])
+        selected_categories = st.sidebar.multiselect("Select Event Category", options=event_categories, default=None)
         sale_location = pd.unique(filtered_data['SaleLocation'])
         selected_events = st.sidebar.multiselect("🎫 Select Events", options=event_names, default=None)
         selected_sale_location = st.sidebar.multiselect("📍 Select SaleLocation", options=sale_location, default=None)
@@ -128,6 +130,10 @@ def run_app():
         # Apply user filter
         if selected_users:
             filtered_data = filtered_data[filtered_data['CreatedBy'].isin(selected_users)]
+            
+        # Apply event filter
+        if selected_categories:
+            filtered_data = filtered_data[filtered_data['EventCategory'].isin(selected_events)]
 
         # Apply event filter
         if selected_events:
