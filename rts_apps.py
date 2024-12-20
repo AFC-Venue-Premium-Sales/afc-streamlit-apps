@@ -87,7 +87,7 @@ if not st.session_state["authenticated"]:
     """, unsafe_allow_html=True)
 
     # Process login
-    query_params = st.query_params
+    query_params = st.experimental_get_query_params()  # Use the correct method to retrieve query parameters
     if "code" in query_params:
         auth_code = query_params["code"][0]
         with st.spinner("🔄 Logging you in..."):
@@ -102,10 +102,10 @@ if not st.session_state["authenticated"]:
                     st.session_state["authenticated"] = True
                     st.session_state["user_name"] = get_user_details(result["access_token"])
                     st.success("🎉 Login successful!")
-                    st.experimental_set_query_params()  # Clear query params to prevent re-login issues
-                    st.rerun()  # Refresh the app post-login
+                    st.experimental_set_query_params()  # Clear query params after successful login
+                    st.experimental_rerun()  # Reload the app to the authenticated view
                 else:
-                    st.error("❌ Login failed. Please try again.")
+                    st.error(f"❌ Login failed. Error: {result.get('error_description', 'Unknown error')}")
             except Exception as e:
                 st.error(f"❌ An error occurred: {str(e)}")
 else:
@@ -138,7 +138,7 @@ else:
         st.session_state.clear()
         st.success("✅ Logged out successfully!")
         st.experimental_set_query_params()  # Clear query params after logout
-        st.rerun()  # Reload the app to login page
+        st.experimental_rerun()  # Reload the app to the login page
 
 # Footer Section
 st.markdown("---")
