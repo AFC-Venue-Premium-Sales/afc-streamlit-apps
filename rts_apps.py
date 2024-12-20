@@ -253,18 +253,17 @@ if not st.session_state["authenticated"]:
     login_url = azure_ad_login()
     st.markdown(f"""
         <div style="text-align:center;">
-            <a href="{azure_ad_login()}" target="_blank" style="
+            <a href="{login_url}" target="_blank" style="
                 text-decoration:none;
                 color:white;
                 background-color:#FF4B4B;
                 padding:10px 20px;
                 border-radius:5px;
                 font-size:16px;">
-                🔐 Log in Miscrosoft Entra ID
+                🔐 Log in Microsoft Entra ID
             </a>
         </div>
     """, unsafe_allow_html=True)
-
 
     # Process login
     query_params = st.experimental_get_query_params()
@@ -282,7 +281,7 @@ if not st.session_state["authenticated"]:
                     st.session_state["authenticated"] = True
                     st.session_state["redirected"] = True
                     st.success("🎉 Login successful! Redirecting...")
-                    st.rerun()  # Reload the app to show authenticated view
+                    st.experimental_rerun()  # Reload the app to show authenticated view
                 else:
                     st.error("❌ Failed to log in. Please try again.")
             except Exception as e:
@@ -302,10 +301,16 @@ else:
 
     # Add Loading Indicator
     with st.spinner("🔄 Loading..."):
-        if app_choice == "📊 Sales Performance":
-            sales_performance.run_app()
-        elif app_choice == "📈 User Performance":
-            user_performance_api.run_app()
+        try:
+            if app_choice == "📊 Sales Performance":
+                sales_performance.run_app(st.session_state["access_token"])
+            elif app_choice == "📈 User Performance":
+                user_performance_api.run_app(st.session_state["access_token"])
+        except Exception as e:
+            st.error(f"⚠️ {str(e)}")
+            st.session_state["authenticated"] = False
+            st.session_state["access_token"] = None
+            st.experimental_rerun()  # Redirect to the login screen
 
     # Logout Button
     st.sidebar.markdown("---")
@@ -320,7 +325,6 @@ else:
             # Redirect to the login screen
             st.experimental_set_query_params()  # Clears query params to prevent re-login issues
             st.experimental_rerun()
-
 
 # Footer Section
 st.markdown("---")

@@ -218,10 +218,20 @@ filtered_columns_without_seats = [col for col in final_df.columns if col in filt
 # Filter the DataFrame
 filtered_df_without_seats = final_df[filtered_columns_without_seats].drop_duplicates()
 
-# Save the DataFrame
-with pd.ExcelWriter('filtered_hosp_data2.xlsx') as writer:
-    filtered_df_without_seats.to_excel(writer, sheet_name='Without seating information', index=False)
-    print(f'filtered_hosp_data2 saved')
+
+def fetch_hospitality_data():
+    """
+    Fetch and process hospitality data dynamically.
+    Returns:
+        filtered_df_without_seats: Pandas DataFrame with processed data.
+    """
+    return filtered_df_without_seats
+
+
+# # Save the DataFrame
+# with pd.ExcelWriter('filtered_hosp_data2.xlsx') as writer:
+#     filtered_df_without_seats.to_excel(writer, sheet_name='Without seating information', index=False)
+#     print(f'filtered_hosp_data2 saved')
 
 
 

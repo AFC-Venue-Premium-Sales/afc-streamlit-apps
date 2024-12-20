@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from io import BytesIO
-from tjt_hosp_api import filtered_df_without_seats
+from tjt_hosp_api import filtered_df_without_seats, fetch_hospitality_data
 import re
 
 
@@ -43,8 +43,8 @@ def run_app():
     You can filter results by date, user, fixture, payment status, and paid status for tailored insights. 
     """)
 
-    loaded_api_df = filtered_df_without_seats
-
+    loaded_api_df = fetch_hospitality_data()
+    
     if loaded_api_df is not None:
         st.sidebar.success("✅ Data retrieved successfully.")
         progress_bar = st.sidebar.progress(0)
