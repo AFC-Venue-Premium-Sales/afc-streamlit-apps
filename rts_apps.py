@@ -199,6 +199,7 @@ import streamlit as st
 from msal import ConfidentialClientApplication
 from dotenv import load_dotenv
 import os
+import time
 import sales_performance
 import user_performance_api
 
@@ -232,6 +233,12 @@ if "redirected" not in st.session_state:
 def azure_ad_login():
     return app.get_authorization_request_url(scopes=SCOPES, redirect_uri=REDIRECT_URI)
 
+# Auto-refresh function to reload data every 5 seconds
+def auto_refresh(interval=5):
+    """Automatically refresh the app at a set interval."""
+    time.sleep(interval)
+    st.experimental_rerun()
+
 # App Header with a logo
 st.image("assets/arsenal-logo.png", width=250)  # Placeholder for the logo
 st.title("🏟️ AFC Venue - MBM Hospitality")
@@ -253,21 +260,20 @@ if not st.session_state["authenticated"]:
     login_url = azure_ad_login()
     st.markdown(f"""
         <div style="text-align:center;">
-            <a href="{azure_ad_login()}" target="_blank" style="
+            <a href="{login_url}" target="_self" style="
                 text-decoration:none;
                 color:white;
                 background-color:#FF4B4B;
                 padding:10px 20px;
                 border-radius:5px;
                 font-size:16px;">
-                🔐 Log in Miscrosoft Entra ID
+                🔐 Log in with Microsoft Entra ID
             </a>
         </div>
     """, unsafe_allow_html=True)
 
-
     # Process login
-    query_params = st.experimental_get_query_params()
+    query_params = st.query_params
     if "code" in query_params and not st.session_state["redirected"]:
         auth_code = query_params["code"][0]
         with st.spinner("🔄 Logging you in..."):
@@ -282,7 +288,7 @@ if not st.session_state["authenticated"]:
                     st.session_state["authenticated"] = True
                     st.session_state["redirected"] = True
                     st.success("🎉 Login successful! Redirecting...")
-                    st.rerun()  # Reload the app to show authenticated view
+                    st.experimental_rerun()  # Reload the app to show authenticated view
                 else:
                     st.error("❌ Failed to log in. Please try again.")
             except Exception as e:
@@ -321,6 +327,8 @@ else:
             st.experimental_set_query_params()  # Clears query params to prevent re-login issues
             st.experimental_rerun()
 
+# Automatically refresh the app
+auto_refresh()
 
 # Footer Section
 st.markdown("---")
