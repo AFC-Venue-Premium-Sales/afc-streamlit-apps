@@ -32,13 +32,12 @@ if "access_token" not in st.session_state:
 if "redirected" not in st.session_state:
     st.session_state["redirected"] = False
 
-# Optional Auto-refresh Logic
+# Auto-refresh Logic
 def auto_refresh(interval=5):
     """Automatically refresh the app every specified interval."""
     st.write(f"🔄 Refreshing data every {interval} seconds.")
     time.sleep(interval)
-    st.experimental_rerun()
-
+    st.rerun()  # Use st.rerun to reload the app
 
 # Azure AD Login URL
 def azure_ad_login():
@@ -131,8 +130,7 @@ else:
             
             # Redirect to the login screen
             st.experimental_set_query_params()  # Clears query params to prevent re-login issues
-            st.experimental_rerun()
-
+            st.rerun()
 
 # Optional Auto-Refresh
 if st.session_state["authenticated"]:
