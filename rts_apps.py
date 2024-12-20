@@ -233,11 +233,12 @@ if "redirected" not in st.session_state:
 def azure_ad_login():
     return app.get_authorization_request_url(scopes=SCOPES, redirect_uri=REDIRECT_URI)
 
-# Auto-refresh function to reload data every 5 seconds
+# Optional Auto-refresh Logic
 def auto_refresh(interval=5):
-    """Automatically refresh the app at a set interval."""
+    """Automatically refresh the app every specified interval."""
+    st.write(f"🔄 Refreshing data every {interval} seconds.")
     time.sleep(interval)
-    st.experimental_rerun()
+    st.rerun()  # Use st.rerun to reload the app
 
 # App Header with a logo
 st.image("assets/arsenal-logo.png", width=250)  # Placeholder for the logo
@@ -273,7 +274,7 @@ if not st.session_state["authenticated"]:
     """, unsafe_allow_html=True)
 
     # Process login
-    query_params = st.query_params
+    query_params = st.experimental_get_query_params()
     if "code" in query_params and not st.session_state["redirected"]:
         auth_code = query_params["code"][0]
         with st.spinner("🔄 Logging you in..."):
@@ -288,7 +289,7 @@ if not st.session_state["authenticated"]:
                     st.session_state["authenticated"] = True
                     st.session_state["redirected"] = True
                     st.success("🎉 Login successful! Redirecting...")
-                    st.experimental_rerun()  # Reload the app to show authenticated view
+                    st.rerun()  # Reload the app to show authenticated view
                 else:
                     st.error("❌ Failed to log in. Please try again.")
             except Exception as e:
@@ -325,10 +326,11 @@ else:
             
             # Redirect to the login screen
             st.experimental_set_query_params()  # Clears query params to prevent re-login issues
-            st.experimental_rerun()
+            st.rerun()
 
-# Automatically refresh the app
-auto_refresh()
+# Optional Auto-Refresh
+if st.session_state["authenticated"]:
+    auto_refresh()
 
 # Footer Section
 st.markdown("---")
