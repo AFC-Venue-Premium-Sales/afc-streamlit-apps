@@ -2,7 +2,6 @@ import streamlit as st
 from msal import ConfidentialClientApplication
 from dotenv import load_dotenv
 import os
-import time
 import sales_performance
 import user_performance_api
 
@@ -36,13 +35,6 @@ if "redirected" not in st.session_state:
 def azure_ad_login():
     return app.get_authorization_request_url(scopes=SCOPES, redirect_uri=REDIRECT_URI)
 
-# Optional Auto-refresh Logic
-def auto_refresh(interval=5):
-    """Automatically refresh the app every specified interval."""
-    st.write(f"🔄 Refreshing data every {interval} seconds.")
-    time.sleep(interval)
-    st.experimental_rerun()
-
 # App Header with a logo
 st.image("assets/arsenal-logo.png", width=250)  # Placeholder for the logo
 st.title("🏟️ AFC Venue - MBM Hospitality")
@@ -64,20 +56,20 @@ if not st.session_state["authenticated"]:
     login_url = azure_ad_login()
     st.markdown(f"""
         <div style="text-align:center;">
-            <a href="{login_url}" target="_self" style="
+            <a href="{azure_ad_login()}" target="_blank" style="
                 text-decoration:none;
                 color:white;
                 background-color:#FF4B4B;
                 padding:10px 20px;
                 border-radius:5px;
                 font-size:16px;">
-                🔐 Log in with Microsoft Entra ID
+                🔐 Log in Microsoft Entra ID
             </a>
         </div>
     """, unsafe_allow_html=True)
 
     # Process login
-    query_params = st.query_params
+    query_params = st.query_params  # Updated method
     if "code" in query_params and not st.session_state["redirected"]:
         auth_code = query_params["code"][0]
         with st.spinner("🔄 Logging you in..."):
@@ -92,12 +84,14 @@ if not st.session_state["authenticated"]:
                     st.session_state["authenticated"] = True
                     st.session_state["redirected"] = True
                     st.success("🎉 Login successful! Redirecting...")
-                    time.sleep(1)  # Pause to show success message
-                    st.experimental_rerun()  # Reload the app
+                    # Redirect by changing query params (triggering a reload)
+                    st.experimental_set_query_params(reload="true")
                 else:
                     st.error("❌ Failed to log in. Please try again.")
             except Exception as e:
                 st.error(f"❌ An error occurred: {str(e)}")
+                st.session_state["authenticated"] = False
+                st.session_state["access_token"] = None
 else:
     # User Profile Card
     st.sidebar.markdown("### 👤 Logged in User")
@@ -122,16 +116,14 @@ else:
     st.sidebar.markdown("---")
     if st.sidebar.button("🔓 Logout"):
         with st.spinner("🔄 Logging out..."):
+            # Clear session state
             st.session_state["authenticated"] = False
             st.session_state["access_token"] = None
             st.session_state.clear()  # Clears all session state values
             st.success("✅ You have been logged out successfully!")
-            st.set_query_params()  # Clears query params
-            st.experimental_rerun()
-
-# Optional Auto-Refresh
-if st.session_state["authenticated"]:
-    auto_refresh()
+            
+            # Redirect to the login screen
+            st.experimental_set_query_params()  # Clears query params to prevent re-login issues
 
 # Footer Section
 st.markdown("---")
