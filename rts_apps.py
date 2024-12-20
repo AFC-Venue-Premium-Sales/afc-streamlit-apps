@@ -63,13 +63,14 @@ if not st.session_state["authenticated"]:
                 padding:10px 20px;
                 border-radius:5px;
                 font-size:16px;">
-                🔐 Log in Microsoft Entra ID
+                🔐 Log in Miscrosoft Entra ID
             </a>
         </div>
     """, unsafe_allow_html=True)
 
+
     # Process login
-    query_params = st.query_params  # Updated method
+    query_params = st.experimental_get_query_params()
     if "code" in query_params and not st.session_state["redirected"]:
         auth_code = query_params["code"][0]
         with st.spinner("🔄 Logging you in..."):
@@ -84,14 +85,11 @@ if not st.session_state["authenticated"]:
                     st.session_state["authenticated"] = True
                     st.session_state["redirected"] = True
                     st.success("🎉 Login successful! Redirecting...")
-                    # Redirect by changing query params (triggering a reload)
-                    st.experimental_set_query_params(reload="true")
+                    st.rerun()  # Reload the app to show authenticated view
                 else:
                     st.error("❌ Failed to log in. Please try again.")
             except Exception as e:
                 st.error(f"❌ An error occurred: {str(e)}")
-                st.session_state["authenticated"] = False
-                st.session_state["access_token"] = None
 else:
     # User Profile Card
     st.sidebar.markdown("### 👤 Logged in User")
@@ -124,6 +122,8 @@ else:
             
             # Redirect to the login screen
             st.experimental_set_query_params()  # Clears query params to prevent re-login issues
+            st.experimental_rerun()
+
 
 # Footer Section
 st.markdown("---")
