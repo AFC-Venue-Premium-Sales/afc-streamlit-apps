@@ -1,6 +1,7 @@
 import streamlit as st
 from msal import ConfidentialClientApplication
 from dotenv import load_dotenv
+import time
 import os
 import sales_performance
 import user_performance_api
@@ -30,6 +31,14 @@ if "access_token" not in st.session_state:
     st.session_state["access_token"] = None
 if "redirected" not in st.session_state:
     st.session_state["redirected"] = False
+
+# Optional Auto-refresh Logic
+def auto_refresh(interval=5):
+    """Automatically refresh the app every specified interval."""
+    st.write(f"🔄 Refreshing data every {interval} seconds.")
+    time.sleep(interval)
+    st.experimental_rerun()
+
 
 # Azure AD Login URL
 def azure_ad_login():
@@ -124,6 +133,10 @@ else:
             st.experimental_set_query_params()  # Clears query params to prevent re-login issues
             st.experimental_rerun()
 
+
+# Optional Auto-Refresh
+if st.session_state["authenticated"]:
+    auto_refresh()
 
 # Footer Section
 st.markdown("---")
