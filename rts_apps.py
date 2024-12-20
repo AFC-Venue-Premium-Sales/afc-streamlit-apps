@@ -1,8 +1,8 @@
 import streamlit as st
 from msal import ConfidentialClientApplication
 from dotenv import load_dotenv
+import time
 import os
-import requests
 import sales_performance
 import user_performance_api
 
@@ -29,30 +29,19 @@ if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 if "access_token" not in st.session_state:
     st.session_state["access_token"] = None
-if "user_name" not in st.session_state:
-    st.session_state["user_name"] = "Azure AD User"
 if "redirected" not in st.session_state:
-    st.session_state["redirected"] = False  # Ensure redirected is initialized
+    st.session_state["redirected"] = False
 
-# Function to fetch user details from Microsoft Graph API
-def get_user_details(access_token):
-    headers = {"Authorization": f"Bearer {access_token}"}
-    response = requests.get("https://graph.microsoft.com/v1.0/me", headers=headers)
-    if response.status_code == 200:
-        return response.json().get("displayName", "Azure AD User")
-    return "Azure AD User"
+# Auto-refresh Logic
+def auto_refresh(interval=5):
+    """Automatically refresh the app every specified interval."""
+    st.write(f"🔄 Refreshing data every {interval} seconds.")
+    time.sleep(interval)
+    st.rerun()  # Use st.rerun to reload the app
 
 # Azure AD Login URL
 def azure_ad_login():
     return app.get_authorization_request_url(scopes=SCOPES, redirect_uri=REDIRECT_URI)
-
-# Refresh Sales or User Data
-def refresh_data(selected_module):
-    """Refresh data for the selected module."""
-    if selected_module == "📊 Sales Performance":
-        sales_performance.run_app()
-    elif selected_module == "📈 User Performance":
-        user_performance_api.run_app()
 
 # App Header with a logo
 st.image("assets/arsenal-logo.png", width=250)  # Placeholder for the logo
@@ -70,22 +59,23 @@ if not st.session_state["authenticated"]:
     
     If you experience login issues, please contact [cmunthali@arsenal.co.uk](mailto:cmunthali@arsenal.co.uk).
     """)
-
+    
     # Login Section
     login_url = azure_ad_login()
     st.markdown(f"""
         <div style="text-align:center;">
-            <a href="{login_url}" target="_blank" style="
+            <a href="{azure_ad_login()}" target="_blank" style="
                 text-decoration:none;
                 color:white;
                 background-color:#FF4B4B;
                 padding:10px 20px;
                 border-radius:5px;
                 font-size:16px;">
-                🔐 Log in with Microsoft Entra ID
+                🔐 Log in Miscrosoft Entra ID
             </a>
         </div>
     """, unsafe_allow_html=True)
+
 
     # Process login
     query_params = st.experimental_get_query_params()
@@ -103,7 +93,7 @@ if not st.session_state["authenticated"]:
                     st.session_state["authenticated"] = True
                     st.session_state["redirected"] = True
                     st.success("🎉 Login successful! Redirecting...")
-                    st.experimental_rerun()  # Reload the app to show authenticated view
+                    st.rerun()  # Reload the app to show authenticated view
                 else:
                     st.error("❌ Failed to log in. Please try again.")
             except Exception as e:
@@ -111,8 +101,8 @@ if not st.session_state["authenticated"]:
 else:
     # User Profile Card
     st.sidebar.markdown("### 👤 Logged in User")
-    st.sidebar.info(f"User: **{st.session_state['user_name']}**")
-
+    st.sidebar.info("User: **Azure AD User**\nRole: **Premium Exec**")
+    
     # Navigation Sidebar
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio(
@@ -120,12 +110,6 @@ else:
         ["📊 Sales Performance", "📈 User Performance"],
         format_func=lambda x: x.split(" ")[1],  # Display just the module names
     )
-
-    # Refresh Button
-    if st.sidebar.button("🔄 Refresh Data"):
-        with st.spinner("Refreshing data..."):
-            refresh_data(app_choice)
-            st.success("✅ Data refreshed successfully!")
 
     # Add Loading Indicator
     with st.spinner("🔄 Loading..."):
@@ -135,10 +119,22 @@ else:
             user_performance_api.run_app()
 
     # Logout Button
+    st.sidebar.markdown("---")
     if st.sidebar.button("🔓 Logout"):
-        st.session_state.clear()
-        st.success("✅ Logged out successfully!")
-        st.experimental_rerun()  # Reload the app to login page
+        with st.spinner("🔄 Logging out..."):
+            # Clear session state
+            st.session_state["authenticated"] = False
+            st.session_state["access_token"] = None
+            st.session_state.clear()  # Clears all session state values
+            st.success("✅ You have been logged out successfully!")
+            
+            # Redirect to the login screen
+            st.experimental_set_query_params()  # Clears query params to prevent re-login issues
+            st.rerun()
+
+# Optional Auto-Refresh
+if st.session_state["authenticated"]:
+    auto_refresh()
 
 # Footer Section
 st.markdown("---")
