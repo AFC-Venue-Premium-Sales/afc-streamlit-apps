@@ -43,7 +43,7 @@ def run_app():
     You can filter results by date, user, fixture, payment status, and paid status for tailored insights. 
     """)
 
-    loaded_api_df = fetch_hospitality_data()
+    loaded_api_df = fetch_hospitality_data
     
     if loaded_api_df is not None:
         st.sidebar.success("✅ Data retrieved successfully.")

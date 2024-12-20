@@ -19,7 +19,7 @@ def run_app():
     This application provides detailed Exec Sales Metrics ONLY, derived from RTS data. The data is retrieved from TJT's MBM sales API. The app allows you to filter results by date, user, and fixture for tailored insights.
     """)
 
-    loaded_api_df = fetch_hospitality_data()
+    loaded_api_df = fetch_hospitality_data
 
     if loaded_api_df is not None:
         st.sidebar.success("✅ Data retrieved successfully.")
