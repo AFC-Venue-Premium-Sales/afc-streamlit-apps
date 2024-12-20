@@ -5,7 +5,6 @@ import os
 import requests
 import sales_performance
 import user_performance_api
-from datetime import datetime
 
 # Load environment variables
 load_dotenv()
@@ -32,6 +31,8 @@ if "access_token" not in st.session_state:
     st.session_state["access_token"] = None
 if "user_name" not in st.session_state:
     st.session_state["user_name"] = "Azure AD User"
+if "redirected" not in st.session_state:
+    st.session_state["redirected"] = False  # Ensure redirected is initialized
 
 # Function to fetch user details from Microsoft Graph API
 def get_user_details(access_token):
@@ -87,7 +88,6 @@ if not st.session_state["authenticated"]:
     """, unsafe_allow_html=True)
 
     # Process login
-     # Process login
     query_params = st.experimental_get_query_params()
     if "code" in query_params and not st.session_state["redirected"]:
         auth_code = query_params["code"][0]
@@ -103,7 +103,7 @@ if not st.session_state["authenticated"]:
                     st.session_state["authenticated"] = True
                     st.session_state["redirected"] = True
                     st.success("🎉 Login successful! Redirecting...")
-                    st.rerun()  # Reload the app to show authenticated view
+                    st.experimental_rerun()  # Reload the app to show authenticated view
                 else:
                     st.error("❌ Failed to log in. Please try again.")
             except Exception as e:
@@ -111,7 +111,7 @@ if not st.session_state["authenticated"]:
 else:
     # User Profile Card
     st.sidebar.markdown("### 👤 Logged in User")
-    st.sidebar.info("User: **Azure AD User**\nRole: **Premium Exec**")
+    st.sidebar.info(f"User: **{st.session_state['user_name']}**")
 
     # Navigation Sidebar
     st.sidebar.title("🧭 Navigation")
@@ -138,6 +138,7 @@ else:
     if st.sidebar.button("🔓 Logout"):
         st.session_state.clear()
         st.success("✅ Logged out successfully!")
+        st.experimental_rerun()  # Reload the app to login page
 
 # Footer Section
 st.markdown("---")
