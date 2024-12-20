@@ -220,12 +220,26 @@ filtered_df_without_seats = final_df[filtered_columns_without_seats].drop_duplic
 
 
 def fetch_hospitality_data():
-    """
-    Fetch and process hospitality data dynamically.
-    Returns:
-        filtered_df_without_seats: Pandas DataFrame with processed data.
-    """
+    # Existing logic...
+
+    if final_df.empty:
+        print("🚨 Error: final_df is empty. Check your API integration.")
+        return None
+
+    # Check if filtered columns match
+    filtered_columns_without_seats = [col for col in final_df.columns if col in filtered_columns_without_seat_data]
+    if not filtered_columns_without_seats:
+        print("🚨 Error: No matching columns in filtered_columns_without_seat_data.")
+        print("Available Columns in final_df:", final_df.columns)
+        return None
+
+    # Generate the filtered DataFrame
+    filtered_df_without_seats = final_df[filtered_columns_without_seats].drop_duplicates()
+
+    # Return the filtered DataFrame
+    print("✅ Filtered DataFrame created successfully.")
     return filtered_df_without_seats
+
 
 
 # # Save the DataFrame
