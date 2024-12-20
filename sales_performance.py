@@ -110,7 +110,9 @@ def run_app():
 
         valid_usernames = [user for user in specified_users if user in pd.unique(filtered_data['CreatedBy'])]
         event_names = pd.unique(filtered_data['Fixture Name'])
-        event_categories = pd.unique(filtered_data['EventCompetition'])
+        event_categories = pd.unique(filtered_data['EventCompetition'])  # Adjust column name if necessary
+
+        # Add filters
         selected_categories = st.sidebar.multiselect("Select Event Category", options=event_categories, default=None)
         sale_location = pd.unique(filtered_data['SaleLocation'])
         selected_events = st.sidebar.multiselect("🎫 Select Events", options=event_names, default=None)
@@ -130,14 +132,15 @@ def run_app():
         # Apply user filter
         if selected_users:
             filtered_data = filtered_data[filtered_data['CreatedBy'].isin(selected_users)]
-            
-        # Apply event filter
+
+        # Apply event category filter
         if selected_categories:
-            filtered_data = filtered_data[filtered_data['EventCategory'].isin(selected_events)]
+            filtered_data = filtered_data[filtered_data['EventCompetition'].isin(selected_categories)]
 
         # Apply event filter
         if selected_events:
             filtered_data = filtered_data[filtered_data['Fixture Name'].isin(selected_events)]
+
 
         # Dynamically update the discount options based on selected events
         if selected_events:
@@ -185,9 +188,7 @@ def run_app():
         other_sales_total = dynamic_total + total_sold_by_other
 
         
-        
-
-
+    
 
         # Display results
         if not filtered_data.empty:
