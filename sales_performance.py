@@ -10,8 +10,10 @@ def refresh_data():
     """Fetch the latest data for Sales Performance."""
     try:
         st.session_state["sales_data"] = filtered_df_without_seats  # Load data from tjt_hosp_api
+        st.session_state["refresh_triggered"] = True  # Add a flag to indicate a refresh
     except Exception as e:
         st.error(f"Failed to refresh sales data: {e}")
+
 
 
 
@@ -19,6 +21,10 @@ def run_app():
     specified_users = ['dcoppin', 'Jedwards', 'jedwards', 'bgardiner', 'BenT', 'jmurphy', 'ayildirim',
                        'MeganS', 'BethNW', 'HayleyA', 'LucyB', 'Conor', 'SavR', 'MillieS', 'dmontague']
     
+    # Reset Sate & flag after refresh
+    if st.session_state.get("refresh_triggered", False):
+        st.session_state["refresh_triggered"] = False 
+
     
     #  Budget data for fixtures
     budget_data = {
@@ -100,19 +106,25 @@ def run_app():
         # Handle missing or invalid dates
         filtered_data['Days to Fixture'] = filtered_data['Days to Fixture'].fillna(-1).astype(int)
 
+        # Refresh Button
+        if st.sidebar.button("🔄 Refresh Data", key="unique_refresh_button"):
+            refresh_data()  # Call the refresh_data function to reload the latest data
+            st.experimental_rerun()  # Trigger a rerun of the app to reflect refreshed data
+
 
         # Sidebar filters
         st.sidebar.header("Filter Data by Date and Time")
         # date_range = st.sidebar.date_input("📅 Select Date Range", [])
         date_range = st.sidebar.date_input(
-            "📅 Select Date Range", [], key="unique_sales_date_range_key"
+            "📅 Select Date Range", [], key="unique_sales_date_range"
         )
         start_time = st.sidebar.time_input(
-            "⏰ Start Time", value=datetime.now().replace(hour=0, minute=0, second=0).time(), key="unique_sales_start_time_key"
+            "⏰ Start Time", value=datetime.now().replace(hour=0, minute=0, second=0).time(), key="unique_start_time"
         )
         end_time = st.sidebar.time_input(
-            "⏰ End Time", value=datetime.now().replace(hour=23, minute=59, second=59).time(), key="unique_sales_end_time_key"
+            "⏰ End Time", value=datetime.now().replace(hour=23, minute=59, second=59).time(), key="unique_end_time"
         )
+
 
 
         # Combine date and time inputs into full datetime objects
@@ -130,12 +142,42 @@ def run_app():
         event_categories = pd.unique(filtered_data['EventCompetition'])  # Adjust column name if necessary
 
         # Add filters
-        selected_categories = st.sidebar.multiselect("Select Event Category", options=event_categories, default=None)
+        selected_categories = st.sidebar.multiselect(
+            "Select Event Category",
+            options=event_categories,
+            default=None,
+            key="unique_selected_categories_key"
+        )
+
         sale_location = pd.unique(filtered_data['SaleLocation'])
-        selected_events = st.sidebar.multiselect("🎫 Select Events", options=event_names, default=None)
-        selected_sale_location = st.sidebar.multiselect("📍 Select SaleLocation", options=sale_location, default=None)
-        selected_users = st.sidebar.multiselect("👤 Select Execs", options=valid_usernames, default=None)
+        selected_events = st.sidebar.multiselect(
+            "🎫 Select Events",
+            options=event_names,
+            default=None,
+            key="unique_selected_events_key"
+        )
+
+        selected_sale_location = st.sidebar.multiselect(
+            "📍 Select SaleLocation",
+            options=sale_location,
+            default=None,
+            key="unique_selected_sale_location_key"
+        )
+
+        selected_users = st.sidebar.multiselect(
+            "👤 Select Execs",
+            options=valid_usernames,
+            default=None,
+            key="unique_selected_users_key"
+        )
+
         paid_options = pd.unique(filtered_data['IsPaid'])
+        selected_paid = st.sidebar.selectbox(
+            "💰 Filter by IsPaid",
+            options=paid_options,
+            key="unique_selected_paid_key"
+        )
+
         selected_paid = st.sidebar.selectbox("💰 Filter by IsPaid", options=paid_options)
 
         # Apply date range filter with time
@@ -166,14 +208,20 @@ def run_app():
             available_discounts = pd.unique(filtered_data['Discount'])
 
         # Discount Filter with "Select All" option
-        select_all_discounts = st.sidebar.checkbox("Select All Discounts", value=True)
+        select_all_discounts = st.sidebar.checkbox("Select All Discounts", value=True, key="unique_select_all_discounts_key")
         if select_all_discounts:
             selected_discount_options = available_discounts.tolist()
         else:
-            selected_discount_options = st.sidebar.multiselect("🔖 Filter by Discount Type", options=available_discounts, default=available_discounts.tolist())
+            selected_discount_options = st.sidebar.multiselect(
+                "🔖 Filter by Discount Type",
+                options=available_discounts,
+                default=available_discounts.tolist(),
+                key="unique_discount_multiselect_key"
+            )
 
         # Apply discount filter
         filtered_data = filtered_data[filtered_data['Discount'].isin(selected_discount_options)]
+
 
        # Filter out "Platinum" and "Woolwich Restaurant" packages
         filtered_data_excluding_packages = filtered_data[
