@@ -52,7 +52,7 @@ def generate_kpis(filtered_data):
     # Ensure TotalWithOtherPayments exists
     if 'TotalWithOtherPayments' not in filtered_data.columns:
         filtered_data['TotalWithOtherPayments'] = (
-            filtered_data['TotalPrice'] + filtered_data['OtherPayments'].fillna(0)
+            filtered_data['TotalPrice'].fillna(0) + filtered_data.get('OtherPayments', 0).fillna(0)
         )
 
     # Calculate KPIs
@@ -66,10 +66,11 @@ def generate_kpis(filtered_data):
 
     # Display KPIs
     st.write("### Key Performance Indicators (KPIs)")
-    st.metric("💷 Total Revenue (Inc. Other Payments)", f"£{total_revenue:,.2f}")
+    st.metric("💷 Total Revenue", f"£{total_revenue:,.2f}")
     st.metric("🎟️ Total Packages Sold", total_packages)
     st.metric("📈 Average Revenue per Package", f"£{average_revenue_per_package:,.2f}")
     st.metric("🏆 Top Exec (Revenue)", top_exec)
+
 
 def generate_charts(filtered_data):
     """Generate and display charts based on the filtered data."""
