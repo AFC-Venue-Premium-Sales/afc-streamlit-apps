@@ -124,14 +124,14 @@ else:
     # Refresh Button
     if st.sidebar.button("🔄 Refresh Data"):
         fetch_and_store_data()  # Reload data
-        st.experimental_rerun()  # Trigger rerun to reflect updated data
+        st.rerun()  # Trigger rerun to reflect updated data
     
     # Add Loading Indicator
     with st.spinner("🔄 Loading..."):
         if app_choice == "📊 Sales Performance":
-            sales_performance.run_app(st.session_state["filtered_data"])
+            sales_performance.run_app()
         elif app_choice == "📈 User Performance":
-            user_performance_api.run_app(st.session_state["filtered_data"])
+            user_performance_api.run_app()
 
     # Logout Button
     st.sidebar.markdown("---")
