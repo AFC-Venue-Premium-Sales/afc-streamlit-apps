@@ -9,10 +9,10 @@ import re
 def refresh_data():
     """Fetch the latest data for Sales Performance."""
     try:
-        st.session_state["sales_data"] = filtered_df_without_seats  # Load data from tjt_hosp_api
-        st.session_state["refresh_triggered"] = True  # Add a flag to indicate a refresh
+        st.session_state["sales_data"] = filtered_df_without_seats  # Reload data from the source
     except Exception as e:
-        st.error(f"Failed to refresh sales data: {e}")
+        st.error(f"❌ Failed to refresh sales data: {str(e)}")
+
 
 
 

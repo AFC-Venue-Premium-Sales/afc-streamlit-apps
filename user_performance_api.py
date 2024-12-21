@@ -36,6 +36,15 @@ def display_progress_bar():
     progress_steps = [10, 30, 50, 100]
     for step in progress_steps:
         progress_bar.progress(step)
+ 
+        
+def refresh_data():
+    """Fetch the latest data for User Performance."""
+    try:
+        st.session_state["user_data"] = filtered_df_without_seats  # Reload user-specific data
+    except Exception as e:
+        st.error(f"❌ Failed to refresh user performance data: {str(e)}")
+
 
 
 def generate_charts(filtered_data):

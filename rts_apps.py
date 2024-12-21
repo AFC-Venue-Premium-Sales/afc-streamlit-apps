@@ -104,19 +104,25 @@ else:
         format_func=lambda x: x.split(" ")[1],  # Display just the module names
     )
     
-    # Refresh Button
-    if st.sidebar.button("🔄 Refresh Data"):
+    # Sidebar Refresh Button
+    if st.sidebar.button("🔄 Refresh Data", key="refresh_data_button"):
+        st.session_state["data_refreshed"] = True  # Mark data as needing refresh
+        st.experimental_rerun()  # Trigger a rerun to process the refresh
+
+    # Check if refresh is required
+    if st.session_state.get("data_refreshed", False):
         with st.spinner("🔄 Fetching the latest data..."):
             try:
-                # Simulate fetching data from APIs
+                # Refresh sales or user performance data based on the selected module
                 if app_choice == "📊 Sales Performance":
-                    sales_performance.run_app()
+                    sales_performance.refresh_data()  # Dedicated refresh function in sales_performance
                 elif app_choice == "📈 User Performance":
-                    user_performance_api.run_app()
-                st.session_state["data_refreshed"] = True
+                    user_performance_api.refresh_data()  # Dedicated refresh function in user_performance_api
+                st.session_state["data_refreshed"] = False  # Reset refresh flag
                 st.success("✅ Data refreshed successfully!")
             except Exception as e:
                 st.error(f"❌ Failed to refresh data: {str(e)}")
+
     
     # Add Loading Indicator
     with st.spinner("🔄 Loading..."):
