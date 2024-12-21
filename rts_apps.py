@@ -103,9 +103,16 @@ else:
     # Sidebar Refresh Button
     if st.sidebar.button("🔄 Refresh Data", key="refresh_data_button"):
         st.session_state["data_refreshed"] = True  # Mark data as needing refresh
+        # Trigger a rerun by setting a query parameter
+        st.experimental_set_query_params(refresh="true")
 
     # Check if refresh is required
-    if st.session_state["data_refreshed"]:
+    query_params = st.experimental_get_query_params()
+    if query_params.get("refresh"):
+        st.experimental_set_query_params()  # Clear the query parameters
+        st.session_state["data_refreshed"] = True  # Ensure data_refreshed is set
+
+    if st.session_state.get("data_refreshed", False):
         with st.spinner("🔄 Fetching the latest data..."):
             try:
                 # Refresh sales or user performance data based on the selected module
@@ -115,9 +122,9 @@ else:
                     user_performance_api.refresh_data()  # Dedicated refresh function in user_performance_api
                 st.session_state["data_refreshed"] = False  # Reset refresh flag
                 st.success("✅ Data refreshed successfully!")
-                st.experimental_rerun()  # Reload app after refresh
             except Exception as e:
                 st.error(f"❌ Failed to refresh data: {str(e)}")
+
 
     # Add Loading Indicator
     with st.spinner("🔄 Loading..."):
