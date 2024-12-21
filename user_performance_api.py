@@ -49,16 +49,24 @@ def refresh_data():
 
 def generate_kpis(filtered_data):
     """Display key performance indicators."""
-    total_revenue = filtered_data['TotalPrice'].sum()
+    # Ensure TotalWithOtherPayments exists
+    if 'TotalWithOtherPayments' not in filtered_data.columns:
+        filtered_data['TotalWithOtherPayments'] = (
+            filtered_data['TotalPrice'] + filtered_data['OtherPayments'].fillna(0)
+        )
+
+    # Calculate KPIs
+    total_revenue = filtered_data['TotalWithOtherPayments'].sum()
     total_packages = len(filtered_data)
     average_revenue_per_package = total_revenue / total_packages if total_packages > 0 else 0
     top_exec = (
-        filtered_data.groupby('CreatedBy')['TotalPrice'].sum().idxmax()
+        filtered_data.groupby('CreatedBy')['TotalWithOtherPayments'].sum().idxmax()
         if not filtered_data.empty else "N/A"
     )
 
+    # Display KPIs
     st.write("### Key Performance Indicators (KPIs)")
-    st.metric("💷 Total Revenue", f"£{total_revenue:,.2f}")
+    st.metric("💷 Total Revenue (Inc. Other Payments)", f"£{total_revenue:,.2f}")
     st.metric("🎟️ Total Packages Sold", total_packages)
     st.metric("📈 Average Revenue per Package", f"£{average_revenue_per_package:,.2f}")
     st.metric("🏆 Top Exec (Revenue)", top_exec)
