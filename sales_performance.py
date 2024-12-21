@@ -3,7 +3,6 @@ import pandas as pd
 from datetime import datetime
 from io import BytesIO
 from tjt_hosp_api import fetch_hospitality_data
-
 import re
 
 

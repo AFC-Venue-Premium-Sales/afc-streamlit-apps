@@ -94,7 +94,7 @@ if not st.session_state["authenticated"]:
 else:
     # User Profile Card
     st.sidebar.markdown("### 👤 Logged in User")
-    st.sidebar.info("User: **Azure AD User**\nRole: **Premium Exec**")
+    st.sidebar.info("User: **Azure AD User***")
     
     # Navigation Sidebar
     st.sidebar.title("🧭 Navigation")
