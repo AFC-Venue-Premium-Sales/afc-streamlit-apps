@@ -79,7 +79,6 @@ if not st.session_state["authenticated"]:
     - **📊 Sales Performance**: Analyze and track sales data.
     - **📈 User Performance**: Monitor and evaluate team performance metrics.
     
-    If you experience login issues, please contact [cmunthali@arsenal.co.uk](mailto:cmunthali@arsenal.co.uk).
     """)
 
     # Login Section
@@ -167,6 +166,6 @@ st.markdown("---")
 st.markdown("""
     <div style="text-align:center; font-size:12px; color:gray;">
         🏟️ **Arsenal Property** | All Rights Reserved © 2024  
-        Need help? Contact [cmunthali@arsenal.co.uk]
+        Need help? Contact [cmunthali@arsenal.co.uk](mailto:cmunthali@arsenal.co.uk)
     </div>
 """, unsafe_allow_html=True)
