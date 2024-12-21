@@ -27,7 +27,6 @@ app = ConfidentialClientApplication(
 st.session_state.setdefault("authenticated", False)
 st.session_state.setdefault("access_token", None)
 st.session_state.setdefault("redirected", False)
-st.session_state.setdefault("data_refreshed", False)
 
 # Azure AD Login URL
 def azure_ad_login():
@@ -41,34 +40,6 @@ st.markdown("---")  # A horizontal line for better UI
 if not st.session_state["authenticated"]:
     # Instructions for SSO Login
     st.markdown("""
-    ### 👋 Welcome to the Venue Hospitality App!  
-    **Please log in using AFC credentials to access the following modules:**
-
-    - **📊 Sales Performance**: Analyze and track sales data.
-    - **📈 User Performance**: Monitor and evaluate team performance metrics.
-    
-    If you experience login issues, please contact [cmunthali@arsenal.co.uk](mailto:cmunthali@arsenal.co.uk).
-    """)
-
-    # Login Section
-    login_url = azure_ad_login()
-    st.markdown(f"""
-        <div style="text-align:center;">
-            <a href="{login_url}" target="_blank" style="
-                text-decoration:none;
-                color:white;
-                background-color:#FF4B4B;
-                padding:10px 20px;
-                border-radius:5px;
-                font-size:16px;">
-                🔐 Log in Microsoft Entra ID
-            </a>
-        </div>
-    """, unsafe_allow_html=True)
-
-    if not st.session_state["authenticated"]:
-    # Instructions for SSO Login
-        st.markdown("""
     ### 👋 Welcome to the Venue Hospitality App!  
     **Please log in using AFC credentials to access the following modules:**
 
@@ -109,19 +80,13 @@ if not st.session_state["authenticated"]:
                     st.session_state["access_token"] = result["access_token"]
                     st.session_state["authenticated"] = True
                     st.session_state["redirected"] = True
-                    st.experimental_set_query_params(authenticated="true")
                     st.success("🎉 Login successful! Redirecting...")
+                    st.experimental_rerun()  # Reload the app to show authenticated view
                 else:
                     st.error("❌ Failed to log in. Please try again.")
             except Exception as e:
                 st.error(f"❌ An error occurred: {str(e)}")
 else:
-    # Check if redirected via query params
-    query_params = st.experimental_get_query_params()
-    if query_params.get("authenticated") == ["true"]:
-        st.session_state["authenticated"] = True
-        st.experimental_set_query_params()  # Clear query params
-
     # User Profile Card
     st.sidebar.markdown("### 👤 Logged in User")
     st.sidebar.info("User: **Azure AD User**\nRole: **Premium Exec**")
@@ -134,30 +99,6 @@ else:
         format_func=lambda x: x.split(" ")[1],  # Display just the module names
     )
     
-    # Sidebar Refresh Button
-    if st.sidebar.button("🔄 Refresh Data", key="refresh_data_button"):
-        st.session_state["data_refreshed"] = True
-        st.experimental_set_query_params(refresh="true")
-
-    # Check if refresh is required
-    query_params = st.experimental_get_query_params()
-    if query_params.get("refresh"):
-        st.experimental_set_query_params()  # Clear the query parameters
-        st.session_state["data_refreshed"] = True
-
-    if st.session_state.get("data_refreshed", False):
-        with st.spinner("🔄 Fetching the latest data..."):
-            try:
-                # Refresh sales or user performance data based on the selected module
-                if app_choice == "📊 Sales Performance":
-                    sales_performance.refresh_data()  # Dedicated refresh function in sales_performance
-                elif app_choice == "📈 User Performance":
-                    user_performance_api.refresh_data()  # Dedicated refresh function in user_performance_api
-                st.session_state["data_refreshed"] = False  # Reset refresh flag
-                st.success("✅ Data refreshed successfully!")
-            except Exception as e:
-                st.error(f"❌ Failed to refresh data: {str(e)}")
-
     # Add Loading Indicator
     with st.spinner("🔄 Loading..."):
         if app_choice == "📊 Sales Performance":
@@ -174,7 +115,10 @@ else:
             st.session_state["access_token"] = None
             st.session_state.clear()  # Clears all session state values
             st.success("✅ You have been logged out successfully!")
-            st.experimental_set_query_params()  # Clears query params
+            
+            # Redirect to the login screen
+            st.experimental_set_query_params()  # Clears query params to prevent re-login issues
+            st.experimental_rerun()  # Reload to show login view
 
 # Footer Section
 st.markdown("---")
