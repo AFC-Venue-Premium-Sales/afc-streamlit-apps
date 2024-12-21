@@ -140,7 +140,7 @@ else:
     if st.sidebar.button("🔄 Refresh Data"):
         logging.info("Refresh button clicked. Fetching new data...")
         fetch_and_store_data()  # Reload data
-        st.experimental_rerun()  # Trigger rerun to reflect updated data
+        st.rerun()# Trigger rerun to reflect updated data
     
     # Add Loading Indicator
     with st.spinner("🔄 Loading..."):
@@ -159,7 +159,7 @@ else:
             st.success("✅ You have been logged out successfully!")
             # Redirect to the login screen
             st.experimental_set_query_params()  # Clears query params to prevent re-login issues
-            st.experimental_rerun()
+            st.rerun()
 
 # Footer Section
 st.markdown("---")
