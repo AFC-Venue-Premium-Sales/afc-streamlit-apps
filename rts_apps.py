@@ -24,14 +24,10 @@ app = ConfidentialClientApplication(
 )
 
 # Initialize session states
-if "authenticated" not in st.session_state:
-    st.session_state["authenticated"] = False
-if "access_token" not in st.session_state:
-    st.session_state["access_token"] = None
-if "redirected" not in st.session_state:
-    st.session_state["redirected"] = False
-if "data_refreshed" not in st.session_state:
-    st.session_state["data_refreshed"] = False
+st.session_state.setdefault("authenticated", False)
+st.session_state.setdefault("access_token", None)
+st.session_state.setdefault("redirected", False)
+st.session_state.setdefault("data_refreshed", False)
 
 # Azure AD Login URL
 def azure_ad_login():
@@ -58,7 +54,7 @@ if not st.session_state["authenticated"]:
     login_url = azure_ad_login()
     st.markdown(f"""
         <div style="text-align:center;">
-            <a href="{azure_ad_login()}" target="_blank" style="
+            <a href="{login_url}" target="_blank" style="
                 text-decoration:none;
                 color:white;
                 background-color:#FF4B4B;
@@ -86,7 +82,7 @@ if not st.session_state["authenticated"]:
                     st.session_state["authenticated"] = True
                     st.session_state["redirected"] = True
                     st.success("🎉 Login successful! Redirecting...")
-                    st.rerun()  # Reload the app to show authenticated view
+                    st.experimental_rerun()  # Reload the app to show authenticated view
                 else:
                     st.error("❌ Failed to log in. Please try again.")
             except Exception as e:
@@ -104,20 +100,26 @@ else:
         format_func=lambda x: x.split(" ")[1],  # Display just the module names
     )
     
-    # Refresh Button
-    if st.sidebar.button("🔄 Refresh Data"):
+    # Refresh Button with Dynamic Key
+    refresh_button_key = f"refresh_button_{app_choice.replace(' ', '_')}"
+    if st.sidebar.button("🔄 Refresh Data", key=refresh_button_key):
+        st.session_state["data_refreshed"] = True  # Mark data as needing refresh
+        st.experimental_rerun()  # Trigger a rerun to process the refresh
+
+    # Check if refresh is required
+    if st.session_state.get("data_refreshed", False):
         with st.spinner("🔄 Fetching the latest data..."):
             try:
-                # Simulate fetching data from APIs
+                # Refresh sales or user performance data based on the selected module
                 if app_choice == "📊 Sales Performance":
-                    sales_performance.run_app()
+                    sales_performance.refresh_data()  # Dedicated refresh function in sales_performance
                 elif app_choice == "📈 User Performance":
-                    user_performance_api.run_app()
-                st.session_state["data_refreshed"] = True
+                    user_performance_api.refresh_data()  # Dedicated refresh function in user_performance_api
+                st.session_state["data_refreshed"] = False  # Reset refresh flag
                 st.success("✅ Data refreshed successfully!")
             except Exception as e:
                 st.error(f"❌ Failed to refresh data: {str(e)}")
-    
+
     # Add Loading Indicator
     with st.spinner("🔄 Loading..."):
         if app_choice == "📊 Sales Performance":
@@ -137,7 +139,7 @@ else:
             
             # Redirect to the login screen
             st.experimental_set_query_params()  # Clears query params to prevent re-login issues
-            st.rerun()
+            st.experimental_rerun()  # Reload to show login view
 
 # Footer Section
 st.markdown("---")
