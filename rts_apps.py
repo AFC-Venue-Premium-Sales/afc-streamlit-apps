@@ -141,8 +141,8 @@ else:
             st.session_state["authenticated"] = False
             st.session_state["access_token"] = None
             st.session_state.clear()  # Clears all session state values
+            st.experimental_set_query_params()# Clears query params to prevent re-login issues
             st.success("✅ You have been logged out successfully!")
-            st.experimental_set_query_params()  # Clears query params to prevent re-login issues
 
 # Footer Section
 st.markdown("---")
