@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from io import BytesIO
 import re
 from datetime import datetime
-from tjt_hosp_api import fetch_hospitality_data
+from tjt_hosp_api import filtered_df_without_seats
 
 
 
@@ -43,7 +43,7 @@ def refresh_data():
     """Fetch the latest data for User Performance."""
     try:
         with st.spinner("Fetching latest data..."):
-            updated_data = fetch_hospitality_data()  # Fetch latest data
+            updated_data = filtered_df_without_seats  # Fetch latest data
             st.session_state["user_data"] = updated_data
             st.success("✅ User performance data refreshed successfully!")
     except Exception as e:

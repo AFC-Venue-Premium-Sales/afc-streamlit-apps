@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from io import BytesIO
-from tjt_hosp_api import fetch_hospitality_data
+from tjt_hosp_api import filtered_df_without_seats
 import re
 
 
@@ -11,7 +11,7 @@ def refresh_data():
     try:
         with st.spinner("Fetching latest data..."):
             # Dynamically fetch the latest data
-            updated_data = fetch_hospitality_data()
+            updated_data = filtered_df_without_seats
             st.session_state["sales_data"] = updated_data  # Reload sales-specific data
             st.success("✅ Sales performance data refreshed successfully!")
     except Exception as e:

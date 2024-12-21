@@ -262,8 +262,6 @@ with pd.ExcelWriter('filtered_hosp_data2.xlsx') as writer:
     
 
 
-
-
 # # Only select columns that exist in the DataFrame
 # filtered_columns_without_seats = [col for col in final_df.columns if col in filtered_columns_without_seat_data]
 # filtered_df_without_seats = final_df[filtered_columns_without_seats].drop_duplicates()
