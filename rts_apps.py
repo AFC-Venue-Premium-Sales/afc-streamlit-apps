@@ -24,14 +24,11 @@ app = ConfidentialClientApplication(
 )
 
 # Initialize session states
-if "authenticated" not in st.session_state:
-    st.session_state["authenticated"] = False
-if "access_token" not in st.session_state:
-    st.session_state["access_token"] = None
-if "redirected" not in st.session_state:
-    st.session_state["redirected"] = False
-if "data_refreshed" not in st.session_state:
-    st.session_state["data_refreshed"] = False
+st.session_state.setdefault("authenticated", False)
+st.session_state.setdefault("access_token", None)
+st.session_state.setdefault("redirected", False)
+st.session_state.setdefault("sales_data", None)
+st.session_state.setdefault("user_data", None)
 
 # Azure AD Login URL
 def azure_ad_login():
@@ -41,6 +38,11 @@ def azure_ad_login():
 st.image("assets/arsenal-logo.png", width=250)  # Placeholder for the logo
 st.title("🏟️ AFC Venue - MBM Hospitality")
 st.markdown("---")  # A horizontal line for better UI
+
+# Check for the logged_in query parameter
+query_params = st.experimental_get_query_params()
+if "logged_in" in query_params and query_params["logged_in"][0] == "true":
+    st.session_state["authenticated"] = True
 
 if not st.session_state["authenticated"]:
     # Instructions for SSO Login
@@ -58,7 +60,7 @@ if not st.session_state["authenticated"]:
     login_url = azure_ad_login()
     st.markdown(f"""
         <div style="text-align:center;">
-            <a href="{azure_ad_login()}" target="_blank" style="
+            <a href="{login_url}" target="_blank" style="
                 text-decoration:none;
                 color:white;
                 background-color:#FF4B4B;
@@ -71,7 +73,6 @@ if not st.session_state["authenticated"]:
     """, unsafe_allow_html=True)
 
     # Process login
-    query_params = st.experimental_get_query_params()
     if "code" in query_params and not st.session_state["redirected"]:
         auth_code = query_params["code"][0]
         with st.spinner("🔄 Logging you in..."):
@@ -86,7 +87,7 @@ if not st.session_state["authenticated"]:
                     st.session_state["authenticated"] = True
                     st.session_state["redirected"] = True
                     st.success("🎉 Login successful! Redirecting...")
-                    st.rerun()  # Reload the app to show authenticated view
+                    st.experimental_rerun()
                 else:
                     st.error("❌ Failed to log in. Please try again.")
             except Exception as e:
@@ -94,50 +95,41 @@ if not st.session_state["authenticated"]:
 else:
     # User Profile Card
     st.sidebar.markdown("### 👤 Logged in User")
-    st.sidebar.info("User: **Azure AD User***")
-    
+    st.sidebar.info("User: **Azure AD User**\nRole: **Premium Exec**")
+
     # Navigation Sidebar
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio(
         "Choose Module",
         ["📊 Sales Performance", "📈 User Performance"],
-        format_func=lambda x: x.split(" ")[1],  # Display just the module names
+        format_func=lambda x: x.split(" ")[1],
     )
-    
+
     # Refresh Button
     if st.sidebar.button("🔄 Refresh Data"):
         with st.spinner("🔄 Fetching the latest data..."):
             try:
-                # Simulate fetching data from APIs
-                if app_choice == "📊 Sales Performance":
-                    sales_performance.run_app()
-                elif app_choice == "📈 User Performance":
-                    user_performance_api.run_app()
-                st.session_state["data_refreshed"] = True
+                # Refresh data for both modules
+                st.session_state["sales_data"] = sales_performance.refresh_data()
+                st.session_state["user_data"] = user_performance_api.refresh_data()
                 st.success("✅ Data refreshed successfully!")
+                st.experimental_rerun()
             except Exception as e:
                 st.error(f"❌ Failed to refresh data: {str(e)}")
-    
+
     # Add Loading Indicator
     with st.spinner("🔄 Loading..."):
         if app_choice == "📊 Sales Performance":
-            sales_performance.run_app()
+            sales_performance.run_app(st.session_state["sales_data"])
         elif app_choice == "📈 User Performance":
-            user_performance_api.run_app()
+            user_performance_api.run_app(st.session_state["user_data"])
 
     # Logout Button
     st.sidebar.markdown("---")
     if st.sidebar.button("🔓 Logout"):
         with st.spinner("🔄 Logging out..."):
-            # Clear session state
-            st.session_state["authenticated"] = False
-            st.session_state["access_token"] = None
-            st.session_state.clear()  # Clears all session state values
-            st.success("✅ You have been logged out successfully!")
-            
-            # Redirect to the login screen
-            st.experimental_set_query_params()  # Clears query params to prevent re-login issues
-            st.rerun()
+            st.session_state.clear()  # Clear session state
+            st.experimental_rerun()
 
 # Footer Section
 st.markdown("---")
