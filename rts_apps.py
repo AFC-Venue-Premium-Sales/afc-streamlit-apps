@@ -1,10 +1,10 @@
 import streamlit as st
+import subprocess
 from msal import ConfidentialClientApplication
 from dotenv import load_dotenv
 import os
 import sales_performance
 import user_performance_api
-import subprocess  # For running external scripts
 
 # Load environment variables
 load_dotenv()
@@ -24,6 +24,17 @@ app = ConfidentialClientApplication(
     authority=AUTHORITY
 )
 
+# Trigger the API script
+def execute_tjt_hosp_api():
+    """Run the tjt_hosp_api.py script to generate filtered_df_without_seats."""
+    try:
+        with st.spinner("Fetching data from the API..."):
+            subprocess.run(["python3", "tjt_hosp_api.py"], check=True)
+            st.success("✅ Hospitality data fetched successfully!")
+    except subprocess.CalledProcessError as e:
+        st.error(f"❌ Failed to fetch data: {str(e)}")
+        st.stop()  # Stop execution if data fetching fails
+
 # Initialize session states
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
@@ -33,23 +44,10 @@ if "redirected" not in st.session_state:
     st.session_state["redirected"] = False
 if "data_refreshed" not in st.session_state:
     st.session_state["data_refreshed"] = False
-if "hosp_data" not in st.session_state:
-    st.session_state["hosp_data"] = None
 
 # Azure AD Login URL
 def azure_ad_login():
     return app.get_authorization_request_url(scopes=SCOPES, redirect_uri=REDIRECT_URI)
-
-# Function to trigger the API script
-def fetch_hospitality_data():
-    try:
-        with st.spinner("Fetching data from the API..."):
-            # Run the tjt_hosp_api.py script
-            subprocess.run(["python3", "tjt_hosp_api.py"], check=True)
-            st.session_state["hosp_data"] = "merged_events_transactions1.xlsx"  # Update based on output from the script
-            st.success("✅ Hospitality data fetched successfully!")
-    except Exception as e:
-        st.error(f"❌ Failed to fetch data from the API: {str(e)}")
 
 # App Header with a logo
 st.image("assets/arsenal-logo.png", width=250)  # Placeholder for the logo
@@ -106,14 +104,13 @@ if not st.session_state["authenticated"]:
             except Exception as e:
                 st.error(f"❌ An error occurred: {str(e)}")
 else:
+    # Trigger the API script on app load or refresh
+    execute_tjt_hosp_api()
+
     # User Profile Card
     st.sidebar.markdown("### 👤 Logged in User")
     st.sidebar.info("User: **Azure AD User**\nRole: **Premium Exec**")
-
-    # Fetch hospitality data on rerun
-    if st.session_state["hosp_data"] is None:
-        fetch_hospitality_data()
-
+    
     # Navigation Sidebar
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio(
@@ -121,16 +118,6 @@ else:
         ["📊 Sales Performance", "📈 User Performance"],
         format_func=lambda x: x.split(" ")[1],  # Display just the module names
     )
-
-    # Refresh Button
-    if st.sidebar.button("🔄 Refresh Data"):
-        with st.spinner("🔄 Fetching the latest data..."):
-            try:
-                fetch_hospitality_data()
-                st.session_state["data_refreshed"] = True
-                st.success("✅ Data refreshed successfully!")
-            except Exception as e:
-                st.error(f"❌ Failed to refresh data: {str(e)}")
     
     # Add Loading Indicator
     with st.spinner("🔄 Loading..."):

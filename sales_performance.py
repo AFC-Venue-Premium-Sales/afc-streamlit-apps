@@ -112,12 +112,6 @@ def run_app():
         # Handle missing or invalid dates
         filtered_data['Days to Fixture'] = filtered_data['Days to Fixture'].fillna(-1).astype(int)
 
-        # Refresh Button with Dynamic Key
-        refresh_button_key = f"refresh_button_{st.session_state.get('app_name', 'sales')}"
-        if st.sidebar.button("🔄 Refresh Data", key=refresh_button_key):
-            refresh_data()  # Call the refresh_data function to reload the latest data
-            st.experimental_rerun()  # Trigger a rerun of the app to reflect refreshed data
-
 
 
         # Sidebar filters

@@ -38,6 +38,7 @@ python-dateutil==2.9.0.post0
 pytz==2024.1
 referencing==0.35.1
 requests==2.31.0
+requests
 rich==13.7.1
 rpds-py==0.20.0
 scikit-learn==1.5.1
