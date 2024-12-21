@@ -169,7 +169,7 @@ def parse_datetime(date_str):
 
 final_data = []
 
-for _, row in df.iterrows():
+for _, row in merged_df.iterrows():
     if row['TMSessionId']:
         tm_session_data = json.loads(row['TMSessionId'])
         seats = tm_session_data.get('Seats', [])
@@ -288,28 +288,3 @@ with pd.ExcelWriter('filtered_hosp_data2.xlsx') as writer:
     filtered_df_without_seats.to_excel(writer, sheet_name='Without seating information', index=False)
     print(f'filtered_hosp_data1 saved')
     
-
-
-
-
-# # Only select columns that exist in the DataFrame
-# filtered_columns_without_seats = [col for col in final_df.columns if col in filtered_columns_without_seat_data]
-# filtered_df_without_seats = final_df[filtered_columns_without_seats].drop_duplicates()
-
-# # Convert filtered_columns_without_seat_data to a DataFrame if it's a list
-# if isinstance(filtered_columns_without_seat_data, list):
-#     filtered_columns_without_seat_data = pd.DataFrame(filtered_columns_without_seat_data)
-
-# # Only select columns that exist in the DataFrame
-# filtered_columns_without_seats = [col for col in final_df.columns if col in filtered_columns_without_seat_data.columns]
-# filtered_df_without_seats = final_df[filtered_columns_without_seats].drop_duplicates()
-
-
-# # Only select columns that exist in the DataFrame
-# filtered_columns_with_seats = [col for col in final_df.columns if col in filtered_columns_with_seat_data]
-# filtered_df_with_seats = final_df[filtered_columns_with_seats]
-
-# # Save the filtered DataFrames into separate tabs of an Excel file
-# with pd.ExcelWriter('filtered_hosp_data.xlsx') as writer:
-#     filtered_df_without_seats.to_excel(writer, sheet_name='Without seat data', index=False)
-#     filtered_df_with_seats.to_excel(writer, sheet_name='With seat data', index=False)
