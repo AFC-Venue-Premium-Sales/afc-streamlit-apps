@@ -36,7 +36,9 @@ def run_app():
         progress_bar.progress(100)
 
         # Sidebar Features
-        date_range = st.sidebar.date_input("📅 Select Date Range", [])
+        # date_range = st.sidebar.date_input("📅 Select Date Range", [])
+        date_range = st.sidebar.date_input("📅 Select Date Range", [], key="user_perf_date_range")
+
         valid_usernames = [user for user in specified_users if user in pd.unique(loaded_api_df['CreatedBy'])]
         event_names = pd.unique(loaded_api_df['Fixture Name'])
         selected_events = st.sidebar.multiselect("🎫 Select Events", options=event_names, default=event_names)
@@ -50,31 +52,25 @@ def run_app():
         filtered_data = loaded_api_df.copy()
 
         if date_range:
-            # Convert date_range to pandas Timestamps
             min_date = pd.Timestamp(date_range[0])
             max_date = pd.Timestamp(date_range[1]) if len(date_range) == 2 else pd.Timestamp(date_range[0])
-
-            # Ensure 'CreatedOn' is in datetime format
-            filtered_data['CreatedOn'] = pd.to_datetime(filtered_data['CreatedOn'], errors='coerce')
-
-            # Log the date values for debugging
-            st.write(f"Filtering data from {min_date} to {max_date}")
-            
-            # Drop rows with invalid dates
+            if not pd.api.types.is_datetime64_any_dtype(filtered_data['CreatedOn']):
+                filtered_data['CreatedOn'] = pd.to_datetime(filtered_data['CreatedOn'], errors='coerce')
             filtered_data = filtered_data.dropna(subset=['CreatedOn'])
-
-            # Apply date filtering
             filtered_data = filtered_data[
                 (filtered_data['CreatedOn'] >= min_date) & (filtered_data['CreatedOn'] <= max_date)
             ]
 
-
-
+        # Apply other filters
         if selected_users:
             filtered_data = filtered_data[filtered_data['CreatedBy'].isin(selected_users)]
-
         if selected_events:
             filtered_data = filtered_data[filtered_data['Fixture Name'].isin(selected_events)]
+            
+        st.write(f"Filtered Data:", filtered_data)
+    else:
+        st.warning("⚠️ No data available.")
+
 
         # Apply paid status filter
         if selected_paid:
