@@ -27,7 +27,6 @@ app = ConfidentialClientApplication(
 st.session_state.setdefault("authenticated", False)
 st.session_state.setdefault("access_token", None)
 st.session_state.setdefault("redirected", False)
-st.session_state.setdefault("shared_data", None)  # Store shared data here
 
 # Azure AD Login URL
 def azure_ad_login():
@@ -104,32 +103,12 @@ else:
         format_func=lambda x: x.split(" ")[1],
     )
 
-    # Refresh Button
-    if st.sidebar.button("🔄 Refresh Data"):
-        st.experimental_set_query_params(refresh="true")
-
-    # Check if refresh is required
-    query_params = st.experimental_get_query_params()
-    if query_params.get("refresh"):
-        st.experimental_set_query_params()  # Clear query parameters
-        with st.spinner("🔄 Fetching the latest data..."):
-            try:
-                # Refresh sales or user performance data based on the selected module
-                if app_choice == "📊 Sales Performance":
-                    st.session_state["shared_data"] = sales_performance.refresh_data()
-                elif app_choice == "📈 User Performance":
-                    st.session_state["shared_data"] = user_performance_api.refresh_data()
-                st.success("✅ Data refreshed successfully!")
-            except Exception as e:
-                st.error(f"❌ Failed to refresh data: {str(e)}")
-
     # Add Loading Indicator
     with st.spinner("🔄 Loading..."):
-        shared_data = st.session_state.get("shared_data")
         if app_choice == "📊 Sales Performance":
-            sales_performance.run_app(shared_data)
+            sales_performance.run_app()
         elif app_choice == "📈 User Performance":
-            user_performance_api.run_app(shared_data)
+            user_performance_api.run_app()
 
     # Logout Button
     st.sidebar.markdown("---")
