@@ -71,7 +71,7 @@ if not st.session_state["authenticated"]:
     """, unsafe_allow_html=True)
 
     # Process login
-    query_params = st.query_params
+    query_params = st.experimental_get_query_params()
     if "code" in query_params and not st.session_state["redirected"]:
         auth_code = query_params["code"][0]
         with st.spinner("🔄 Logging you in..."):
@@ -86,7 +86,7 @@ if not st.session_state["authenticated"]:
                     st.session_state["authenticated"] = True
                     st.session_state["redirected"] = True
                     st.success("🎉 Login successful! Redirecting...")
-                    st.query_params = {"logged_in": "true"}  # Redirect
+                    st.rerun()  # Reload the app to show authenticated view
                 else:
                     st.error("❌ Failed to log in. Please try again.")
             except Exception as e:
@@ -94,7 +94,7 @@ if not st.session_state["authenticated"]:
 else:
     # User Profile Card
     st.sidebar.markdown("### 👤 Logged in User")
-    st.sidebar.info("User: **Azure AD User***")
+    st.sidebar.info("User: **Azure AD User**\nRole: **Premium Exec**")
     
     # Navigation Sidebar
     st.sidebar.title("🧭 Navigation")
@@ -110,9 +110,9 @@ else:
             try:
                 # Simulate fetching data from APIs
                 if app_choice == "📊 Sales Performance":
-                    sales_performance.refresh_data()
+                    sales_performance.run_app()
                 elif app_choice == "📈 User Performance":
-                    user_performance_api.refresh_data()
+                    user_performance_api.run_app()
                 st.session_state["data_refreshed"] = True
                 st.success("✅ Data refreshed successfully!")
             except Exception as e:
@@ -136,7 +136,7 @@ else:
             st.success("✅ You have been logged out successfully!")
             
             # Redirect to the login screen
-            st.query_params = {}  # Clears query params to prevent re-login issues
+            st.experimental_set_query_params()  # Clears query params to prevent re-login issues
             st.rerun()
 
 # Footer Section
