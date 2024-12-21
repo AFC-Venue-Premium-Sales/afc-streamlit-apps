@@ -150,7 +150,7 @@ def run_app():
 
     # Load data
     try:
-        loaded_api_df = fetch_hospitality_data()  # Dynamically fetch data
+        loaded_api_df = filtered_df_without_seats  # Dynamically fetch data
         st.sidebar.success("✅ Data retrieved successfully.")
     except Exception as e:
         st.sidebar.error(f"🚨 Failed to load initial data: {str(e)}")
