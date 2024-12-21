@@ -51,9 +51,13 @@ def generate_kpis(filtered_data):
     """Display key performance indicators."""
     # Ensure TotalWithOtherPayments exists
     if 'TotalWithOtherPayments' not in filtered_data.columns:
-        filtered_data['TotalWithOtherPayments'] = (
-            filtered_data['TotalPrice'].fillna(0) + filtered_data.get('OtherPayments', 0).fillna(0)
-        )
+        if 'TotalPrice' in filtered_data.columns and 'OtherPayments' in filtered_data.columns:
+            filtered_data['TotalWithOtherPayments'] = (
+                filtered_data['TotalPrice'] + filtered_data['OtherPayments'].fillna(0)
+            )
+        else:
+            st.warning("⚠️ Missing columns for TotalWithOtherPayments calculation.")
+            filtered_data['TotalWithOtherPayments'] = 0
 
     # Calculate KPIs
     total_revenue = filtered_data['TotalWithOtherPayments'].sum()
@@ -64,7 +68,6 @@ def generate_kpis(filtered_data):
         if not filtered_data.empty else "N/A"
     )
 
-    # Display KPIs
     st.write("### Key Performance Indicators (KPIs)")
     st.metric("💷 Total Revenue", f"£{total_revenue:,.2f}")
     st.metric("🎟️ Total Packages Sold", total_packages)
