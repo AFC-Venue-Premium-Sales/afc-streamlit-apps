@@ -9,12 +9,10 @@ import re
 def refresh_data():
     """Fetch the latest data for Sales Performance."""
     try:
-        st.session_state["sales_data"] = filtered_df_without_seats  # Reload data from the source
+        st.session_state["sales_data"] = filtered_df_without_seats  # Reload sales-specific data
+        st.success("✅ Sales performance data refreshed successfully!")
     except Exception as e:
-        st.error(f"❌ Failed to refresh sales data: {str(e)}")
-
-
-
+        st.error(f"❌ Failed to refresh sales performance data: {str(e)}")
 
 
 def run_app():

@@ -42,8 +42,10 @@ def refresh_data():
     """Fetch the latest data for User Performance."""
     try:
         st.session_state["user_data"] = filtered_df_without_seats  # Reload user-specific data
+        st.success("✅ User performance data refreshed successfully!")
     except Exception as e:
         st.error(f"❌ Failed to refresh user performance data: {str(e)}")
+
 
 
 
