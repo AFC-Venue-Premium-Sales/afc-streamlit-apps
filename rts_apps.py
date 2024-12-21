@@ -74,25 +74,25 @@ if not st.session_state["authenticated"]:
 
     # Process login
     if "code" in query_params and not st.session_state["redirected"]:
-    auth_code = query_params["code"][0]
-    with st.spinner("🔄 Logging you in..."):
-        try:
-            result = app.acquire_token_by_authorization_code(
-                code=auth_code,
-                scopes=SCOPES,
-                redirect_uri=REDIRECT_URI
-            )
-            if "access_token" in result:
-                st.session_state["access_token"] = result["access_token"]
-                st.session_state["authenticated"] = True
-                st.session_state["redirected"] = True
-                st.success("🎉 Login successful! Redirecting...")
-                # Instead of st.experimental_rerun()
-                st.experimental_set_query_params(logged_in="true")  # Update query params to trigger refresh
-            else:
-                st.error("❌ Failed to log in. Please try again.")
-        except Exception as e:
-            st.error(f"❌ An error occurred: {str(e)}")
+        auth_code = query_params["code"][0]
+        with st.spinner("🔄 Logging you in..."):
+            try:
+                result = app.acquire_token_by_authorization_code(
+                    code=auth_code,
+                    scopes=SCOPES,
+                    redirect_uri=REDIRECT_URI
+                )
+                if "access_token" in result:
+                    st.session_state["access_token"] = result["access_token"]
+                    st.session_state["authenticated"] = True
+                    st.session_state["redirected"] = True
+                    st.success("🎉 Login successful! Redirecting...")
+                    # Instead of st.experimental_rerun()
+                    st.experimental_set_query_params(logged_in="true")  # Update query params to trigger refresh
+                else:
+                    st.error("❌ Failed to log in. Please try again.")
+            except Exception as e:
+                st.error(f"❌ An error occurred: {str(e)}")
 
 else:
     # User Profile Card
