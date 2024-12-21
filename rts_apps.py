@@ -51,19 +51,40 @@ def fetch_and_store_data():
         try:
             # Log the start of the fetching process
             logging.info("Fetching data from tjt_hosp_api...")
-            
-            # Import and execute `tjt_hosp_api`
-            import tjt_hosp_api
-            from tjt_hosp_api import filtered_df_without_seats  # Output DataFrame
 
-            # Update session state with new data
+            # Dynamically reload `tjt_hosp_api` to ensure the latest code runs
+            import importlib
+            import tjt_hosp_api 
+            importlib.reload(tjt_hosp_api)
+
+            # Extract the DataFrame from `tjt_hosp_api`
+            from tjt_hosp_api import filtered_df_without_seats
+
+            # Validate DataFrame (example: check for required columns)
+            required_columns = ['Column1', 'Column2']  # Replace with actual columns
+            if not all(col in filtered_df_without_seats.columns for col in required_columns):
+                raise ValueError(f"Missing required columns in data: {required_columns}")
+
+            # Update session state with the fetched data
             st.session_state["filtered_data"] = filtered_df_without_seats
             logging.info("Data successfully fetched and stored.")
             st.success("✅ Hospitality data fetched successfully!")
-        except Exception as e:
-            error_message = f"Failed to fetch data: {str(e)}"
+
+        except ImportError as e:
+            error_message = f"Module import failed: {str(e)}"
             logging.error(error_message)
             st.error(f"❌ {error_message}")
+
+        except ValueError as e:
+            error_message = f"Data validation failed: {str(e)}"
+            logging.error(error_message)
+            st.error(f"❌ {error_message}")
+
+        except Exception as e:
+            error_message = f"Unexpected error: {str(e)}"
+            logging.error(error_message)
+            st.error(f"❌ {error_message}")
+
 
 # App Header with a logo
 st.image("assets/arsenal-logo.png", width=250)  # Placeholder for the logo
