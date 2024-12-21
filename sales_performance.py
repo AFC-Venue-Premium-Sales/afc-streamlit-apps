@@ -60,14 +60,7 @@ def run_app():
     You can filter results by date, user, fixture, payment status, and paid status for tailored insights. 
     """)
 
-    # Dynamically fetch hospitality data on app start
-    try:
-        loaded_api_df = filtered_df_without_seats
-        st.sidebar.success("✅ Data retrieved successfully.")
-    except Exception as e:
-        st.sidebar.error(f"🚨 Failed to load initial data: {str(e)}")
-        loaded_api_df = pd.DataFrame()  # Fallback to an empty DataFrame
-
+    loaded_api_df = filtered_df_without_seats
 
     if loaded_api_df is not None:
         st.sidebar.success("✅ Data retrieved successfully.")
@@ -115,11 +108,11 @@ def run_app():
         # Handle missing or invalid dates
         filtered_data['Days to Fixture'] = filtered_data['Days to Fixture'].fillna(-1).astype(int)
 
-        # Refresh Button with Dynamic Key
-        refresh_button_key = f"refresh_button_{st.session_state.get('app_name', 'sales')}"
-        if st.sidebar.button("🔄 Refresh Data", key=refresh_button_key):
-            refresh_data()  # Call the refresh_data function to reload the latest data
-            st.experimental_rerun()  # Trigger a rerun of the app to reflect refreshed data
+        # # Refresh Button with Dynamic Key
+        # refresh_button_key = f"refresh_button_{st.session_state.get('app_name', 'sales')}"
+        # if st.sidebar.button("🔄 Refresh Data", key=refresh_button_key):
+        #     refresh_data()  # Call the refresh_data function to reload the latest data
+        #     st.experimental_rerun()  # Trigger a rerun of the app to reflect refreshed data
 
 
 

@@ -49,22 +49,11 @@ def refresh_data():
 
 def generate_kpis(filtered_data):
     """Display key performance indicators."""
-    # Ensure TotalWithOtherPayments exists
-    if 'TotalWithOtherPayments' not in filtered_data.columns:
-        if 'TotalPrice' in filtered_data.columns and 'OtherPayments' in filtered_data.columns:
-            filtered_data['TotalWithOtherPayments'] = (
-                filtered_data['TotalPrice'] + filtered_data['OtherPayments'].fillna(0)
-            )
-        else:
-            st.warning("⚠️ Missing columns for TotalWithOtherPayments calculation.")
-            filtered_data['TotalWithOtherPayments'] = 0
-
-    # Calculate KPIs
-    total_revenue = filtered_data['TotalWithOtherPayments'].sum()
+    total_revenue = filtered_data['TotalPrice'].sum()
     total_packages = len(filtered_data)
     average_revenue_per_package = total_revenue / total_packages if total_packages > 0 else 0
     top_exec = (
-        filtered_data.groupby('CreatedBy')['TotalWithOtherPayments'].sum().idxmax()
+        filtered_data.groupby('CreatedBy')['TotalPrice'].sum().idxmax()
         if not filtered_data.empty else "N/A"
     )
 
@@ -73,7 +62,6 @@ def generate_kpis(filtered_data):
     st.metric("🎟️ Total Packages Sold", total_packages)
     st.metric("📈 Average Revenue per Package", f"£{average_revenue_per_package:,.2f}")
     st.metric("🏆 Top Exec (Revenue)", top_exec)
-
 
 def generate_charts(filtered_data):
     """Generate and display charts based on the filtered data."""
@@ -179,12 +167,7 @@ def run_app():
     """)
 
     # Load data
-    try:
-        loaded_api_df = filtered_df_without_seats  # Dynamically fetch data
-        st.sidebar.success("✅ Data retrieved successfully.")
-    except Exception as e:
-        st.sidebar.error(f"🚨 Failed to load initial data: {str(e)}")
-        loaded_api_df = pd.DataFrame()  # Fallback to an empty DataFrame
+    loaded_api_df = filtered_df_without_seats  # Dynamically fetch data
 
     if loaded_api_df is not None and not loaded_api_df.empty:
         st.sidebar.success("✅ Data retrieved successfully.")
