@@ -71,7 +71,8 @@ if not st.session_state["authenticated"]:
         </div>
     """, unsafe_allow_html=True)
 
-    # Process login
+     # Process login
+    query_params = st.experimental_get_query_params()
     if "code" in query_params and not st.session_state["redirected"]:
         auth_code = query_params["code"][0]
         with st.spinner("🔄 Logging you in..."):
@@ -86,8 +87,7 @@ if not st.session_state["authenticated"]:
                     st.session_state["authenticated"] = True
                     st.session_state["redirected"] = True
                     st.success("🎉 Login successful! Redirecting...")
-                    # Redirect with logged_in parameter
-                    st.experimental_set_query_params(logged_in="true")
+                    st.rerun()  # Reload the app to show authenticated view
                 else:
                     st.error("❌ Failed to log in. Please try again.")
             except Exception as e:
