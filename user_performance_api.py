@@ -144,9 +144,10 @@ def run_app():
 
         # Sidebar Filters
         st.sidebar.header("Filter Data by Date and Time")
-        date_range = st.sidebar.date_input("📅 Select Date Range", [], key="user_perf_date_range")
-        start_time = st.sidebar.time_input("⏰ Start Time", value=datetime.now().replace(hour=0, minute=0, second=0).time())
-        end_time = st.sidebar.time_input("⏰ End Time", value=datetime.now().replace(hour=23, minute=59, second=59).time())
+        date_range = st.sidebar.date_input("📅 Select Date Range", [], key="unique_date_range_key")
+        start_time = st.sidebar.time_input("⏰ Start Time", value=datetime.now().replace(hour=0, minute=0, second=0).time(), key="unique_start_time_key")
+        end_time = st.sidebar.time_input("⏰ End Time", value=datetime.now().replace(hour=23, minute=59, second=59).time(), key="unique_end_time_key")
+
 
         # Combine date and time inputs into full datetime objects
         if len(date_range) == 1:
