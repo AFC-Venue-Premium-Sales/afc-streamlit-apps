@@ -38,6 +38,11 @@ st.image("assets/arsenal-logo.png", width=250)  # Placeholder for the logo
 st.title("🏟️ AFC Venue - MBM Hospitality")
 st.markdown("---")  # A horizontal line for better UI
 
+# Check for the logged_in query parameter
+query_params = st.experimental_get_query_params()
+if "logged_in" in query_params and query_params["logged_in"][0] == "true":
+    st.session_state["authenticated"] = True
+
 if not st.session_state["authenticated"]:
     # Instructions for SSO Login
     st.markdown("""
@@ -67,7 +72,6 @@ if not st.session_state["authenticated"]:
     """, unsafe_allow_html=True)
 
     # Process login
-    query_params = st.experimental_get_query_params()
     if "code" in query_params and not st.session_state["redirected"]:
         auth_code = query_params["code"][0]
         with st.spinner("🔄 Logging you in..."):
@@ -82,7 +86,7 @@ if not st.session_state["authenticated"]:
                     st.session_state["authenticated"] = True
                     st.session_state["redirected"] = True
                     st.success("🎉 Login successful! Redirecting...")
-                    # Trigger rerun via query params
+                    # Redirect with logged_in parameter
                     st.experimental_set_query_params(logged_in="true")
                 else:
                     st.error("❌ Failed to log in. Please try again.")
