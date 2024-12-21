@@ -3,6 +3,7 @@ from msal import ConfidentialClientApplication
 from dotenv import load_dotenv
 import os
 import logging
+import importlib
 import sales_performance
 import user_performance_api
 
@@ -49,24 +50,24 @@ def fetch_and_store_data():
     """Execute tjt_hosp_api and reload its output."""
     with st.spinner("Fetching data from the API..."):
         try:
-            # Log the start of the fetching process
             logging.info("Fetching data from tjt_hosp_api...")
 
-            # Dynamically reload `tjt_hosp_api` to ensure the latest code runs
-            import importlib
-            import tjt_hosp_api 
+            # Dynamically reload the tjt_hosp_api module
+            import tjt_hosp_api
             importlib.reload(tjt_hosp_api)
 
-            # Extract the DataFrame from `tjt_hosp_api`
+            # Extract the DataFrame
             from tjt_hosp_api import filtered_df_without_seats
-
-            # Validate DataFrame (example: check for required columns)
             required_columns = ['Fixture Name', 'Order Id', 'First Name']
-            if not all(col in filtered_df_without_seats.columns for col in required_columns):
-                raise ValueError(f"Missing required columns in data: {required_columns}")
 
+            # Validate required columns
+            missing_columns = [
+                col for col in required_columns if col not in filtered_df_without_seats.columns
+            ]
+            if missing_columns:
+                raise ValueError(f"Missing required columns: {missing_columns}")
 
-            # Update session state with the fetched data
+            # Update session state with fetched data
             st.session_state["filtered_data"] = filtered_df_without_seats
             logging.info("Data successfully fetched and stored.")
             st.success("✅ Hospitality data fetched successfully!")
@@ -86,28 +87,24 @@ def fetch_and_store_data():
             logging.error(error_message)
             st.error(f"❌ {error_message}")
 
-
 # App Header with a logo
 st.image("assets/arsenal-logo.png", width=250)  # Placeholder for the logo
 st.title("🏟️ AFC Venue - MBM Hospitality")
 st.markdown("---")  # A horizontal line for better UI
 
 if not st.session_state["authenticated"]:
-    # Instructions for SSO Login
     st.markdown("""
     ### 👋 Welcome to the Venue Hospitality App!  
     **Please log in using AFC credentials to access the following modules:**
 
     - **📊 Sales Performance**: Analyze and track sales data.
     - **📈 User Performance**: Monitor and evaluate team performance metrics.
-    
     """)
 
-    # Login Section
     login_url = azure_ad_login()
     st.markdown(f"""
         <div style="text-align:center;">
-            <a href="{azure_ad_login()}" target="_blank" style="
+            <a href="{login_url}" target="_blank" style="
                 text-decoration:none;
                 color:white;
                 background-color:#FF4B4B;
@@ -135,55 +132,45 @@ if not st.session_state["authenticated"]:
                     st.session_state["authenticated"] = True
                     st.session_state["redirected"] = True
                     st.success("🎉 Login successful! Redirecting...")
-                    st.rerun()  # Reload the app to show authenticated view
+                    st.rerun()
                 else:
                     st.error("❌ Failed to log in. Please try again.")
             except Exception as e:
                 st.error(f"❌ An error occurred: {str(e)}")
 else:
-    # Fetch data on app load if not already fetched
     if st.session_state["filtered_data"] is None:
         logging.info("Fetching data on app load...")
         fetch_and_store_data()
 
-    # User Profile Card
     st.sidebar.markdown("### 👤 Logged in User")
     st.sidebar.info("User: **Azure AD User**\nRole: **Premium Exec**")
     
-    # Navigation Sidebar
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio(
         "Choose Module",
         ["📊 Sales Performance", "📈 User Performance"],
-        format_func=lambda x: x.split(" ")[1],  # Display just the module names
+        format_func=lambda x: x.split(" ")[1],
     )
     
-    # Refresh Button
     if st.sidebar.button("🔄 Refresh Data"):
         logging.info("Refresh button clicked. Fetching new data...")
-        fetch_and_store_data()  # Reload data
-        st.rerun()# Trigger rerun to reflect updated data
+        fetch_and_store_data()
+        st.rerun()
     
-    # Add Loading Indicator
     with st.spinner("🔄 Loading..."):
         if app_choice == "📊 Sales Performance":
             sales_performance.run_app()
         elif app_choice == "📈 User Performance":
             user_performance_api.run_app()
 
-    # Logout Button
-    st.sidebar.markdown("---")
     if st.sidebar.button("🔓 Logout"):
         with st.spinner("🔄 Logging out..."):
             logging.info("User logged out.")
-            # Clear session state
-            st.session_state.clear()  # Clears all session state values
+            st.session_state.clear()
             st.success("✅ You have been logged out successfully!")
-            # Redirect to the login screen
-            st.experimental_set_query_params()  # Clears query params to prevent re-login issues
+            st.experimental_set_query_params()
             st.rerun()
 
-# Footer Section
 st.markdown("---")
 st.markdown("""
     <div style="text-align:center; font-size:12px; color:gray;">
