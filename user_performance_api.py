@@ -11,8 +11,15 @@ def filter_data_by_date(df, date_range):
     """Filter data based on the selected date range."""
     if not date_range:
         return df
+
     min_date = pd.Timestamp(date_range[0])
     max_date = pd.Timestamp(date_range[1]) if len(date_range) == 2 else min_date
+
+    # If a single day is selected, include the full day (00:00:00 to 23:59:59)
+    if min_date == max_date:
+        min_date = min_date.replace(hour=0, minute=0, second=0)
+        max_date = max_date.replace(hour=23, minute=59, second=59)
+
     if not pd.api.types.is_datetime64_any_dtype(df['CreatedOn']):
         df['CreatedOn'] = pd.to_datetime(df['CreatedOn'], errors='coerce')
     df = df.dropna(subset=['CreatedOn'])
@@ -122,31 +129,6 @@ def generate_charts(filtered_data):
     plt.legend(lines_labels, loc='upper left', fontsize=font_size_labels)
     st.pyplot(fig)
 
-    # Average Sale Value by Exec
-    st.write("### 📊 Average Sale Value Per Exec")
-    avg_sales_by_exec = filtered_data.groupby('CreatedBy').agg(
-        AvgSaleValue=('TotalPrice', 'mean'),
-        SalesCount=('CreatedBy', 'size')
-    ).reset_index()
-
-    avg_sales_by_exec['AvgSaleValue'] = avg_sales_by_exec['AvgSaleValue'].round(1)
-    st.dataframe(avg_sales_by_exec)
-
-    # Grouped Bar Chart for Average Sale Value
-    fig, ax = plt.subplots(figsize=chart_size)
-    ax.bar(
-        avg_sales_by_exec['CreatedBy'],
-        avg_sales_by_exec['AvgSaleValue'],
-        color='gold',
-        label='Avg Sale Value (£)'
-    )
-    ax.set_title('Average Sale Value per Exec', fontsize=font_size_title)
-    ax.set_xlabel('Exec', fontsize=font_size_labels)
-    ax.set_ylabel('Avg Sale Value (£)', fontsize=font_size_labels)
-    plt.xticks(rotation=45, ha='right')
-    plt.legend()
-    st.pyplot(fig)
-
 
 def run_app():
     """Main application function."""
@@ -171,7 +153,8 @@ def run_app():
         date_range = st.sidebar.date_input("📅 Select Date Range", [], key="user_perf_date_range")
         valid_usernames = [user for user in specified_users if user in pd.unique(loaded_api_df['CreatedBy'])]
         selected_events = st.sidebar.multiselect("🎫 Select Events", options=pd.unique(loaded_api_df['Fixture Name']), default=None)
-        selected_users = st.sidebar.multiselect("👤 Select Execs", options=valid_usernames, default=None)
+        # Default selected users to `specified_users`
+        selected_users = st.sidebar.multiselect("👤 Select Execs", options=valid_usernames, default=specified_users)
         selected_paid = st.sidebar.selectbox("💰 Filter by IsPaid", options=pd.unique(loaded_api_df['IsPaid']))
 
         # Apply Filters
