@@ -27,7 +27,6 @@ app = ConfidentialClientApplication(
 st.session_state.setdefault("authenticated", False)
 st.session_state.setdefault("access_token", None)
 st.session_state.setdefault("redirected", False)
-st.session_state.setdefault("data_refreshed", False)
 st.session_state.setdefault("shared_data", None)  # Store shared data here
 
 # Azure AD Login URL
@@ -107,9 +106,15 @@ else:
 
     # Refresh Button
     if st.sidebar.button("🔄 Refresh Data"):
+        st.experimental_set_query_params(refresh="true")
+
+    # Check if refresh is required
+    query_params = st.experimental_get_query_params()
+    if query_params.get("refresh"):
+        st.experimental_set_query_params()  # Clear query parameters
         with st.spinner("🔄 Fetching the latest data..."):
             try:
-                # Refresh shared data only once
+                # Refresh sales or user performance data based on the selected module
                 if app_choice == "📊 Sales Performance":
                     st.session_state["shared_data"] = sales_performance.refresh_data()
                 elif app_choice == "📈 User Performance":
