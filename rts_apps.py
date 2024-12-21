@@ -82,7 +82,8 @@ if not st.session_state["authenticated"]:
                     st.session_state["authenticated"] = True
                     st.session_state["redirected"] = True
                     st.success("🎉 Login successful! Redirecting...")
-                    st.experimental_rerun()  # Reload the app to show authenticated view
+                    # Trigger rerun via query params
+                    st.experimental_set_query_params(logged_in="true")
                 else:
                     st.error("❌ Failed to log in. Please try again.")
             except Exception as e:
@@ -103,11 +104,13 @@ else:
     # Refresh Button with Dynamic Key
     refresh_button_key = f"refresh_button_{app_choice.replace(' ', '_')}"
     if st.sidebar.button("🔄 Refresh Data", key=refresh_button_key):
-        st.session_state["data_refreshed"] = True  # Mark data as needing refresh
-        st.experimental_rerun()  # Trigger a rerun to process the refresh
+        # Trigger rerun via query params
+        st.experimental_set_query_params(refresh="true")
 
     # Check if refresh is required
-    if st.session_state.get("data_refreshed", False):
+    query_params = st.experimental_get_query_params()
+    if query_params.get("refresh"):
+        st.experimental_set_query_params()  # Clear query parameters
         with st.spinner("🔄 Fetching the latest data..."):
             try:
                 # Refresh sales or user performance data based on the selected module
@@ -115,7 +118,6 @@ else:
                     sales_performance.refresh_data()  # Dedicated refresh function in sales_performance
                 elif app_choice == "📈 User Performance":
                     user_performance_api.refresh_data()  # Dedicated refresh function in user_performance_api
-                st.session_state["data_refreshed"] = False  # Reset refresh flag
                 st.success("✅ Data refreshed successfully!")
             except Exception as e:
                 st.error(f"❌ Failed to refresh data: {str(e)}")
@@ -136,10 +138,7 @@ else:
             st.session_state["access_token"] = None
             st.session_state.clear()  # Clears all session state values
             st.success("✅ You have been logged out successfully!")
-            
-            # Redirect to the login screen
             st.experimental_set_query_params()  # Clears query params to prevent re-login issues
-            st.experimental_rerun()  # Reload to show login view
 
 # Footer Section
 st.markdown("---")
