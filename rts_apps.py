@@ -68,7 +68,7 @@ if not st.session_state["authenticated"]:
 
     if not st.session_state["authenticated"]:
     # Instructions for SSO Login
-    st.markdown("""
+        st.markdown("""
     ### 👋 Welcome to the Venue Hospitality App!  
     **Please log in using AFC credentials to access the following modules:**
 
