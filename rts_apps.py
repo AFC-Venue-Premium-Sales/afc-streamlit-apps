@@ -1,7 +1,6 @@
 import streamlit as st
 from msal import ConfidentialClientApplication
 from dotenv import load_dotenv
-import time
 import os
 import sales_performance
 import user_performance_api
@@ -31,13 +30,8 @@ if "access_token" not in st.session_state:
     st.session_state["access_token"] = None
 if "redirected" not in st.session_state:
     st.session_state["redirected"] = False
-
-# Auto-refresh Logic
-def auto_refresh(interval=5):
-    """Automatically refresh the app every specified interval."""
-    st.write(f"🔄 Refreshing data every {interval} seconds.")
-    time.sleep(interval)
-    st.rerun()  # Use st.rerun to reload the app
+if "data_refreshed" not in st.session_state:
+    st.session_state["data_refreshed"] = False
 
 # Azure AD Login URL
 def azure_ad_login():
@@ -59,7 +53,7 @@ if not st.session_state["authenticated"]:
     
     If you experience login issues, please contact [cmunthali@arsenal.co.uk](mailto:cmunthali@arsenal.co.uk).
     """)
-    
+
     # Login Section
     login_url = azure_ad_login()
     st.markdown(f"""
@@ -71,11 +65,10 @@ if not st.session_state["authenticated"]:
                 padding:10px 20px;
                 border-radius:5px;
                 font-size:16px;">
-                🔐 Log in Miscrosoft Entra ID
+                🔐 Log in Microsoft Entra ID
             </a>
         </div>
     """, unsafe_allow_html=True)
-
 
     # Process login
     query_params = st.experimental_get_query_params()
@@ -110,7 +103,21 @@ else:
         ["📊 Sales Performance", "📈 User Performance"],
         format_func=lambda x: x.split(" ")[1],  # Display just the module names
     )
-
+    
+    # Refresh Button
+    if st.sidebar.button("🔄 Refresh Data"):
+        with st.spinner("🔄 Fetching the latest data..."):
+            try:
+                # Simulate fetching data from APIs
+                if app_choice == "📊 Sales Performance":
+                    sales_performance.run_app()
+                elif app_choice == "📈 User Performance":
+                    user_performance_api.run_app()
+                st.session_state["data_refreshed"] = True
+                st.success("✅ Data refreshed successfully!")
+            except Exception as e:
+                st.error(f"❌ Failed to refresh data: {str(e)}")
+    
     # Add Loading Indicator
     with st.spinner("🔄 Loading..."):
         if app_choice == "📊 Sales Performance":
@@ -131,10 +138,6 @@ else:
             # Redirect to the login screen
             st.experimental_set_query_params()  # Clears query params to prevent re-login issues
             st.rerun()
-
-# Optional Auto-Refresh
-if st.session_state["authenticated"]:
-    auto_refresh()
 
 # Footer Section
 st.markdown("---")
