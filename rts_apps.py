@@ -38,8 +38,6 @@ if "access_token" not in st.session_state:
     st.session_state["access_token"] = None
 if "redirected" not in st.session_state:
     st.session_state["redirected"] = False
-if "data_fetching" not in st.session_state:
-    st.session_state["data_fetching"] = False  # Tracks background fetching status
 
 
 # Cached data fetcher
@@ -64,22 +62,6 @@ def fetch_data():
 
     logging.info("Data successfully fetched.")
     return filtered_df_without_seats
-
-
-# Function to refresh data and update cache
-def refresh_data():
-    """Refresh data in the background."""
-    st.session_state["data_fetching"] = True
-    try:
-        new_data = fetch_data()  # Fetch fresh data
-        st.session_state["filtered_data"] = new_data  # Update the session state
-        logging.info("Data successfully refreshed.")
-        st.success("✅ Data refreshed successfully!")
-    except Exception as e:
-        logging.error(f"Failed to refresh data: {e}")
-        st.error(f"❌ Failed to refresh data: {e}")
-    finally:
-        st.session_state["data_fetching"] = False
 
 
 # App Header with a logo
@@ -133,12 +115,13 @@ if not st.session_state["authenticated"]:
             except Exception as e:
                 st.error(f"❌ An error occurred: {str(e)}")
 else:
-    if "filtered_data" not in st.session_state:
-        logging.info("Loading cached data...")
-        try:
-            st.session_state["filtered_data"] = fetch_data()  # Load cached data
-        except Exception as e:
-            logging.error(f"Failed to load cached data: {e}")
+    # Always fetch the latest data (cached or fresh)
+    try:
+        data = fetch_data()  # Fetch cached or fresh data
+    except Exception as e:
+        logging.error(f"Failed to fetch data: {e}")
+        st.error(f"❌ Failed to fetch data: {e}")
+        data = None  # Handle gracefully if data can't be fetched
 
     st.sidebar.markdown("### 👤 Logged in User")
     st.sidebar.info("User: **Azure AD User**\nRole: **Premium Exec**")
@@ -150,17 +133,14 @@ else:
         format_func=lambda x: x.split(" ")[1],
     )
     
+    # Dummy Refresh Button
     if st.sidebar.button("🔄 Refresh Data"):
-        logging.info("Refresh button clicked.")
-        refresh_data()  # Refresh data in the background
+        st.info("🔄 Refreshing data... Please wait.")
+        # No backend action occurs; refresh is handled by `@st.cache_data`
 
-    if st.session_state.get("data_fetching", False):
-        st.warning("🔄 Refreshing data in the background...")
-    
     # Display current data
-    if st.session_state["filtered_data"] is not None:
-        st.info("Showing cached data while refreshing...")
-        st.write(st.session_state["filtered_data"])  # Replace with your display logic
+    if data is not None:
+        st.write(data)  # Replace with your display logic
 
     with st.spinner("🔄 Loading..."):
         if app_choice == "📊 Sales Performance":
