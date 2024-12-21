@@ -66,6 +66,34 @@ if not st.session_state["authenticated"]:
         </div>
     """, unsafe_allow_html=True)
 
+    if not st.session_state["authenticated"]:
+    # Instructions for SSO Login
+    st.markdown("""
+    ### 👋 Welcome to the Venue Hospitality App!  
+    **Please log in using AFC credentials to access the following modules:**
+
+    - **📊 Sales Performance**: Analyze and track sales data.
+    - **📈 User Performance**: Monitor and evaluate team performance metrics.
+    
+    If you experience login issues, please contact [cmunthali@arsenal.co.uk](mailto:cmunthali@arsenal.co.uk).
+    """)
+
+    # Login Section
+    login_url = azure_ad_login()
+    st.markdown(f"""
+        <div style="text-align:center;">
+            <a href="{login_url}" target="_blank" style="
+                text-decoration:none;
+                color:white;
+                background-color:#FF4B4B;
+                padding:10px 20px;
+                border-radius:5px;
+                font-size:16px;">
+                🔐 Log in Microsoft Entra ID
+            </a>
+        </div>
+    """, unsafe_allow_html=True)
+
     # Process login
     query_params = st.experimental_get_query_params()
     if "code" in query_params and not st.session_state["redirected"]:
@@ -81,8 +109,8 @@ if not st.session_state["authenticated"]:
                     st.session_state["access_token"] = result["access_token"]
                     st.session_state["authenticated"] = True
                     st.session_state["redirected"] = True
-                    st.success("🎉 Login successful! Redirecting...")
                     st.experimental_set_query_params(authenticated="true")
+                    st.success("🎉 Login successful! Redirecting...")
                 else:
                     st.error("❌ Failed to log in. Please try again.")
             except Exception as e:
@@ -90,7 +118,7 @@ if not st.session_state["authenticated"]:
 else:
     # Check if redirected via query params
     query_params = st.experimental_get_query_params()
-    if query_params.get("authenticated"):
+    if query_params.get("authenticated") == ["true"]:
         st.session_state["authenticated"] = True
         st.experimental_set_query_params()  # Clear query params
 
