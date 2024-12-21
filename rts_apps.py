@@ -28,6 +28,7 @@ st.session_state.setdefault("authenticated", False)
 st.session_state.setdefault("access_token", None)
 st.session_state.setdefault("redirected", False)
 st.session_state.setdefault("data_refreshed", False)
+st.session_state.setdefault("shared_data", None)  # Store shared data here
 
 # Azure AD Login URL
 def azure_ad_login():
@@ -71,8 +72,7 @@ if not st.session_state["authenticated"]:
         </div>
     """, unsafe_allow_html=True)
 
-     # Process login
-    query_params = st.experimental_get_query_params()
+    # Process login
     if "code" in query_params and not st.session_state["redirected"]:
         auth_code = query_params["code"][0]
         with st.spinner("🔄 Logging you in..."):
@@ -87,7 +87,7 @@ if not st.session_state["authenticated"]:
                     st.session_state["authenticated"] = True
                     st.session_state["redirected"] = True
                     st.success("🎉 Login successful! Redirecting...")
-                    st.rerun()  # Reload the app to show authenticated view
+                    st.experimental_rerun()
                 else:
                     st.error("❌ Failed to log in. Please try again.")
             except Exception as e:
@@ -96,53 +96,42 @@ else:
     # User Profile Card
     st.sidebar.markdown("### 👤 Logged in User")
     st.sidebar.info("User: **Azure AD User**\nRole: **Premium Exec**")
-    
+
     # Navigation Sidebar
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio(
         "Choose Module",
         ["📊 Sales Performance", "📈 User Performance"],
-        format_func=lambda x: x.split(" ")[1],  # Display just the module names
+        format_func=lambda x: x.split(" ")[1],
     )
-    
-    # Refresh Button with Dynamic Key
-    refresh_button_key = f"refresh_button_{app_choice.replace(' ', '_')}"
-    if st.sidebar.button("🔄 Refresh Data", key=refresh_button_key):
-        # Trigger rerun via query params
-        st.experimental_set_query_params(refresh="true")
 
-    # Check if refresh is required
-    query_params = st.experimental_get_query_params()
-    if query_params.get("refresh"):
-        st.experimental_set_query_params()  # Clear query parameters
+    # Refresh Button
+    if st.sidebar.button("🔄 Refresh Data"):
         with st.spinner("🔄 Fetching the latest data..."):
             try:
-                # Refresh sales or user performance data based on the selected module
+                # Refresh shared data only once
                 if app_choice == "📊 Sales Performance":
-                    sales_performance.refresh_data()  # Dedicated refresh function in sales_performance
+                    st.session_state["shared_data"] = sales_performance.refresh_data()
                 elif app_choice == "📈 User Performance":
-                    user_performance_api.refresh_data()  # Dedicated refresh function in user_performance_api
+                    st.session_state["shared_data"] = user_performance_api.refresh_data()
                 st.success("✅ Data refreshed successfully!")
             except Exception as e:
                 st.error(f"❌ Failed to refresh data: {str(e)}")
 
     # Add Loading Indicator
     with st.spinner("🔄 Loading..."):
+        shared_data = st.session_state.get("shared_data")
         if app_choice == "📊 Sales Performance":
-            sales_performance.run_app()
+            sales_performance.run_app(shared_data)
         elif app_choice == "📈 User Performance":
-            user_performance_api.run_app()
+            user_performance_api.run_app(shared_data)
 
     # Logout Button
     st.sidebar.markdown("---")
     if st.sidebar.button("🔓 Logout"):
         with st.spinner("🔄 Logging out..."):
-            # Clear session state
-            st.session_state["authenticated"] = False
-            st.session_state["access_token"] = None
-            st.session_state.clear()  # Clears all session state values
-            st.experimental_set_query_params()# Clears query params to prevent re-login issues
-            st.success("✅ You have been logged out successfully!")
+            st.session_state.clear()  # Clear session state
+            st.experimental_rerun()
 
 # Footer Section
 st.markdown("---")
