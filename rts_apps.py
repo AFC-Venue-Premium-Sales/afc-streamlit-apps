@@ -38,54 +38,49 @@ if "access_token" not in st.session_state:
     st.session_state["access_token"] = None
 if "redirected" not in st.session_state:
     st.session_state["redirected"] = False
-if "filtered_data" not in st.session_state:
-    st.session_state["filtered_data"] = None  # Holds the output DataFrame
+if "data_fetching" not in st.session_state:
+    st.session_state["data_fetching"] = False  # Tracks background fetching status
 
-# Azure AD Login URL
-def azure_ad_login():
-    return app.get_authorization_request_url(scopes=SCOPES, redirect_uri=REDIRECT_URI)
 
-# Function to fetch and reload data
-def fetch_and_store_data():
-    """Execute tjt_hosp_api and reload its output."""
-    with st.spinner("Fetching data from the API..."):
-        try:
-            logging.info("Fetching data from tjt_hosp_api...")
+# Cached data fetcher
+@st.cache_data(ttl=300)  # Cache for 5 minutes
+def fetch_data():
+    logging.info("Fetching data from tjt_hosp_api...")
+    
+    # Dynamically reload `tjt_hosp_api`
+    import tjt_hosp_api
+    importlib.reload(tjt_hosp_api)
 
-            # Dynamically reload the tjt_hosp_api module
-            import tjt_hosp_api
-            importlib.reload(tjt_hosp_api)
+    # Extract the DataFrame
+    from tjt_hosp_api import filtered_df_without_seats
+    required_columns = ['Fixture Name', 'Order Id', 'First Name']
 
-            # Extract the DataFrame
-            from tjt_hosp_api import filtered_df_without_seats
-            required_columns = ['Fixture Name', 'Order Id', 'First Name']
+    # Validate required columns
+    missing_columns = [
+        col for col in required_columns if col not in filtered_df_without_seats.columns
+    ]
+    if missing_columns:
+        raise ValueError(f"Missing required columns: {missing_columns}")
 
-            # Validate required columns
-            missing_columns = [
-                col for col in required_columns if col not in filtered_df_without_seats.columns
-            ]
-            if missing_columns:
-                raise ValueError(f"Missing required columns: {missing_columns}")
+    logging.info("Data successfully fetched.")
+    return filtered_df_without_seats
 
-            # Update session state with fetched data
-            st.session_state["filtered_data"] = filtered_df_without_seats
-            logging.info("Data successfully fetched and stored.")
-            st.success("✅ Hospitality data fetched successfully!")
 
-        except ImportError as e:
-            error_message = f"Module import failed: {str(e)}"
-            logging.error(error_message)
-            st.error(f"❌ {error_message}")
+# Function to refresh data and update cache
+def refresh_data():
+    """Refresh data in the background."""
+    st.session_state["data_fetching"] = True
+    try:
+        new_data = fetch_data()  # Fetch fresh data
+        st.session_state["filtered_data"] = new_data  # Update the session state
+        logging.info("Data successfully refreshed.")
+        st.success("✅ Data refreshed successfully!")
+    except Exception as e:
+        logging.error(f"Failed to refresh data: {e}")
+        st.error(f"❌ Failed to refresh data: {e}")
+    finally:
+        st.session_state["data_fetching"] = False
 
-        except ValueError as e:
-            error_message = f"Data validation failed: {str(e)}"
-            logging.error(error_message)
-            st.error(f"❌ {error_message}")
-
-        except Exception as e:
-            error_message = f"Unexpected error: {str(e)}"
-            logging.error(error_message)
-            st.error(f"❌ {error_message}")
 
 # App Header with a logo
 st.image("assets/arsenal-logo.png", width=250)  # Placeholder for the logo
@@ -101,7 +96,7 @@ if not st.session_state["authenticated"]:
     - **📈 User Performance**: Monitor and evaluate team performance metrics.
     """)
 
-    login_url = azure_ad_login()
+    login_url = app.get_authorization_request_url(scopes=SCOPES, redirect_uri=REDIRECT_URI)
     st.markdown(f"""
         <div style="text-align:center;">
             <a href="{login_url}" target="_blank" style="
@@ -138,9 +133,12 @@ if not st.session_state["authenticated"]:
             except Exception as e:
                 st.error(f"❌ An error occurred: {str(e)}")
 else:
-    if st.session_state["filtered_data"] is None:
-        logging.info("Fetching data on app load...")
-        fetch_and_store_data()
+    if "filtered_data" not in st.session_state:
+        logging.info("Loading cached data...")
+        try:
+            st.session_state["filtered_data"] = fetch_data()  # Load cached data
+        except Exception as e:
+            logging.error(f"Failed to load cached data: {e}")
 
     st.sidebar.markdown("### 👤 Logged in User")
     st.sidebar.info("User: **Azure AD User**\nRole: **Premium Exec**")
@@ -153,10 +151,17 @@ else:
     )
     
     if st.sidebar.button("🔄 Refresh Data"):
-        logging.info("Refresh button clicked. Fetching new data...")
-        fetch_and_store_data()
-        st.rerun()
+        logging.info("Refresh button clicked.")
+        refresh_data()  # Refresh data in the background
+
+    if st.session_state.get("data_fetching", False):
+        st.warning("🔄 Refreshing data in the background...")
     
+    # Display current data
+    if st.session_state["filtered_data"] is not None:
+        st.info("Showing cached data while refreshing...")
+        st.write(st.session_state["filtered_data"])  # Replace with your display logic
+
     with st.spinner("🔄 Loading..."):
         if app_choice == "📊 Sales Performance":
             sales_performance.run_app()
