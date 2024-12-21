@@ -1,5 +1,4 @@
 import streamlit as st
-import subprocess
 from msal import ConfidentialClientApplication
 from dotenv import load_dotenv
 import os
@@ -24,17 +23,6 @@ app = ConfidentialClientApplication(
     authority=AUTHORITY
 )
 
-# Trigger the API script
-def execute_tjt_hosp_api():
-    """Run the tjt_hosp_api.py script to generate filtered_df_without_seats."""
-    try:
-        with st.spinner("Fetching data from the API..."):
-            subprocess.run(["python3", "tjt_hosp_api.py"], check=True)
-            st.success("✅ Hospitality data fetched successfully!")
-    except subprocess.CalledProcessError as e:
-        st.error(f"❌ Failed to fetch data: {str(e)}")
-        st.stop()  # Stop execution if data fetching fails
-
 # Initialize session states
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
@@ -42,12 +30,25 @@ if "access_token" not in st.session_state:
     st.session_state["access_token"] = None
 if "redirected" not in st.session_state:
     st.session_state["redirected"] = False
-if "data_refreshed" not in st.session_state:
-    st.session_state["data_refreshed"] = False
+if "filtered_data" not in st.session_state:
+    st.session_state["filtered_data"] = None  # Holds the output DataFrame
 
 # Azure AD Login URL
 def azure_ad_login():
     return app.get_authorization_request_url(scopes=SCOPES, redirect_uri=REDIRECT_URI)
+
+# Function to fetch and reload data
+def fetch_and_store_data():
+    """Execute tjt_hosp_api and reload its output."""
+    with st.spinner("Fetching data from the API..."):
+        try:
+            # Import `tjt_hosp_api`, which executes the script
+            import tjt_hosp_api
+            from tjt_hosp_api import filtered_df_without_seats  # Output DataFrame
+            st.session_state["filtered_data"] = filtered_df_without_seats
+            st.success("✅ Hospitality data fetched successfully!")
+        except Exception as e:
+            st.error(f"❌ Failed to fetch data: {str(e)}")
 
 # App Header with a logo
 st.image("assets/arsenal-logo.png", width=250)  # Placeholder for the logo
@@ -104,8 +105,9 @@ if not st.session_state["authenticated"]:
             except Exception as e:
                 st.error(f"❌ An error occurred: {str(e)}")
 else:
-    # Trigger the API script on app load or refresh
-    execute_tjt_hosp_api()
+    # Fetch data on app load if not already fetched
+    if st.session_state["filtered_data"] is None:
+        fetch_and_store_data()
 
     # User Profile Card
     st.sidebar.markdown("### 👤 Logged in User")
@@ -119,12 +121,17 @@ else:
         format_func=lambda x: x.split(" ")[1],  # Display just the module names
     )
     
+    # Refresh Button
+    if st.sidebar.button("🔄 Refresh Data"):
+        fetch_and_store_data()  # Reload data
+        st.experimental_rerun()  # Trigger rerun to reflect updated data
+    
     # Add Loading Indicator
     with st.spinner("🔄 Loading..."):
         if app_choice == "📊 Sales Performance":
-            sales_performance.run_app()
+            sales_performance.run_app(st.session_state["filtered_data"])
         elif app_choice == "📈 User Performance":
-            user_performance_api.run_app()
+            user_performance_api.run_app(st.session_state["filtered_data"])
 
     # Logout Button
     st.sidebar.markdown("---")
@@ -135,7 +142,6 @@ else:
             st.session_state["access_token"] = None
             st.session_state.clear()  # Clears all session state values
             st.success("✅ You have been logged out successfully!")
-            
             # Redirect to the login screen
             st.experimental_set_query_params()  # Clears query params to prevent re-login issues
             st.rerun()
