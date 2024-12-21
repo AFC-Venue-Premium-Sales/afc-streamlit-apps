@@ -117,7 +117,54 @@ def fetch_hospitality_data():
                         "IsSeasonal": guest_info[0].get("IsSeasonal", ""),
                     })
 
-                merged_data.append(merged_record)
+                if transaction.get('TMSessionId'):
+                    tm_session_data = json.loads(transaction['TMSessionId'])
+                    seats = tm_session_data.get('Seats', [])
+
+                    for seat in seats:
+                        seat_record = {
+                            "Order Id": transaction["Id"],
+                            "EventId": event_id,
+                            "First Name": guest_info[0].get("FirstName", "") if guest_info else "",
+                            "Surname": guest_info[0].get("Surname", "") if guest_info else "",
+                            "CompanyName": guest_info[0].get("CompanyName", "") if guest_info else "",
+                            "DOB": guest_info[0].get("DOB", "") if guest_info else "",
+                            "Email": guest_info[0].get("Email", "") if guest_info else "",
+                            "IsSeasonal": guest_info[0].get("IsSeasonal", "") if guest_info else "",
+                            "Country Code": guest_info[0].get("CountryCode", "") if guest_info else "",
+                            "PostCode": guest_info[0].get("PostCode", "") if guest_info else "",
+                            "City": guest_info[0].get("City", "") if guest_info else "",
+                            "Status": guest_info[0].get("Status", "") if guest_info else "",
+                            "GLCode": transaction.get("GLCode"),
+                            "PackageId": transaction.get("PackageId"),
+                            "GuestId": transaction.get("GuestId"),
+                            "CRCCode": transaction.get("CRCCode"),
+                            "Fixture Name": fixture_name,
+                            "EventCategory": event.get("EventCategory"),
+                            "EventCompetition": event.get("EventCompetition"),
+                            "Type": event.get("Type"),
+                            "KickOffEventStart": parse_datetime(event.get("KickOffEventStart")),
+                            "Package Name": transaction.get("Name"),
+                            "LocationName": transaction.get("LocationName"),
+                            "Price": transaction.get("Price"),
+                            "Seats": seat.get("Seats"),
+                            "PriceBandName": seat.get("PriceBandName"),
+                            "Row": seat.get("Row"),
+                            "Seat Number": seat.get("Number"),
+                            "AreaName": seat.get("AreaName"),
+                            "BlockId": seat.get("BlockId"),
+                            "Discount": transaction.get("Discount"),
+                            "DiscountValue": transaction.get("DiscountValue"),
+                            "IsPaid": transaction.get("IsPaid"),
+                            "TotalPrice": transaction.get("TotalPrice"),
+                            "CreatedOn": parse_datetime(transaction.get("CreatedOn")),
+                            "PaymentTime": parse_datetime(transaction.get("PaymentTime")),
+                            "CreatedBy": transaction.get("CreatedBy"),
+                            "SaleLocation": transaction.get("SaleLocation"),
+                        }
+                        merged_data.append(seat_record)
+                else:
+                    merged_data.append(merged_record)
         else:
             print(f"Failed to retrieve transactions for EventId {event_id}: {response.status_code} - {response.text}")
 
@@ -130,161 +177,31 @@ def fetch_hospitality_data():
 
     return df
 
-# Main script continues with final_data processing as per your original script
-
-
-
-
-
-
-# Example usage of fetch_hospitality_data to initialize your data
+# Main script continues with filtering and exporting data
 try:
-    merged_df = fetch_hospitality_data()
+    df = fetch_hospitality_data()
     print("Data fetched successfully.")
 except Exception as e:
     print(f"Error fetching data: {e}")
 
-# Proceed with the rest of your script logic here, e.g., final_data processing
-
-# Helper function to parse datetime with varying precision
-from datetime import datetime
-
-def parse_datetime(date_str):
-    formats = [
-        "%Y-%m-%dT%H:%M:%S.%f",  # With microseconds
-        "%Y-%m-%dT%H:%M:%S",      # Without microseconds
-        "%Y-%m-%dT%H:%M:%S.%f%z", # With timezone and microseconds
-        "%Y-%m-%dT%H:%M:%S%z",    # With timezone without microseconds
-    ]
-    
-    for fmt in formats:
-        try:
-            # Parse the date string
-            dt = datetime.strptime(date_str, fmt)
-            # Format it as DD-MM-YYYY
-            return dt.strftime("%d-%m-%Y %H:%M")
-        except ValueError:
-            continue
-    return date_str  # Return the original string if no format matched
-
-final_data = []
-
-for _, row in merged_df.iterrows():
-    if row['TMSessionId']:
-        tm_session_data = json.loads(row['TMSessionId'])
-        seats = tm_session_data.get('Seats', [])
-        
-        # Extract LocationName from Locations if it's a list of dictionaries
-        if isinstance(row.get('Locations'), list) and row['Locations']:
-            location_info = row['Locations'][0]
-            location_name = location_info.get('LocationName', '')
-            location_order_id = location_info.get('Id')  # Extract the Order Id from the location
-        else:
-            location_name = ''
-            location_order_id = None
-
-        # Handle the extraction of the Package Name, especially for 'Platinum' under 'Seasonal Membership'
-        package_name = row.get('Name')
-        if row.get('Type') == 'Seasonal Membership' and 'Platinum' in row.get('Name', ''):
-            package_name = 'Platinum'
-        
-        for seat in seats:
-            seat_record = {
-                "Order Id": row["Id"],  # Use Location Id if available, otherwise use row Id
-                "EventId": row.get("EventId"),
-                "First Name": row.get("First Name"),
-                "Surname": row.get("Surname"),
-                "CompanyName": row.get("CompanyName"),
-                "DOB": row.get("DOB"),
-                "Email": row.get("Email"),
-                "IsSeasonal": row.get("IsSeasonal"),
-                "Country Code": row.get("Country Code"),
-                "PostCode": row.get("PostCode"),
-                "City": row.get("City"),
-                "Status": row.get("Status"),
-                "GLCode": row.get("GLCode"),
-                "PackageId": row.get("PackageId"),
-                "GuestId": row.get("GuestId"),
-                "CRCCode": row.get("CRCCode"),
-                "Fixture Name": row["Fixture Name"],
-                "EventCategory": row.get("EventCategory"),
-                "EventCompetition": row.get("EventCompetition"),
-                "Type": row.get("Type"),
-                "KickOffEventStart": parse_datetime(row.get("KickOffEventStart")),
-                "Package Name": package_name,  # Use the updated logic for Package Name
-                "LocationName": location_name,  # Adding the LocationName
-                "Price": row.get("Price"),
-                "Seats": row.get("Seats", seat.get("Seats")),
-                "PriceBandName": seat.get("PriceBandName"),
-                "Row": seat.get("Row"),
-                "Seat Number": seat.get("Number"),
-                "AreaName": seat.get("AreaName"),
-                "BlockId": seat.get("BlockId"),
-                "Discount": row.get("Discount"),
-                "DiscountValue": row.get("DiscountValue"),
-                "IsPaid": row.get("IsPaid"),
-                "TotalPrice": row.get("TotalPrice"),
-                "CreatedOn": parse_datetime(row.get("CreatedOn")),
-                "PaymentTime": parse_datetime(row.get("PaymentTime")),
-                "CreatedBy": row.get("CreatedBy"),
-                "SaleLocation": row.get("SaleLocation"),
-            }
-            
-            final_data.append(seat_record)
-    else:
-        # Handle the scenario where there is no TMSessionId
-        if isinstance(row.get('Locations'), list) and row['Locations']:
-            row['LocationName'] = row['Locations'][0].get('LocationName', '')
-            row['Order Id'] = row['Locations'][0].get('Id') or row["Id"]  # Use Location Id if available
-        else:
-            row['LocationName'] = ''
-            row['Order Id'] = row["Id"]
-
-        # Handle the extraction of the Package Name for rows without TMSessionId
-        if row.get('Type') == 'Seasonal Membership' and 'Platinum' in row.get('Name', ''):
-            row['Package Name'] = 'Platinum'
-        else:
-            row['Package Name'] = row.get('Name')
-
-        # Convert date strings to desired format
-        row['CreatedOn'] = parse_datetime(row.get("CreatedOn"))
-        row['KickOffEventStart'] = parse_datetime(row.get("KickOffEventStart"))
-        
-        # Append the transaction without seat details
-        final_data.append(row)
-
-# Step 8: Convert final_data to a DataFrame
-final_df = pd.DataFrame(final_data)
-
-# Step 9: Filter the DataFrame to include only the desired columns
+# Example of filtering and saving final DataFrame
 filtered_columns_without_seat_data = [
-    "Order Id", "KickOffEventStart", "EventCategory", "EventCompetition", "Fixture Name","Type", "Package Name", "LocationName", "PackageId", "EventId", "GuestId",
-    "Seats", "CRCCode", "Price", "Discount","DiscountValue", "IsPaid", "PaymentTime", "CreatedOn", "CreatedBy", "TotalPrice", "GLCode", "SaleLocation","DiscountValue",
+    "Order Id", "KickOffEventStart", "EventCategory", "EventCompetition", "Fixture Name", "Type", "Package Name",
+    "LocationName", "PackageId", "EventId", "GuestId", "Seats", "CRCCode", "Price", "Discount", "DiscountValue",
     "IsPaid", "PaymentTime", "CreatedOn", "CreatedBy", "TotalPrice", "GLCode", "SaleLocation", "CompanyName", "DOB",
-    "GuestId", "Status", "IsSeasonal","First Name", "Surname", "Email", "Country Code", "PostCode", "City"
+    "GuestId", "Status", "IsSeasonal", "First Name", "Surname", "Email", "Country Code", "PostCode", "City"
 ]
 
 filtered_columns_with_seat_data = [
-    "Order Id", "KickOffEventStart", "EventCategory", "EventCompetition", "Fixture Name", "Type", "Package Name", "LocationName","PackageId", "EventId", "GuestId",
-    "Seats", "AreaName", "PriceBandName", "Seat Number", "Row", "BlockId", "CRCCode", "Price", "Discount",
-    "DiscountValue", "IsPaid", "PaymentTime", "CreatedOn", "CreatedBy", "TotalPrice", "GLCode", "SaleLocation",
-    "First Name", "Surname", "Email", "Country Code", "PostCode"
+    "Order Id", "KickOffEventStart", "EventCategory", "EventCompetition", "Fixture Name", "Type", "Package Name",
+    "LocationName", "PackageId", "EventId", "GuestId", "Seats", "AreaName", "PriceBandName", "Seat Number", "Row",
+    "BlockId", "CRCCode", "Price", "Discount", "DiscountValue", "IsPaid", "PaymentTime", "CreatedOn", "CreatedBy",
+    "TotalPrice", "GLCode", "SaleLocation", "First Name", "Surname", "Email", "Country Code", "PostCode"
 ]
 
-# Ensure that you are only selecting columns that exist in the final DataFrame
-filtered_columns_without_seats = [col for col in final_df.columns if col in filtered_columns_without_seat_data]
+filtered_df_without_seats = df[[col for col in filtered_columns_without_seat_data if col in df.columns]].drop_duplicates()
 
-# Filter the DataFrame based on the filtered columns
-filtered_df_without_seats = final_df[filtered_columns_without_seats].drop_duplicates()
-
-# Print the type to confirm it's a DataFrame
-print(type(filtered_df_without_seats))  # This will print <class 'pandas.core.frame.DataFrame'>
-
-# If you want to print the first 5 rows of the DataFrame, use:
-print(filtered_df_without_seats.head(5))
-
-# # Save the filtered DataFrames into separate tabs of an Excel file
+# Save filtered DataFrame to Excel
 with pd.ExcelWriter('filtered_hosp_data2.xlsx') as writer:
     filtered_df_without_seats.to_excel(writer, sheet_name='Without seating information', index=False)
-    print(f'filtered_hosp_data1 saved')
-    
+    print("Filtered data saved successfully.")
