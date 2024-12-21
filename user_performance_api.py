@@ -57,7 +57,7 @@ def generate_kpis(filtered_data):
         if not filtered_data.empty else "N/A"
     )
 
-    st.write("### Key Performance Indicators (KPIs)")
+    st.write("### Key Metrics)")
     st.metric("💷 Total Revenue", f"£{total_revenue:,.2f}")
     st.metric("🎟️ Total Packages Sold", total_packages)
     st.metric("📈 Average Revenue per Package", f"£{average_revenue_per_package:,.2f}")
