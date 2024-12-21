@@ -54,7 +54,7 @@ if not st.session_state["authenticated"]:
     login_url = azure_ad_login()
     st.markdown(f"""
         <div style="text-align:center;">
-            <a href="{azure_ad_login()}" target="_blank" style="
+            <a href="{login_url}" target="_blank" style="
                 text-decoration:none;
                 color:white;
                 background-color:#FF4B4B;
@@ -88,6 +88,12 @@ if not st.session_state["authenticated"]:
             except Exception as e:
                 st.error(f"❌ An error occurred: {str(e)}")
 else:
+    # Check if redirected via query params
+    query_params = st.experimental_get_query_params()
+    if query_params.get("authenticated"):
+        st.session_state["authenticated"] = True
+        st.experimental_set_query_params()  # Clear query params
+
     # User Profile Card
     st.sidebar.markdown("### 👤 Logged in User")
     st.sidebar.info("User: **Azure AD User**\nRole: **Premium Exec**")
@@ -102,15 +108,14 @@ else:
     
     # Sidebar Refresh Button
     if st.sidebar.button("🔄 Refresh Data", key="refresh_data_button"):
-        st.session_state["data_refreshed"] = True  # Mark data as needing refresh
-        # Trigger a rerun by setting a query parameter
+        st.session_state["data_refreshed"] = True
         st.experimental_set_query_params(refresh="true")
 
     # Check if refresh is required
     query_params = st.experimental_get_query_params()
     if query_params.get("refresh"):
         st.experimental_set_query_params()  # Clear the query parameters
-        st.session_state["data_refreshed"] = True  # Ensure data_refreshed is set
+        st.session_state["data_refreshed"] = True
 
     if st.session_state.get("data_refreshed", False):
         with st.spinner("🔄 Fetching the latest data..."):
@@ -124,7 +129,6 @@ else:
                 st.success("✅ Data refreshed successfully!")
             except Exception as e:
                 st.error(f"❌ Failed to refresh data: {str(e)}")
-
 
     # Add Loading Indicator
     with st.spinner("🔄 Loading..."):
@@ -142,10 +146,7 @@ else:
             st.session_state["access_token"] = None
             st.session_state.clear()  # Clears all session state values
             st.success("✅ You have been logged out successfully!")
-            
-            # Redirect to the login screen
-            st.experimental_set_query_params()  # Clears query params to prevent re-login issues
-            # st.experimental_rerun()
+            st.experimental_set_query_params()  # Clears query params
 
 # Footer Section
 st.markdown("---")
