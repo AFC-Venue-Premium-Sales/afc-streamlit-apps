@@ -3,22 +3,15 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from io import BytesIO
 import re
+from datetime import datetime
 from tjt_hosp_api import filtered_df_without_seats
 
 
 # Helper Functions
-def filter_data_by_date(df, date_range):
-    """Filter data based on the selected date range."""
-    if not date_range:
+def filter_data_by_date_time(df, min_date, max_date):
+    """Filter data based on the selected date and time range."""
+    if not min_date or not max_date:
         return df
-
-    min_date = pd.Timestamp(date_range[0])
-    max_date = pd.Timestamp(date_range[1]) if len(date_range) == 2 else min_date
-
-    # If a single day is selected, include the full day (00:00:00 to 23:59:59)
-    if min_date == max_date:
-        min_date = min_date.replace(hour=0, minute=0, second=0)
-        max_date = max_date.replace(hour=23, minute=59, second=59)
 
     if not pd.api.types.is_datetime64_any_dtype(df['CreatedOn']):
         df['CreatedOn'] = pd.to_datetime(df['CreatedOn'], errors='coerce')
@@ -150,16 +143,38 @@ def run_app():
         display_progress_bar()
 
         # Sidebar Filters
+        st.sidebar.header("Filter Data by Date and Time")
         date_range = st.sidebar.date_input("📅 Select Date Range", [], key="user_perf_date_range")
-        valid_usernames = [user for user in specified_users if user in pd.unique(loaded_api_df['CreatedBy'])]
+        start_time = st.sidebar.time_input("⏰ Start Time", value=datetime.now().replace(hour=0, minute=0, second=0).time())
+        end_time = st.sidebar.time_input("⏰ End Time", value=datetime.now().replace(hour=23, minute=59, second=59).time())
+
+        # Combine date and time inputs into full datetime objects
+        if len(date_range) == 1:
+            min_date = datetime.combine(date_range[0], start_time)
+            max_date = datetime.combine(date_range[0], end_time)
+        elif len(date_range) == 2:
+            min_date = datetime.combine(date_range[0], start_time)
+            max_date = datetime.combine(date_range[1], end_time)
+        else:
+            min_date, max_date = None, None
+
+        # Define valid and default users for the multiselect widget
+        valid_usernames = [user for user in pd.unique(loaded_api_df['CreatedBy'])]  # Extract valid execs from the data
+        default_selected_users = [user for user in specified_users if user in valid_usernames]  # Filter specified_users
+
+        # Multiselect for executives with filtered defaults
+        selected_users = st.sidebar.multiselect(
+            "👤 Select Execs",
+            options=valid_usernames,
+            default=default_selected_users  # Use the filtered list as default
+        )
+
         selected_events = st.sidebar.multiselect("🎫 Select Events", options=pd.unique(loaded_api_df['Fixture Name']), default=None)
-        # Default selected users to `specified_users`
-        selected_users = st.sidebar.multiselect("👤 Select Execs", options=valid_usernames, default=specified_users)
         selected_paid = st.sidebar.selectbox("💰 Filter by IsPaid", options=pd.unique(loaded_api_df['IsPaid']))
 
         # Apply Filters
         filtered_data = loaded_api_df.copy()
-        filtered_data = filter_data_by_date(filtered_data, date_range)
+        filtered_data = filter_data_by_date_time(filtered_data, min_date, max_date)
         filtered_data = filter_data(filtered_data, selected_users, selected_events, selected_paid)
 
         # Display Filtered Data and Charts
