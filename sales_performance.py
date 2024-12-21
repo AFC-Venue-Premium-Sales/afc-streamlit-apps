@@ -2,17 +2,22 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from io import BytesIO
-from tjt_hosp_api import filtered_df_without_seats
+from tjt_hosp_api import fetch_hospitality_data
+
 import re
 
 
 def refresh_data():
     """Fetch the latest data for Sales Performance."""
     try:
-        st.session_state["sales_data"] = filtered_df_without_seats  # Reload sales-specific data
-        st.success("✅ Sales performance data refreshed successfully!")
+        with st.spinner("Fetching latest data..."):
+            # Dynamically fetch the latest data
+            updated_data = fetch_hospitality_data()
+            st.session_state["sales_data"] = updated_data  # Reload sales-specific data
+            st.success("✅ Sales performance data refreshed successfully!")
     except Exception as e:
         st.error(f"❌ Failed to refresh sales performance data: {str(e)}")
+
 
 
 def run_app():
@@ -56,7 +61,14 @@ def run_app():
     You can filter results by date, user, fixture, payment status, and paid status for tailored insights. 
     """)
 
-    loaded_api_df = filtered_df_without_seats
+    # Dynamically fetch hospitality data on app start
+    try:
+        loaded_api_df = fetch_hospitality_data()
+        st.sidebar.success("✅ Data retrieved successfully.")
+    except Exception as e:
+        st.sidebar.error(f"🚨 Failed to load initial data: {str(e)}")
+        loaded_api_df = pd.DataFrame()  # Fallback to an empty DataFrame
+
 
     if loaded_api_df is not None:
         st.sidebar.success("✅ Data retrieved successfully.")
@@ -109,6 +121,7 @@ def run_app():
         if st.sidebar.button("🔄 Refresh Data", key=refresh_button_key):
             refresh_data()  # Call the refresh_data function to reload the latest data
             st.experimental_rerun()  # Trigger a rerun of the app to reflect refreshed data
+
 
 
         # Sidebar filters

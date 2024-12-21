@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 from io import BytesIO
 import re
 from datetime import datetime
-from tjt_hosp_api import filtered_df_without_seats
+from tjt_hosp_api import fetch_hospitality_data
+
 
 
 # Helper Functions
@@ -41,11 +42,12 @@ def display_progress_bar():
 def refresh_data():
     """Fetch the latest data for User Performance."""
     try:
-        st.session_state["user_data"] = filtered_df_without_seats  # Reload user-specific data
-        st.success("✅ User performance data refreshed successfully!")
+        with st.spinner("Fetching latest data..."):
+            updated_data = fetch_hospitality_data()  # Fetch latest data
+            st.session_state["user_data"] = updated_data
+            st.success("✅ User performance data refreshed successfully!")
     except Exception as e:
         st.error(f"❌ Failed to refresh user performance data: {str(e)}")
-
 
 
 
@@ -147,7 +149,14 @@ def run_app():
     """)
 
     # Load data
-    loaded_api_df = filtered_df_without_seats
+    try:
+        loaded_api_df = fetch_hospitality_data()  # Dynamically fetch data
+        st.sidebar.success("✅ Data retrieved successfully.")
+    except Exception as e:
+        st.sidebar.error(f"🚨 Failed to load initial data: {str(e)}")
+        loaded_api_df = pd.DataFrame()  # Fallback to an empty DataFrame
+
+
 
     if loaded_api_df is not None and not loaded_api_df.empty:
         st.sidebar.success("✅ Data retrieved successfully.")
