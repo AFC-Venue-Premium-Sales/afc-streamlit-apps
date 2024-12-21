@@ -167,7 +167,8 @@ def run_app():
     """)
 
     # Load data
-    loaded_api_df = filtered_df_without_seats  # Dynamically fetch data
+    loaded_api_df = filtered_df_without_seats 
+        
 
     if loaded_api_df is not None and not loaded_api_df.empty:
         st.sidebar.success("✅ Data retrieved successfully.")
