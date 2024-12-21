@@ -61,9 +61,10 @@ def fetch_and_store_data():
             from tjt_hosp_api import filtered_df_without_seats
 
             # Validate DataFrame (example: check for required columns)
-            required_columns = ['Column1', 'Column2']  # Replace with actual columns
+            required_columns = ['EventName', 'IsPaid', 'TotalPrice']
             if not all(col in filtered_df_without_seats.columns for col in required_columns):
                 raise ValueError(f"Missing required columns in data: {required_columns}")
+
 
             # Update session state with the fetched data
             st.session_state["filtered_data"] = filtered_df_without_seats
