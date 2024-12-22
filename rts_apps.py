@@ -7,6 +7,7 @@ import importlib
 import sales_performance
 import user_performance_api
 import datetime
+import time
 
 # Configure logging
 logging.basicConfig(
@@ -41,6 +42,9 @@ if "redirected" not in st.session_state:
     st.session_state["redirected"] = False
 if "last_refresh_time" not in st.session_state:
     st.session_state["last_refresh_time"] = None
+if "next_refresh_time" not in st.session_state:
+    st.session_state["next_refresh_time"] = None
+
 
 # Cached data fetcher
 @st.cache_data(ttl=300)  # Cache for 5 minutes
@@ -65,21 +69,20 @@ def fetch_data():
     logging.info("Data successfully fetched.")
     return filtered_df_without_seats
 
-# Display live refresh timer
-def display_refresh_status():
-    last_refresh_time = st.session_state.get("last_refresh_time", "Never")
-    if last_refresh_time != "Never":
-        # Calculate time remaining until the next refresh
-        next_refresh = datetime.datetime.strptime(last_refresh_time, "%Y-%m-%d %H:%M:%S") + datetime.timedelta(seconds=300)
-        time_remaining = (next_refresh - datetime.datetime.now()).total_seconds()
-        
+
+# Function to display real-time countdown timer
+def display_refresh_timer():
+    """Displays a live countdown timer in the sidebar."""
+    next_refresh_time = st.session_state.get("next_refresh_time")
+    if next_refresh_time:
+        time_remaining = (next_refresh_time - datetime.datetime.now()).total_seconds()
         if time_remaining > 0:
             minutes, seconds = divmod(int(time_remaining), 60)
             st.sidebar.info(f"🔄 Next Refresh: {minutes}m {seconds}s")
+            time.sleep(1)  # Sleep for 1 second to update the countdown
         else:
-            st.sidebar.info("🔄 Refreshing data soon...")
-    else:
-        st.sidebar.info("🔄 Next Refresh: Waiting for the first fetch...")
+            st.sidebar.info("🔄 Refreshing data now...")
+
 
 # App Header with a logo
 st.image("assets/arsenal-logo.png", width=250)  # Placeholder for the logo
@@ -139,20 +142,19 @@ if not st.session_state["authenticated"]:
                 st.error(f"❌ Error during login: {e}")
 
 else:
-    # Fetch and cache the latest data
+    # Always fetch the latest data (cached or fresh)
     try:
-        st.session_state["last_refresh_time"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        data = fetch_data()  # Fetch cached or fresh data
+        if "filtered_data" not in st.session_state or st.session_state["next_refresh_time"] is None:
+            st.session_state["filtered_data"] = fetch_data()
+            st.session_state["last_refresh_time"] = datetime.datetime.now()
+            st.session_state["next_refresh_time"] = st.session_state["last_refresh_time"] + datetime.timedelta(seconds=300)
+
     except Exception as e:
         logging.error(f"Failed to fetch data: {e}")
         st.error(f"❌ Failed to fetch data: {e}")
-        data = None  # Handle gracefully if data can't be fetched
 
     # Display refresh status in the sidebar
-    display_refresh_status()
-
-    st.sidebar.markdown("### 👤 Logged in User")
-    st.sidebar.info("User: **Azure AD User**\nRole: **Premium Exec**")
+    display_refresh_timer()
     
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio(
