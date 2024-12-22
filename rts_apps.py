@@ -6,6 +6,7 @@ import logging
 import importlib
 import sales_performance
 import user_performance_api
+import ticket_exchange_report  # Import the new module
 import datetime
 
 # Configure logging
@@ -103,7 +104,6 @@ if not st.session_state["authenticated"]:
     """, unsafe_allow_html=True)
 
     # Process login by checking query parameters for the authorization code
-    # Process login
     query_params = st.experimental_get_query_params()
     if "code" in query_params and not st.session_state["redirected"]:
         auth_code = query_params["code"][0]
@@ -166,7 +166,7 @@ else:
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio(
         "Choose Module",
-        ["📊 Sales Performance", "📈 User Performance"],
+        ["📊 Sales Performance", "📈 User Performance", "📄 Ticket Exchange Report"],
         format_func=lambda x: x.split(" ")[1],
     )
     
@@ -176,6 +176,8 @@ else:
             sales_performance.run_app()
         elif app_choice == "📈 User Performance":
             user_performance_api.run_app()
+        elif app_choice == "📄 Ticket Exchange Report":
+            ticket_exchange_report.run_app()  # Run the new module
 
     # Logout Button
     if st.sidebar.button("🔓 Logout"):
