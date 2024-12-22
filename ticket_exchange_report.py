@@ -21,26 +21,24 @@ def load_seat_list_and_game_category(path):
         seat_list = pd.read_excel(path, sheet_name="Seat List")
         game_category = pd.read_excel(path, sheet_name="Game Category")
 
-        # Log column names for debugging
-        logging.info(f"Seat List columns: {seat_list.columns.tolist()}")
-        logging.info(f"Game Category columns: {game_category.columns.tolist()}")
+        # Normalize column names
+        seat_list.columns = seat_list.columns.str.strip().str.lower()
+        game_category.columns = game_category.columns.str.strip().str.lower()
 
-        # Adjust block column if it exists
-        if "block" in seat_list.columns:
-            seat_list["block"] = seat_list["block"].apply(adjust_block)
-        else:
+        # Ensure 'block' column exists
+        if "block" not in seat_list.columns:
             raise ValueError("'block' column missing in Seat List.")
-
-        if "block" in game_category.columns:
-            game_category["block"] = game_category["block"].apply(adjust_block)
-        else:
+        if "block" not in game_category.columns:
             raise ValueError("'block' column missing in Game Category.")
 
-        # Ensure seat_value column is numeric
+        # Adjust block names
+        seat_list["block"] = seat_list["block"].apply(adjust_block)
         game_category["seat_value"] = pd.to_numeric(game_category["seat_value"], errors="coerce")
+
         return seat_list, game_category
     except Exception as e:
         raise Exception(f"Error loading Seat List and Game Category: {e}")
+
 
 def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
     """Processes the uploaded TX Sales and From Hosp files."""
