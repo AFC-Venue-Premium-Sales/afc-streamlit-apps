@@ -18,8 +18,8 @@ def filter_data_by_date_time(df, min_date, max_date):
     df = df.dropna(subset=['CreatedOn'])
     return df[(df['CreatedOn'] >= min_date) & (df['CreatedOn'] <= max_date)]
 
-def filter_data(df, selected_users, selected_events, selected_paid, selected_competitions):
-    """Apply user, event, payment status, and competition filters."""
+def filter_data(df, selected_users, selected_events, selected_paid, selected_competitions, selected_categories):
+    """Apply user, event, payment status, competition, and category filters."""
     if selected_users:
         df = df[df['CreatedBy'].isin(selected_users)]
     if selected_events:
@@ -28,6 +28,8 @@ def filter_data(df, selected_users, selected_events, selected_paid, selected_com
         df = df[df['IsPaid'] == selected_paid]
     if selected_competitions:
         df = df[df['EventCompetition'].isin(selected_competitions)]
+    if selected_categories:
+        df = df[df['EventCategory'].isin(selected_categories)]
     return df
 
 def display_progress_bar():
@@ -137,23 +139,6 @@ def generate_charts(filtered_data):
     plt.legend(lines_labels, loc='upper left', fontsize=10)
     st.pyplot(fig)
 
-def generate_heatmap(filtered_data):
-    """Generate a heatmap for sales trends."""
-    st.write("### 🔥 Sales Trends Heatmap")
-    sales_trend = (
-        filtered_data.groupby([filtered_data['CreatedOn'].dt.date, filtered_data['CreatedOn'].dt.hour])
-        ['TotalPrice']
-        .sum()
-        .unstack(fill_value=0)
-    )
-
-    fig, ax = plt.subplots(figsize=(12, 6))
-    sns.heatmap(sales_trend, cmap="YlGnBu", ax=ax)
-    ax.set_title("Sales Trends (Date vs. Hour)")
-    ax.set_xlabel("Hour of Day")
-    ax.set_ylabel("Date")
-    st.pyplot(fig)
-
 def run_app():
     """Main application function."""
     specified_users = ['dcoppin', 'Jedwards', 'jedwards', 'bgardiner', 'BenT', 'jmurphy', 'ayildirim',
@@ -212,16 +197,23 @@ def run_app():
             default=None
         )
 
+        # Add Event Category filter
+        event_categories = pd.unique(loaded_api_df['EventCategory'])
+        selected_categories = st.sidebar.multiselect(
+            "📂 Select Event Category",
+            options=event_categories,
+            default=None
+        )
+
         # Apply Filters
         filtered_data = loaded_api_df.copy()
         filtered_data = filter_data_by_date_time(filtered_data, min_date, max_date)
-        filtered_data = filter_data(filtered_data, selected_users, selected_events, selected_paid, selected_competitions)
+        filtered_data = filter_data(filtered_data, selected_users, selected_events, selected_paid, selected_competitions, selected_categories)
 
         # Display Filtered Data and Metrics
         if not filtered_data.empty:
             generate_kpis(filtered_data)
             generate_charts(filtered_data)
-            generate_heatmap(filtered_data)
         else:
             st.warning("⚠️ No data available for the selected filters.")
     else:

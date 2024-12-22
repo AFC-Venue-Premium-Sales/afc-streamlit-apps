@@ -77,28 +77,40 @@ st.markdown("---")  # A horizontal line for better UI
 
 if not st.session_state["authenticated"]:
     # Display Welcome Message
-    st.markdown("### 👋 Welcome to the Venue Hospitality App!")
-    st.markdown("**Please log in using AFC credentials to access your dashboard.**")
+    st.markdown("""
+    ### 👋 Welcome to the Venue Hospitality App!
+    **Log in using AFC credentials to access your dashboard.**
+    """)
 
     # Generate the Login URL
     login_url = app.get_authorization_request_url(scopes=SCOPES, redirect_uri=REDIRECT_URI)
 
     # Display the Login Button
     st.markdown(f"""
-        <a href="{login_url}" target="_blank" style="
-            text-decoration:none;
-            color:white;
-            background-color:#FF4B4B;
-            padding:10px 20px;
-            border-radius:5px;
-            font-size:16px;">
-            🔐 Log in Microsoft Entra ID
-        </a>
+            <a href="{login_url}" target="_blank" style="
+                text-decoration:none;
+                color:white;
+                background-color:#FF4B4B;
+                padding:15px 25px;
+                border-radius:5px;
+                font-size:18px;
+                display:inline-block;">
+                🔐 Log in with Microsoft Entra ID
+            </a>
+        </div>
     """, unsafe_allow_html=True)
 
     # Process login by checking query parameters for the authorization code
     query_params = st.experimental_get_query_params()
     if "code" in query_params and not st.session_state["redirected"]:
+        # Show a custom loading animation
+        st.markdown("""
+        <div style="text-align:center; margin-top:50px;">
+            <p style="font-size:18px; color:#4B4B4B;">🔄 Authenticating your credentials...</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Start authentication process
         with st.spinner("🔄 Logging you in and preparing your dashboard..."):
             try:
                 # Retrieve the authorization code from query parameters
@@ -117,15 +129,16 @@ if not st.session_state["authenticated"]:
                     st.session_state["authenticated"] = True
                     st.session_state["redirected"] = True
                     st.success("🎉 Login successful!")
-                    st.rerun()  # Reload the app to display the authenticated view
+                    st.experimental_rerun()  # Reload the app to display the authenticated view
 
                 # Handle login failure
                 else:
                     st.error("❌ Failed to log in. Please try again.")
-            
+
             # Handle exceptions during login
             except Exception as e:
                 st.error(f"❌ Error during login: {e}")
+
 
 else:
     # Always fetch the latest data (cached or fresh)
@@ -176,6 +189,7 @@ st.markdown("---")
 st.markdown("""
     <div style="text-align:center; font-size:12px; color:gray;">
         🏟️ **Arsenal Property** | All Rights Reserved © 2024  
-        Need help? Contact [cmunthali@arsenal.co.uk](mailto:cmunthali@arsenal.co.uk)
+        Need help? <a href="mailto:cmunthali@arsenal.co.uk" style="text-decoration:none; color:#FF4B4B;">Contact cmunthali@arsenal.co.uk</a>
     </div>
 """, unsafe_allow_html=True)
+
