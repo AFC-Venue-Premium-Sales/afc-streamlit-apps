@@ -129,7 +129,7 @@ if not st.session_state["authenticated"]:
                     st.session_state["authenticated"] = True
                     st.session_state["redirected"] = True
                     st.success("🎉 Login successful!")
-                    st.experimental_rerun()  # Reload the app to display the authenticated view
+                    st.rerun()  # Reload the app to display the authenticated view
 
                 # Handle login failure
                 else:
@@ -155,9 +155,6 @@ else:
     except Exception as e:
         logging.error(f"Failed to fetch data: {e}")
         st.error(f"❌ Failed to fetch data: {e}")
-
-    st.sidebar.markdown("### 👤 Logged in User")
-    st.sidebar.info("User: **Azure AD User**\nRole: **Premium Exec**")
     
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio(
@@ -189,7 +186,7 @@ st.markdown("---")
 st.markdown("""
     <div style="text-align:center; font-size:12px; color:gray;">
         🏟️ **Arsenal Property** | All Rights Reserved © 2024  
-        Need help? <a href="mailto:cmunthali@arsenal.co.uk" style="text-decoration:none; color:#FF4B4B;">Contact cmunthali@arsenal.co.uk</a>
+        Need help? <a href="mailto:cmunthali@arsenal.co.uk" style="text-decoration:none; color:#FF4B4B;">Contact: cmunthali@arsenal.co.uk</a>
     </div>
 """, unsafe_allow_html=True)
 

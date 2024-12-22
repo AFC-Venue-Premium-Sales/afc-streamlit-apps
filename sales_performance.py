@@ -51,8 +51,17 @@ def calculate_totals(data, exclude_keywords):
     return total_sales, total_discount_value, filtered_data
 
 
-def display_summary_tables(filtered_data, exclude_keywords):
+def display_summary_tables(filtered_data, budget_df, exclude_keywords):
     """Generates and displays summary tables."""
+    # Merge with budget data
+    filtered_data = pd.merge(
+        filtered_data,
+        budget_df,
+        how="left",
+        left_on="Fixture Name",
+        right_on="Fixture"
+    )
+
     # Dynamic Totals
     dynamic_total, total_discount_value, filtered_without_keywords = calculate_totals(
         filtered_data, exclude_keywords
@@ -73,6 +82,15 @@ def display_summary_tables(filtered_data, exclude_keywords):
         )
         .reset_index()
     )
+
+    # Calculate Budget Percentage
+    total_sold_per_match['BudgetPercentage'] = total_sold_per_match.apply(
+        lambda row: f"{(row['RTS_Sales'] / row['Budget'] * 100):.0f}%" 
+        if pd.notnull(row['Budget']) and row['Budget'] > 0 else "N/A", 
+        axis=1
+    )
+
+    # Display DataFrame
     st.dataframe(total_sold_per_match)
 
     return total_sold_per_match
@@ -116,6 +134,28 @@ def run_app():
         st.error(f"❌ Failed to load data: {str(e)}")
         return
 
+    # Define Budget Data
+    budget_data = {
+        "Fixture": [
+            "Arsenal v Bayer 04 Leverkusen", "Arsenal v Olympique Lyonnais", "Arsenal Women v Manchester City Women",
+            "Arsenal Women v Everton Women", "Arsenal Women v Chelsea Women", "Arsenal Women v Vålerenga Women",
+            "Arsenal Women v Brighton Women", "Arsenal Women v Juventus Women", "Arsenal Women v Aston Villa Women",
+            "Arsenal Women v FC Bayern Munich Women", "Arsenal Women v Tottenham Hotspur Women", "Arsenal v Wolves",
+            "Arsenal v Brighton", "Arsenal v Bolton Wanderers", "Arsenal v Leicester City", "Arsenal v Paris Saint-Germain",
+            "Arsenal v Southampton", "Arsenal v Shakhtar Donetsk", "Arsenal v Liverpool", "Arsenal v Nottingham Forest",
+            "Arsenal v Manchester United", "Arsenal v AS Monaco", "Arsenal v Everton", "Arsenal v Crystal Palace",
+            "Arsenal v Ipswich Town", "Arsenal v Tottenham Hotspur", "Arsenal v Aston Villa", "Arsenal v Dinamo Zagreb",
+            "Arsenal v Manchester City", "Arsenal v West Ham United", "Arsenal v Chelsea", "Robbie Williams Live 2025 - Friday",
+            "Robbie Williams Live 2025 - Saturday"
+        ],
+        "Budget": [
+            113800, 113800, 43860, 28636, 52632, 10000, 38182, 10000, 38182, 10000, 52632, 469797, 319462, 0, 469797,
+            490113, 390059, 394122, 588136, 492653, 588136, 490113, 492653, 0, 390059, 807500, 617500, 285000, 807500,
+            617500, 712500, 97412, 97412
+        ]
+    }
+    budget_df = pd.DataFrame(budget_data)
+
     # Sidebar Filters
     st.sidebar.header("Filter Data")
     date_range = st.sidebar.date_input("📅 Select Date Range", [])
@@ -144,7 +184,7 @@ def run_app():
 
     # Exclude keywords for "Other" calculations
     exclude_keywords = ["credit", "voucher", "gift voucher", "discount", "pldl"]
-    total_sales_summary = display_summary_tables(filtered_data, exclude_keywords)
+    total_sales_summary = display_summary_tables(filtered_data, budget_df, exclude_keywords)
 
     # Handle Woolwich Restaurant Sales
     woolwich_data = filtered_data[

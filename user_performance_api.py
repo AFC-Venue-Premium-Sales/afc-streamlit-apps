@@ -139,11 +139,45 @@ def generate_charts(filtered_data):
     plt.legend(lines_labels, loc='upper left', fontsize=10)
     st.pyplot(fig)
 
+def generate_heatmap(filtered_data):
+    """Generate a heatmap for sales trends."""
+    st.write("### 📊 Sales Trends Heatmap")
+    filtered_data['CreatedDate'] = filtered_data['CreatedOn'].dt.date
+    filtered_data['CreatedHour'] = filtered_data['CreatedOn'].dt.hour
+
+    sales_trend = (
+        filtered_data.groupby(['CreatedDate', 'CreatedHour'])
+        ['TotalPrice']
+        .sum()
+        .unstack(fill_value=0)
+    )
+
+    fig, ax = plt.subplots(figsize=(12, 6))
+    sns.heatmap(sales_trend, cmap="YlGnBu", ax=ax)
+    ax.set_title("Sales Trends (Date vs. Hour)")
+    ax.set_xlabel("Hour of Day")
+    ax.set_ylabel("Date")
+    st.pyplot(fig)
+
+def generate_revenue_chart(filtered_data):
+    """Generate a bar chart for revenue by fixture."""
+    st.write("### 📊 Revenue by Fixture")
+    revenue_by_fixture = (
+        filtered_data.groupby('Fixture Name')['TotalPrice']
+        .sum()
+        .sort_values(ascending=False)
+    )
+
+    fig, ax = plt.subplots(figsize=(12, 6))
+    revenue_by_fixture.plot(kind='bar', ax=ax, color='skyblue', edgecolor='black')
+    ax.set_title("Revenue by Fixture")
+    ax.set_xlabel("Fixture")
+    ax.set_ylabel("Total Revenue (£)")
+    plt.xticks(rotation=45, ha='right')
+    st.pyplot(fig)
+
 def run_app():
     """Main application function."""
-    specified_users = ['dcoppin', 'Jedwards', 'jedwards', 'bgardiner', 'BenT', 'jmurphy', 'ayildirim',
-                       'MeganS', 'BethNW', 'HayleyA', 'LucyB', 'Conor', 'SavR', 'MillieS', 'dmontague']
-
     st.title('👤AFC Premium Exec Dashboard👤')
 
     st.markdown("""
@@ -153,7 +187,6 @@ def run_app():
 
     # Load data
     loaded_api_df = filtered_df_without_seats 
-        
 
     if loaded_api_df is not None and not loaded_api_df.empty:
         st.sidebar.success("✅ Data retrieved successfully.")
@@ -161,9 +194,9 @@ def run_app():
 
         # Sidebar Filters
         st.sidebar.header("Filter Data by Date and Time")
-        date_range = st.sidebar.date_input("📅 Select Date Range", [], key="unique_date_range_key")
-        start_time = st.sidebar.time_input("⏰ Start Time", value=datetime.now().replace(hour=0, minute=0, second=0).time(), key="unique_start_time_key")
-        end_time = st.sidebar.time_input("⏰ End Time", value=datetime.now().replace(hour=23, minute=59, second=59).time(), key="unique_end_time_key")
+        date_range = st.sidebar.date_input("📅 Select Date Range", [])
+        start_time = st.sidebar.time_input("⏰ Start Time", value=datetime.now().replace(hour=0, minute=0, second=0).time())
+        end_time = st.sidebar.time_input("⏰ End Time", value=datetime.now().replace(hour=23, minute=59, second=59).time())
 
         # Combine date and time inputs into full datetime objects
         if len(date_range) == 1:
@@ -175,35 +208,15 @@ def run_app():
         else:
             min_date, max_date = None, None
 
-        # Define valid and default users for the multiselect widget
-        valid_usernames = [user for user in pd.unique(loaded_api_df['CreatedBy'])]  # Extract valid execs from the data
-        default_selected_users = [user for user in specified_users if user in valid_usernames]  # Filter specified_users
-
-        # Multiselect for executives with filtered defaults
-        selected_users = st.sidebar.multiselect(
-            "👤 Select Execs",
-            options=valid_usernames,
-            default=default_selected_users  # Use the filtered list as default
-        )
-
-        selected_events = st.sidebar.multiselect("🎫 Select Events", options=pd.unique(loaded_api_df['Fixture Name']), default=None)
+        # Sidebar filters for users, events, competitions, and categories
+        valid_usernames = [user for user in pd.unique(loaded_api_df['CreatedBy'])]
+        selected_users = st.sidebar.multiselect("👤 Select Execs", options=valid_usernames, default=valid_usernames)
+        selected_events = st.sidebar.multiselect("🎫 Select Events", options=pd.unique(loaded_api_df['Fixture Name']))
         selected_paid = st.sidebar.selectbox("💰 Filter by IsPaid", options=pd.unique(loaded_api_df['IsPaid']))
-
-        # Add EventCompetition filter
         event_competitions = pd.unique(loaded_api_df['EventCompetition'])
-        selected_competitions = st.sidebar.multiselect(
-            "🏆 Select Event Competitions",
-            options=event_competitions,
-            default=None
-        )
-
-        # Add Event Category filter
+        selected_competitions = st.sidebar.multiselect("🏆 Select Event Competitions", options=event_competitions)
         event_categories = pd.unique(loaded_api_df['EventCategory'])
-        selected_categories = st.sidebar.multiselect(
-            "📂 Select Event Category",
-            options=event_categories,
-            default=None
-        )
+        selected_categories = st.sidebar.multiselect("📂 Select Event Category", options=event_categories)
 
         # Apply Filters
         filtered_data = loaded_api_df.copy()
@@ -214,6 +227,8 @@ def run_app():
         if not filtered_data.empty:
             generate_kpis(filtered_data)
             generate_charts(filtered_data)
+            generate_heatmap(filtered_data)
+            generate_revenue_chart(filtered_data)
         else:
             st.warning("⚠️ No data available for the selected filters.")
     else:
