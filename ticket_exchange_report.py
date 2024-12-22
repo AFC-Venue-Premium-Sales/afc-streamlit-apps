@@ -17,28 +17,23 @@ def adjust_block(block):
 
 def load_seat_list_and_game_category(path):
     """Loads Seat List and Game Category sheets."""
-    try:
-        seat_list = pd.read_excel(path, sheet_name="Seat List")
-        game_category = pd.read_excel(path, sheet_name="Game Category")
+    seat_list = pd.read_excel(path, sheet_name="Seat List")
+    game_category = pd.read_excel(path, sheet_name="Game Category")
 
-        # Normalize column names
-        seat_list.columns = seat_list.columns.str.strip().str.lower()
-        game_category.columns = game_category.columns.str.strip().str.lower()
+    # Normalize column names
+    seat_list.columns = seat_list.columns.str.strip().str.lower()
+    game_category.columns = game_category.columns.str.strip().str.lower()
 
-        # Ensure 'block' column exists
-        if "block" not in seat_list.columns:
-            raise ValueError("'block' column missing in Seat List.")
-        if "block" not in game_category.columns:
-            raise ValueError("'block' column missing in Game Category.")
-
-        # Adjust block names
+    # Adjust the "block" column in seat_list
+    if "block" in seat_list.columns:
         seat_list["block"] = seat_list["block"].apply(adjust_block)
-        game_category["seat_value"] = pd.to_numeric(game_category["seat_value"], errors="coerce")
+    else:
+        raise ValueError("'Block' column missing in Seat List.")
 
-        return seat_list, game_category
-    except Exception as e:
-        raise Exception(f"Error loading Seat List and Game Category: {e}")
+    # Ensure numeric values for game_category
+    game_category["seat_value"] = pd.to_numeric(game_category["seat_value"], errors="coerce")
 
+    return seat_list, game_category
 
 def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
     """Processes the uploaded TX Sales and From Hosp files."""
@@ -98,7 +93,9 @@ def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
 
         return matched_df, release_df
     except Exception as e:
-        raise Exception(f"Error processing files: {e}")
+        st.error(f"❌ Error processing files: {e}")
+        logging.error(f"Error processing files: {e}")
+        return None, None
 
 def run_app():
     """Main app function."""
@@ -117,15 +114,14 @@ def run_app():
         seat_list, game_category = load_seat_list_and_game_category(seat_list_game_cat_path)
         st.success("✅ Seat List and Game Category loaded successfully.")
     except Exception as e:
-        st.error(f"❌ {e}")
-        logging.error(e)
+        st.error(f"❌ Failed to load Seat List and Game Category: {e}")
         return
 
     # Process files when both are uploaded
     if tx_sales_file and from_hosp_file:
-        try:
-            matched_df, release_df = process_files(tx_sales_file, from_hosp_file, seat_list, game_category)
+        matched_df, release_df = process_files(tx_sales_file, from_hosp_file, seat_list, game_category)
 
+        if matched_df is not None and release_df is not None:
             # Display results
             st.markdown("### Matched Data")
             st.dataframe(matched_df)
@@ -140,9 +136,8 @@ def run_app():
                 release_df.to_excel(writer, sheet_name="From Hosp", index=False)
             with open(output_file, "rb") as f:
                 st.download_button("Download Processed Data", f, file_name=output_file)
-        except Exception as e:
-            st.error(f"❌ {e}")
-            logging.error(e)
+        else:
+            st.error("❌ No data to display.")
     else:
         st.info("Please upload both the TX Sales file and From Hosp file to proceed.")
 
