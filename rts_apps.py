@@ -70,50 +70,57 @@ st.title("🏟️ AFC Venue - MBM Hospitality")
 st.markdown("---")  # A horizontal line for better UI
 
 if not st.session_state["authenticated"]:
-    st.markdown("""
-    ### 👋 Welcome to the Venue Hospitality App!  
-    **Please log in using AFC credentials to access the following modules:**
+    # Display Welcome Message
+    st.markdown("### 👋 Welcome to the Venue Hospitality App!")
+    st.markdown("**Please log in using AFC credentials to access your dashboard.**")
 
-    - **📊 Sales Performance**: Analyze and track sales data.
-    - **📈 User Performance**: Monitor and evaluate team performance metrics.
-    """)
-
+    # Generate the Login URL
     login_url = app.get_authorization_request_url(scopes=SCOPES, redirect_uri=REDIRECT_URI)
+
+    # Display the Login Button
     st.markdown(f"""
-        <div style="text-align:center;">
-            <a href="{login_url}" target="_blank" style="
-                text-decoration:none;
-                color:white;
-                background-color:#FF4B4B;
-                padding:10px 20px;
-                border-radius:5px;
-                font-size:16px;">
-                🔐 Log in Microsoft Entra ID
-            </a>
-        </div>
+        <a href="{login_url}" target="_blank" style="
+            text-decoration:none;
+            color:white;
+            background-color:#FF4B4B;
+            padding:10px 20px;
+            border-radius:5px;
+            font-size:16px;">
+            🔐 Log in Microsoft Entra ID
+        </a>
     """, unsafe_allow_html=True)
 
-    # Process login
+    # Process login by checking query parameters for the authorization code
     query_params = st.experimental_get_query_params()
     if "code" in query_params and not st.session_state["redirected"]:
-        auth_code = query_params["code"][0]
-        with st.spinner("🔄 Logging you in..."):
+        with st.spinner("🔄 Logging you in and preparing your dashboard..."):
             try:
+                # Retrieve the authorization code from query parameters
+                auth_code = query_params["code"][0]
+
+                # Exchange the authorization code for an access token
                 result = app.acquire_token_by_authorization_code(
                     code=auth_code,
                     scopes=SCOPES,
                     redirect_uri=REDIRECT_URI
                 )
+
+                # Handle successful login
                 if "access_token" in result:
                     st.session_state["access_token"] = result["access_token"]
                     st.session_state["authenticated"] = True
                     st.session_state["redirected"] = True
-                    st.success("🎉 Login successful! Redirecting...")
-                    st.rerun()
+                    st.success("🎉 Login successful!")
+                    st.rerun()  # Reload the app to display the authenticated view
+
+                # Handle login failure
                 else:
                     st.error("❌ Failed to log in. Please try again.")
+            
+            # Handle exceptions during login
             except Exception as e:
-                st.error(f"❌ An error occurred: {str(e)}")
+                st.error(f"❌ Error during login: {e}")
+
 else:
     # Always fetch the latest data (cached or fresh)
     try:
@@ -135,12 +142,15 @@ else:
     
     # Dummy Refresh Button
     if st.sidebar.button("🔄 Refresh Data"):
-        st.info("🔄 Refreshing data... Please wait.")
+        st.success("🔄 Job done!")
         # No backend action occurs; refresh is handled by `@st.cache_data`
 
-    # Display current data
+        # Display current data
     if data is not None:
-        st.write(data)  # Replace with your display logic
+        # Removed the raw data display (st.write(data))
+        logging.info("Data is loaded and ready for MBM Sales.")
+       
+
 
     with st.spinner("🔄 Loading..."):
         if app_choice == "📊 Sales Performance":
