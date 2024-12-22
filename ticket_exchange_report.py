@@ -95,7 +95,7 @@ def run_app():
     from_hosp_file = st.file_uploader("Upload From Hosp File", type=["xlsx"])
 
     # Path to Seat List and Game Category file
-    seat_list_game_cat_path = "/Users/cmunthali/Documents/PYTHON/APPS/seat_list_game_cat.xlsx"
+    seat_list_game_cat_path = "seat_list_game_cat.xlsx"
 
     # Load Seat List and Game Category
     try:
