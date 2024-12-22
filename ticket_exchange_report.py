@@ -1,145 +1,156 @@
-import pandas as pd
 import streamlit as st
-import logging
+from msal import ConfidentialClientApplication
+from dotenv import load_dotenv
+import os
+import requests
+import sales_performance
+import user_performance_api
+from datetime import datetime
+import pandas as pd
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
+# Load environment variables
+load_dotenv()
 
-# Helper function to adjust block names
-def adjust_block(block):
-    if isinstance(block, str) and block.startswith("C") and block[1:].isdigit():
-        block_number = int(block[1:])  # Remove leading zeros
-        return f"{block_number} Club level"  # Normalize casing
-    elif isinstance(block, str) and block.isdigit():
-        block_number = int(block)
-        return f"{block_number} Club level"
-    return block
+# Azure AD Configuration
+CLIENT_ID = os.getenv("CLIENT_ID")
+TENANT_ID = os.getenv("TENANT_ID")
+CLIENT_SECRET = os.getenv("CLIENT_SECRET")
+REDIRECT_URI = os.getenv("REDIRECT_URI")
+AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
+SCOPES = ["User.Read"]
 
-def load_seat_list_and_game_category(path):
-    """Loads Seat List and Game Category sheets."""
-    seat_list = pd.read_excel(path, sheet_name="Seat List")
-    game_category = pd.read_excel(path, sheet_name="Game Category")
+# MSAL Confidential Client Application
+app = ConfidentialClientApplication(
+    client_id=CLIENT_ID,
+    client_credential=CLIENT_SECRET,
+    authority=AUTHORITY
+)
 
-    # Normalize column names
-    seat_list.columns = seat_list.columns.str.strip().str.lower()
-    game_category.columns = game_category.columns.str.strip().str.lower()
+# Initialize session states
+if "authenticated" not in st.session_state:
+    st.session_state["authenticated"] = False
+if "access_token" not in st.session_state:
+    st.session_state["access_token"] = None
+if "user_name" not in st.session_state:
+    st.session_state["user_name"] = "Azure AD User"
+if "redirected" not in st.session_state:
+    st.session_state["redirected"] = False
 
-    # Adjust the "block" column in seat_list
-    if "block" in seat_list.columns:
-        seat_list["block"] = seat_list["block"].apply(adjust_block)
-    else:
-        raise ValueError("'Block' column missing in Seat List.")
+# Function to fetch user details from Microsoft Graph API
+def get_user_details(access_token):
+    headers = {"Authorization": f"Bearer {access_token}"}
+    response = requests.get("https://graph.microsoft.com/v1.0/me", headers=headers)
+    if response.status_code == 200:
+        return response.json().get("displayName", "Azure AD User")
+    return "Azure AD User"
 
-    # Ensure numeric values for game_category
-    game_category["seat_value"] = pd.to_numeric(game_category["seat_value"], errors="coerce")
+# Azure AD Login URL
+def azure_ad_login():
+    return app.get_authorization_request_url(scopes=SCOPES, redirect_uri=REDIRECT_URI)
 
-    return seat_list, game_category
-
-def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
-    """Processes the uploaded TX Sales and From Hosp files."""
+# Refresh Sales or User Data
+def refresh_data(selected_module):
+    """Refresh data for the selected module."""
     try:
-        # Load TX Sales file
-        tx_sales_data = pd.read_excel(tx_sales_file, sheet_name="TX Sales Data")
-        tx_sales_data.columns = tx_sales_data.columns.str.strip().str.replace(" ", "_").str.lower()
-        tx_sales_data["block"] = tx_sales_data["block"].apply(adjust_block)
-        tx_sales_data["ticket_sold_price"] = pd.to_numeric(tx_sales_data["ticket_sold_price"], errors="coerce")
-
-        # Load From Hosp file
-        from_hosp = pd.read_excel(from_hosp_file, sheet_name=None)  # Load all sheets
-        from_hosp_combined = pd.concat(from_hosp.values(), ignore_index=True)  # Combine all sheets
-        from_hosp_combined.columns = from_hosp_combined.columns.str.strip().str.replace(" ", "_").str.lower()
-        from_hosp_combined["block"] = from_hosp_combined["block"].apply(adjust_block)
-
-        # Matched data processing
-        matched_data = []
-        release_data = []
-
-        # Match TX Sales Data with Seat List and Game Category
-        for _, row in tx_sales_data.iterrows():
-            matching_seat = seat_list[
-                (seat_list["block"] == row["block"]) &
-                (seat_list["row"] == row["row"]) &
-                (seat_list["seat"] == row["seat"])
-            ]
-            if not matching_seat.empty:
-                row["crc_desc"] = matching_seat["crc_desc"].values[0]
-                row["price_band"] = matching_seat["price_band"].values[0]
-                matching_game = game_category[
-                    (game_category["game_name"] == row["game_name"]) &
-                    (game_category["game_date"] == row["game_date"]) &
-                    (game_category["price_band"] == matching_seat["price_band"].values[0])
-                ]
-                if not matching_game.empty:
-                    row["category"] = matching_game["category"].values[0]
-                    row["seat_value"] = matching_game["seat_value"].values[0]
-                    row["value_generated"] = row["ticket_sold_price"] - matching_game["seat_value"].values[0]
-                    matched_data.append(row)
-
-        # Match From Hosp with TX Sales Data
-        for _, row in from_hosp_combined.iterrows():
-            sales_match = tx_sales_data[
-                (tx_sales_data["game_name"] == row["game_name"]) &
-                (tx_sales_data["block"] == row["block"]) &
-                (tx_sales_data["row"] == row["row"]) &
-                (tx_sales_data["seat"] == row["seat"])
-            ]
-            row["matched_yn"] = "Y" if not sales_match.empty else "N"
-            row["ticket_sold_price"] = sales_match["ticket_sold_price"].values[0] if not sales_match.empty else None
-            release_data.append(row)
-
-        # Convert results to DataFrames
-        matched_df = pd.DataFrame(matched_data)
-        release_df = pd.DataFrame(release_data)
-
-        return matched_df, release_df
+        if selected_module == "📊 Sales Performance":
+            sales_performance.run_app()
+        elif selected_module == "📈 User Performance":
+            user_performance_api.run_app()
+        st.success("✅ Data refreshed successfully!")
     except Exception as e:
-        st.error(f"❌ Error processing files: {e}")
-        logging.error(f"Error processing files: {e}")
-        return None, None
+        st.error(f"❌ Error refreshing data: {str(e)}")
 
-def run_app():
-    """Main app function."""
-    st.title("🏟️ AFC Hospitality Seat Tracker")
-    st.markdown("Upload your TX Sales file and From Hosp file to process and analyze seating data.")
+# App Header with a logo
+st.image("assets/arsenal-logo.png", width=250)  # Placeholder for the logo
+st.title("🏟️ AFC Venue - MBM Hospitality")
+st.markdown("---")  # A horizontal line for better UI
 
-    # File uploaders
-    tx_sales_file = st.file_uploader("Upload TX Sales File", type=["xlsx"])
-    from_hosp_file = st.file_uploader("Upload From Hosp File", type=["xlsx"])
+if not st.session_state["authenticated"]:
+    # Instructions for SSO Login
+    st.markdown("""
+    ### 👋 Welcome to the Venue Hospitality App!  
+    **Please log in using AFC credentials to access the following modules:**
 
-    # Path to Seat List and Game Category file
-    seat_list_game_cat_path = "seat_list_game_cat.xlsx"
+    - **📊 Sales Performance**: Analyze and track sales data.
+    - **📈 User Performance**: Monitor and evaluate team performance metrics.
+    
+    If you experience login issues, please contact [cmunthali@arsenal.co.uk](mailto:cmunthali@arsenal.co.uk).
+    """)
 
-    # Load Seat List and Game Category
-    try:
-        seat_list, game_category = load_seat_list_and_game_category(seat_list_game_cat_path)
-        st.success("✅ Seat List and Game Category loaded successfully.")
-    except Exception as e:
-        st.error(f"❌ Failed to load Seat List and Game Category: {e}")
-        return
+    # Login Section
+    login_url = azure_ad_login()
+    st.markdown(f"""
+        <div style="text-align:center;">
+            <a href="{login_url}" target="_self" style="
+                text-decoration:none;
+                color:white;
+                background-color:#FF4B4B;
+                padding:10px 20px;
+                border-radius:5px;
+                font-size:16px;">
+                🔐 Log in with Microsoft Entra ID
+            </a>
+        </div>
+    """, unsafe_allow_html=True)
 
-    # Process files when both are uploaded
-    if tx_sales_file and from_hosp_file:
-        matched_df, release_df = process_files(tx_sales_file, from_hosp_file, seat_list, game_category)
+    # Process login
+    query_params = st.experimental_get_query_params()
+    if "code" in query_params and not st.session_state["redirected"]:
+        auth_code = query_params["code"][0]
+        with st.spinner("🔄 Logging you in..."):
+            try:
+                result = app.acquire_token_by_authorization_code(
+                    code=auth_code,
+                    scopes=SCOPES,
+                    redirect_uri=REDIRECT_URI
+                )
+                if "access_token" in result:
+                    st.session_state["access_token"] = result["access_token"]
+                    st.session_state["authenticated"] = True
+                    st.session_state["user_name"] = get_user_details(result["access_token"])
+                    st.session_state["redirected"] = True
+                    st.experimental_set_query_params()  # Clear query params
+                    st.experimental_rerun()  # Reload the app to show authenticated view
+                else:
+                    st.error(f"❌ Login failed: {result.get('error_description', 'Unknown error')}")
+            except Exception as e:
+                st.error(f"❌ An error occurred: {str(e)}")
+else:
+    # User Profile Card
+    st.sidebar.markdown(f"### 👤 Logged in as: **{st.session_state['user_name']}**")
 
-        if matched_df is not None and release_df is not None:
-            # Display results
-            st.markdown("### Matched Data")
-            st.dataframe(matched_df)
+    # Navigation Sidebar
+    st.sidebar.title("🧭 Navigation")
+    app_choice = st.sidebar.radio(
+        "Choose Module",
+        ["📊 Sales Performance", "📈 User Performance"],
+        format_func=lambda x: x.split(" ")[1],  # Display just the module names
+    )
 
-            st.markdown("### From Hosp Results")
-            st.dataframe(release_df)
+    # Refresh Button
+    if st.sidebar.button("🔄 Refresh Data"):
+        with st.spinner("Refreshing data..."):
+            refresh_data(app_choice)
 
-            # Download option
-            output_file = "processed_data.xlsx"
-            with pd.ExcelWriter(output_file, engine="openpyxl") as writer:
-                matched_df.to_excel(writer, sheet_name="Matched Data", index=False)
-                release_df.to_excel(writer, sheet_name="From Hosp", index=False)
-            with open(output_file, "rb") as f:
-                st.download_button("Download Processed Data", f, file_name=output_file)
-        else:
-            st.error("❌ No data to display.")
-    else:
-        st.info("Please upload both the TX Sales file and From Hosp file to proceed.")
+    # Add Loading Indicator
+    with st.spinner("🔄 Loading..."):
+        if app_choice == "📊 Sales Performance":
+            sales_performance.run_app()
+        elif app_choice == "📈 User Performance":
+            user_performance_api.run_app()
 
-if __name__ == "__main__":
-    run_app()
+    # Logout Button
+    if st.sidebar.button("🔓 Logout"):
+        st.session_state.clear()
+        st.success("✅ Logged out successfully!")
+        st.experimental_set_query_params()  # Clear query params
+        st.experimental_rerun()  # Reload the app to login page
+
+# Footer Section
+st.markdown("---")
+st.markdown("""
+    <div style="text-align:center; font-size:12px; color:gray;">
+        🏟️ **Arsenal Property** | All Rights Reserved © 2024  
+        Need help? Contact [cmunthali@arsenal.co.uk]
+    </div>
+""", unsafe_allow_html=True)
