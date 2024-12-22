@@ -7,7 +7,6 @@ import importlib
 import sales_performance
 import user_performance_api
 import datetime
-import time
 
 # Configure logging
 logging.basicConfig(
@@ -49,6 +48,7 @@ if "next_refresh_time" not in st.session_state:
 # Cached data fetcher
 @st.cache_data(ttl=300)  # Cache for 5 minutes
 def fetch_data():
+    """Fetches data from `tjt_hosp_api` and validates required columns."""
     logging.info("Fetching data from tjt_hosp_api...")
     
     # Dynamically reload `tjt_hosp_api`
@@ -66,22 +66,8 @@ def fetch_data():
     if missing_columns:
         raise ValueError(f"Missing required columns: {missing_columns}")
 
-    logging.info("Data successfully fetched.")
+    logging.info("Data successfully fetched and validated.")
     return filtered_df_without_seats
-
-
-# Function to display real-time countdown timer
-def display_refresh_timer():
-    """Displays a live countdown timer in the sidebar."""
-    next_refresh_time = st.session_state.get("next_refresh_time")
-    if next_refresh_time:
-        time_remaining = (next_refresh_time - datetime.datetime.now()).total_seconds()
-        if time_remaining > 0:
-            minutes, seconds = divmod(int(time_remaining), 60)
-            st.sidebar.info(f"🔄 Next Refresh: {minutes}m {seconds}s")
-            time.sleep(1)  # Sleep for 1 second to update the countdown
-        else:
-            st.sidebar.info("🔄 Refreshing data now...")
 
 
 # App Header with a logo
@@ -148,13 +134,17 @@ else:
             st.session_state["filtered_data"] = fetch_data()
             st.session_state["last_refresh_time"] = datetime.datetime.now()
             st.session_state["next_refresh_time"] = st.session_state["last_refresh_time"] + datetime.timedelta(seconds=300)
+            logging.info(f"Data refreshed at: {st.session_state['last_refresh_time']}.")
+            logging.info(f"Next refresh scheduled at: {st.session_state['next_refresh_time']}.")
+        else:
+            logging.info(f"Using cached data. Next refresh at: {st.session_state['next_refresh_time']}.")
 
     except Exception as e:
         logging.error(f"Failed to fetch data: {e}")
         st.error(f"❌ Failed to fetch data: {e}")
 
-    # Display refresh status in the sidebar
-    display_refresh_timer()
+    st.sidebar.markdown("### 👤 Logged in User")
+    st.sidebar.info("User: **Azure AD User**\nRole: **Premium Exec**")
     
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio(
@@ -164,9 +154,9 @@ else:
     )
     
     # Dummy Refresh Button
-    if st.sidebar.button("🔄 Refresh Data"):
-        st.success("🔄 Job done!")
-        # No backend action occurs; refresh is handled by `@st.cache_data`
+    # if st.sidebar.button("🔄 Refresh Data"):
+    #     logging.info("User clicked Refresh Data button.")
+    #     st.success("🔄 Refresh is automatic in the background. Check logs for details.")
 
     with st.spinner("🔄 Loading..."):
         if app_choice == "📊 Sales Performance":
