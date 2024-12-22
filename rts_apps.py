@@ -40,37 +40,34 @@ if "access_token" not in st.session_state:
     st.session_state["access_token"] = None
 if "redirected" not in st.session_state:
     st.session_state["redirected"] = False
-if "last_refresh_time" not in st.session_state:
-    st.session_state["last_refresh_time"] = None
-if "next_refresh_time" not in st.session_state:
-    st.session_state["next_refresh_time"] = None
-if "filtered_data" not in st.session_state:
-    st.session_state["filtered_data"] = None
+if "dashboard_data" not in st.session_state:
+    st.session_state["dashboard_data"] = None  # Store dashboard data
 
 
-# Cached data fetcher
-@st.cache_data(ttl=300)  # Cache for 5 minutes
-def fetch_data():
-    """Fetches data from `tjt_hosp_api` and validates required columns."""
-    logging.info("Fetching data from tjt_hosp_api...")
-    
-    # Dynamically reload `tjt_hosp_api`
-    import tjt_hosp_api
-    importlib.reload(tjt_hosp_api)
+# Function to reload data
+def reload_data():
+    """Reloads data from `tjt_hosp_api` and updates the session state."""
+    logging.info("Reloading data from `tjt_hosp_api`...")
+    try:
+        import tjt_hosp_api
+        importlib.reload(tjt_hosp_api)
 
-    # Extract the DataFrame
-    from tjt_hosp_api import filtered_df_without_seats
-    required_columns = ['Fixture Name', 'Order Id', 'First Name']
+        # Fetch fresh data
+        from tjt_hosp_api import filtered_df_without_seats
 
-    # Validate required columns
-    missing_columns = [
-        col for col in required_columns if col not in filtered_df_without_seats.columns
-    ]
-    if missing_columns:
-        raise ValueError(f"Missing required columns: {missing_columns}")
+        required_columns = ['Fixture Name', 'Order Id', 'First Name']
+        missing_columns = [
+            col for col in required_columns if col not in filtered_df_without_seats.columns
+        ]
+        if missing_columns:
+            raise ValueError(f"Missing required columns: {missing_columns}")
 
-    logging.info("Data successfully fetched and validated.")
-    return filtered_df_without_seats
+        st.session_state["dashboard_data"] = filtered_df_without_seats
+        logging.info("Data successfully reloaded.")
+
+    except Exception as e:
+        logging.error(f"Failed to reload data: {e}")
+        st.error(f"❌ Failed to reload data: {e}")
 
 
 # App Header with a logo
@@ -78,6 +75,7 @@ st.image("assets/arsenal-logo.png", width=250)  # Placeholder for the logo
 st.title("🏟️ AFC Venue - MBM Hospitality")
 st.markdown("---")  # A horizontal line for better UI
 
+# Handle login
 if not st.session_state["authenticated"]:
     # Display Welcome Message
     st.markdown("""
@@ -119,7 +117,8 @@ if not st.session_state["authenticated"]:
                     st.session_state["authenticated"] = True
                     st.session_state["redirected"] = True
                     st.success("🎉 Login successful! Redirecting...")
-                    st.rerun()  # Reload the app to show authenticated view
+                    st.rerun()
+                   
                 else:
                     st.error("❌ Failed to log in. Please try again.")
             except Exception as e:
@@ -127,41 +126,6 @@ if not st.session_state["authenticated"]:
 
 
 else:
-    # Always fetch the latest data (cached or fresh)
-    try:
-        current_time = datetime.datetime.now()
-
-        # Auto-fetch data on app load or when cache expires
-        if st.session_state["filtered_data"] is None or st.session_state["next_refresh_time"] is None:
-            logging.info("Fetching data for the first time or cache expired.")
-            st.session_state["filtered_data"] = fetch_data()
-            st.session_state["last_refresh_time"] = current_time
-            st.session_state["next_refresh_time"] = current_time + datetime.timedelta(seconds=300)
-
-        elif current_time >= st.session_state["next_refresh_time"]:
-            logging.info("Cache expired. Fetching fresh data...")
-            st.cache_data.clear()  # Clear the cache
-            st.session_state["filtered_data"] = fetch_data()
-            st.session_state["last_refresh_time"] = current_time
-            st.session_state["next_refresh_time"] = current_time + datetime.timedelta(seconds=300)
-
-        logging.info(f"Using data fetched at: {st.session_state['last_refresh_time']}.")
-        logging.info(f"Next refresh scheduled at: {st.session_state['next_refresh_time']}.")
-
-        # Force Refresh Button
-        if st.sidebar.button("🔄 Refresh Data"):
-            with st.spinner("🔄 Refreshing data..."):
-                logging.info("Force refreshing data...")
-                st.cache_data.clear()  # Clear the cache
-                st.session_state["filtered_data"] = fetch_data()  # Fetch fresh data
-                st.session_state["last_refresh_time"] = current_time
-                st.session_state["next_refresh_time"] = current_time + datetime.timedelta(seconds=300)
-                st.success(f"Data refreshed successfully at {st.session_state['last_refresh_time']}!")
-    except Exception as e:
-        logging.error(f"Failed to fetch data: {e}")
-        st.error(f"❌ Failed to fetch data: {e}")
-
-
     # Sidebar Navigation
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio(
@@ -169,7 +133,13 @@ else:
         ["📊 Sales Performance", "📈 User Performance", "📄 Ticket Exchange Report"],
         format_func=lambda x: x.split(" ")[1],
     )
-    
+
+    # Refresh Button
+    if st.sidebar.button("🔄 Refresh Data"):
+        logging.info("🔄 Refreshing data...")
+        reload_data()  # Call the reload function
+        st.experimental_rerun()  # Trigger a full app rerun after reload
+
     # Handle module choice
     with st.spinner("🔄 Loading..."):
         if app_choice == "📊 Sales Performance":
@@ -177,7 +147,7 @@ else:
         elif app_choice == "📈 User Performance":
             user_performance_api.run_app()
         elif app_choice == "📄 Ticket Exchange Report":
-            ticket_exchange_report.run_app()  # Run the new module
+            ticket_exchange_report.run_app()
 
     # Logout Button
     if st.sidebar.button("🔓 Logout"):
