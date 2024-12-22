@@ -7,7 +7,6 @@ import importlib
 import sales_performance
 import user_performance_api
 import ticket_exchange_report  # Import the new module
-import datetime
 
 # Configure logging
 logging.basicConfig(
@@ -64,7 +63,7 @@ def reload_data():
 
         st.session_state["dashboard_data"] = filtered_df_without_seats
         logging.info("Data successfully reloaded.")
-        st.success("✅ Data successfully reloaded.")
+
     except Exception as e:
         logging.error(f"Failed to reload data: {e}")
         st.error(f"❌ Failed to reload data: {e}")
@@ -88,16 +87,17 @@ if not st.session_state["authenticated"]:
 
     # Display the Login Button
     st.markdown(f"""
-        <a href="{login_url}" target="_blank" style="
-            text-decoration:none;
-            color:white;
-            background-color:#FF4B4B;
-            padding:15px 25px;
-            border-radius:5px;
-            font-size:18px;
-            display:inline-block;">
-            🔐 Log in with Microsoft Entra ID
-        </a>
+            <a href="{login_url}" target="_blank" style="
+                text-decoration:none;
+                color:white;
+                background-color:#FF4B4B;
+                padding:15px 25px;
+                border-radius:5px;
+                font-size:18px;
+                display:inline-block;">
+                🔐 Log in with Microsoft Entra ID
+            </a>
+        </div>
     """, unsafe_allow_html=True)
 
     # Process login by checking query parameters for the authorization code
@@ -116,8 +116,7 @@ if not st.session_state["authenticated"]:
                     st.session_state["authenticated"] = True
                     st.session_state["redirected"] = True
                     st.success("🎉 Login successful! Redirecting...")
-                    st.experimental_set_query_params()  # Clear query parameters
-                    st.rerun  # Trigger a rerun after login
+                    st.rerun()
                 else:
                     st.error("❌ Failed to log in. Please try again.")
             except Exception as e:
@@ -153,7 +152,6 @@ else:
         logging.info("User logged out.")
         st.session_state.clear()
         st.success("✅ You have been logged out successfully!")
-        st.rerun()  # Trigger a rerun after logout
 
 # Footer Section
 st.markdown("---")
