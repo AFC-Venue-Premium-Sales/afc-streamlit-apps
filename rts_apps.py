@@ -137,6 +137,7 @@ else:
             st.session_state["filtered_data"] = fetch_data()
             st.session_state["last_refresh_time"] = current_time
             st.session_state["next_refresh_time"] = current_time + datetime.timedelta(seconds=300)
+
         elif current_time >= st.session_state["next_refresh_time"]:
             logging.info("Cache expired. Fetching fresh data...")
             st.cache_data.clear()  # Clear the cache
@@ -147,18 +148,19 @@ else:
         logging.info(f"Using data fetched at: {st.session_state['last_refresh_time']}.")
         logging.info(f"Next refresh scheduled at: {st.session_state['next_refresh_time']}.")
 
-        # Add Force Refresh Button
+        # Force Refresh Button
         if st.sidebar.button("🔄 Refresh Data"):
-            logging.info("Force refreshing data...")
-            st.cache_data.clear()  # Clear cache
-            st.session_state["filtered_data"] = fetch_data()  # Fetch fresh data
-            st.session_state["last_refresh_time"] = current_time
-            st.session_state["next_refresh_time"] = current_time + datetime.timedelta(seconds=300)
-            st.success(f"Data refreshed at {st.session_state['last_refresh_time']}!")
-
+            with st.spinner("🔄 Refreshing data..."):
+                logging.info("Force refreshing data...")
+                st.cache_data.clear()  # Clear the cache
+                st.session_state["filtered_data"] = fetch_data()  # Fetch fresh data
+                st.session_state["last_refresh_time"] = current_time
+                st.session_state["next_refresh_time"] = current_time + datetime.timedelta(seconds=300)
+                st.success(f"Data refreshed successfully at {st.session_state['last_refresh_time']}!")
     except Exception as e:
         logging.error(f"Failed to fetch data: {e}")
         st.error(f"❌ Failed to fetch data: {e}")
+
 
     # Sidebar Navigation
     st.sidebar.title("🧭 Navigation")
