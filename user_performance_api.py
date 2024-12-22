@@ -139,45 +139,11 @@ def generate_charts(filtered_data):
     plt.legend(lines_labels, loc='upper left', fontsize=10)
     st.pyplot(fig)
 
-def generate_heatmap(filtered_data):
-    """Generate a heatmap for sales trends."""
-    st.write("### 📊 Sales Trends Heatmap")
-    filtered_data['CreatedDate'] = filtered_data['CreatedOn'].dt.date
-    filtered_data['CreatedHour'] = filtered_data['CreatedOn'].dt.hour
-
-    sales_trend = (
-        filtered_data.groupby(['CreatedDate', 'CreatedHour'])
-        ['TotalPrice']
-        .sum()
-        .unstack(fill_value=0)
-    )
-
-    fig, ax = plt.subplots(figsize=(12, 6))
-    sns.heatmap(sales_trend, cmap="YlGnBu", ax=ax)
-    ax.set_title("Sales Trends (Date vs. Hour)")
-    ax.set_xlabel("Hour of Day")
-    ax.set_ylabel("Date")
-    st.pyplot(fig)
-
-def generate_revenue_chart(filtered_data):
-    """Generate a bar chart for revenue by fixture."""
-    st.write("### 📊 Revenue by Fixture")
-    revenue_by_fixture = (
-        filtered_data.groupby('Fixture Name')['TotalPrice']
-        .sum()
-        .sort_values(ascending=False)
-    )
-
-    fig, ax = plt.subplots(figsize=(12, 6))
-    revenue_by_fixture.plot(kind='bar', ax=ax, color='skyblue', edgecolor='black')
-    ax.set_title("Revenue by Fixture")
-    ax.set_xlabel("Fixture")
-    ax.set_ylabel("Total Revenue (£)")
-    plt.xticks(rotation=45, ha='right')
-    st.pyplot(fig)
-
 def run_app():
     """Main application function."""
+    specified_users = ['dcoppin', 'Jedwards', 'jedwards', 'bgardiner', 'BenT', 'jmurphy', 'ayildirim',
+                       'MeganS', 'BethNW', 'HayleyA', 'LucyB', 'Conor', 'SavR', 'MillieS', 'dmontague']
+
     st.title('👤AFC Premium Exec Dashboard👤')
 
     st.markdown("""
@@ -208,27 +174,19 @@ def run_app():
         else:
             min_date, max_date = None, None
 
-        # Sidebar filters for users, events, competitions, and categories
+        # Sidebar filters for users
         valid_usernames = [user for user in pd.unique(loaded_api_df['CreatedBy'])]
-        selected_users = st.sidebar.multiselect("👤 Select Execs", options=valid_usernames, default=valid_usernames)
-        selected_events = st.sidebar.multiselect("🎫 Select Events", options=pd.unique(loaded_api_df['Fixture Name']))
-        selected_paid = st.sidebar.selectbox("💰 Filter by IsPaid", options=pd.unique(loaded_api_df['IsPaid']))
-        event_competitions = pd.unique(loaded_api_df['EventCompetition'])
-        selected_competitions = st.sidebar.multiselect("🏆 Select Event Competitions", options=event_competitions)
-        event_categories = pd.unique(loaded_api_df['EventCategory'])
-        selected_categories = st.sidebar.multiselect("📂 Select Event Category", options=event_categories)
+        filtered_default_users = [user for user in specified_users if user in valid_usernames]
+        selected_users = st.sidebar.multiselect("👤 Select Execs", options=valid_usernames, default=filtered_default_users)
 
         # Apply Filters
-        filtered_data = loaded_api_df.copy()
-        filtered_data = filter_data_by_date_time(filtered_data, min_date, max_date)
-        filtered_data = filter_data(filtered_data, selected_users, selected_events, selected_paid, selected_competitions, selected_categories)
+        filtered_data = filter_data_by_date_time(loaded_api_df, min_date, max_date)
+        filtered_data = filter_data(filtered_data, selected_users, None, None, None, None)
 
         # Display Filtered Data and Metrics
         if not filtered_data.empty:
             generate_kpis(filtered_data)
             generate_charts(filtered_data)
-            generate_heatmap(filtered_data)
-            generate_revenue_chart(filtered_data)
         else:
             st.warning("⚠️ No data available for the selected filters.")
     else:
