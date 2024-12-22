@@ -103,42 +103,27 @@ if not st.session_state["authenticated"]:
     """, unsafe_allow_html=True)
 
     # Process login by checking query parameters for the authorization code
+    # Process login
     query_params = st.experimental_get_query_params()
     if "code" in query_params and not st.session_state["redirected"]:
-        # Show a custom loading animation
-        st.markdown("""
-        <div style="text-align:center; margin-top:50px;">
-            <p style="font-size:18px; color:#4B4B4B;">🔄 Authenticating your credentials...</p>
-        </div>
-        """, unsafe_allow_html=True)
-
-        # Start authentication process
-        with st.spinner("🔄 Logging you in and preparing your dashboard..."):
+        auth_code = query_params["code"][0]
+        with st.spinner("🔄 Logging you in..."):
             try:
-                # Retrieve the authorization code from query parameters
-                auth_code = query_params["code"][0]
-
-                # Exchange the authorization code for an access token
                 result = app.acquire_token_by_authorization_code(
                     code=auth_code,
                     scopes=SCOPES,
                     redirect_uri=REDIRECT_URI
                 )
-
-                # Handle successful login
                 if "access_token" in result:
                     st.session_state["access_token"] = result["access_token"]
                     st.session_state["authenticated"] = True
                     st.session_state["redirected"] = True
-                    st.success("🎉 Login successful!")
-
-                # Handle login failure
+                    st.success("🎉 Login successful! Redirecting...")
+                    st.rerun()  # Reload the app to show authenticated view
                 else:
                     st.error("❌ Failed to log in. Please try again.")
-
-            # Handle exceptions during login
             except Exception as e:
-                st.error(f"❌ Error during login: {e}")
+                st.error(f"❌ An error occurred: {str(e)}")
 
 
 else:
@@ -163,7 +148,7 @@ else:
         logging.info(f"Next refresh scheduled at: {st.session_state['next_refresh_time']}.")
 
         # Add Force Refresh Button
-        if st.sidebar.button("🔄 Force Data Refresh"):
+        if st.sidebar.button("🔄 Refresh Data"):
             logging.info("Force refreshing data...")
             st.cache_data.clear()  # Clear cache
             st.session_state["filtered_data"] = fetch_data()  # Fetch fresh data
