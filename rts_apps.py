@@ -7,7 +7,6 @@ import importlib
 import sales_performance
 import user_performance_api
 import ticket_exchange_report  # Import the new module
-import datetime
 
 # Configure logging
 logging.basicConfig(
@@ -118,7 +117,6 @@ if not st.session_state["authenticated"]:
                     st.session_state["redirected"] = True
                     st.success("🎉 Login successful! Redirecting...")
                     st.rerun()
-                   
                 else:
                     st.error("❌ Failed to log in. Please try again.")
             except Exception as e:
@@ -138,7 +136,7 @@ else:
     if st.sidebar.button("🔄 Refresh Data"):
         logging.info("🔄 Refreshing data...")
         reload_data()  # Call the reload function
-        st.experimental_rerun()  # Trigger a full app rerun after reload
+        st.rerun()  # Trigger a full app rerun after reload
 
     # Handle module choice
     with st.spinner("🔄 Loading..."):
@@ -155,6 +153,7 @@ else:
         st.session_state.clear()
         st.success("✅ You have been logged out successfully!")
 
+# Footer Section
 st.markdown("---")
 st.markdown("""
     <div style="text-align:center; font-size:12px; color:gray;">
