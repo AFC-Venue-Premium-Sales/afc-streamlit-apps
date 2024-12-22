@@ -1,5 +1,5 @@
-import streamlit as st
 import pandas as pd
+import streamlit as st
 import logging
 from io import StringIO
 
@@ -9,15 +9,16 @@ logging.basicConfig(stream=log_stream, level=logging.INFO, format="%(asctime)s -
 
 # Helper function to adjust block names
 def adjust_block(block):
+    """Adjusts block names to normalize casing."""
     if isinstance(block, str) and block.startswith("C") and block[1:].isdigit():
         block_number = int(block[1:])
-        return f"{block_number} Club level"  # Normalize casing
+        return f"{block_number} Club level"
     elif isinstance(block, str) and block.isdigit():
         block_number = int(block)
         return f"{block_number} Club level"
     return block
 
-# Function to load Seat List and Game Category sheets
+# Function to load Seat List and Game Category
 def load_seat_list_and_game_category(path):
     """Loads the Seat List and Game Category sheets."""
     seat_list = pd.read_excel(path, sheet_name="Seat List")
@@ -27,29 +28,26 @@ def load_seat_list_and_game_category(path):
     seat_list.columns = seat_list.columns.str.strip().str.lower()
     game_category.columns = game_category.columns.str.strip().str.lower()
 
-    # Adjust "block" column in seat_list
-    if "block" in seat_list.columns:
-        seat_list["block"] = seat_list["block"].apply(adjust_block)
-    else:
-        raise ValueError("The 'block' column is missing in the Seat List.")
+    # Adjust block names in Seat List
+    seat_list["block"] = seat_list["block"].apply(adjust_block)
 
-    # Ensure numeric values for game_category
+    # Ensure numeric values for seat_value in Game Category
     game_category["seat_value"] = pd.to_numeric(game_category["seat_value"], errors="coerce")
 
     return seat_list, game_category
 
-# Function to process TX Sales and From Hosp files
+# Function to process TX Sales and Hospitality Ticket Releases
 def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
     """Processes the TX Sales and From Hosp files."""
     try:
-        # Load TX Sales file
+        # Load TX Sales Data tab
         tx_sales_data = pd.read_excel(tx_sales_file, sheet_name="TX Sales Data")
         tx_sales_data.columns = tx_sales_data.columns.str.strip().str.replace(" ", "_").str.lower()
         tx_sales_data["block"] = tx_sales_data["block"].apply(adjust_block)
         tx_sales_data["ticket_sold_price"] = pd.to_numeric(tx_sales_data["ticket_sold_price"], errors="coerce")
 
-        # Load From Hosp file
-        from_hosp = pd.read_excel(from_hosp_file, sheet_name=None)
+        # Load Hospitality Ticket Releases
+        from_hosp = pd.read_excel(from_hosp_file, sheet_name=None)  # Load all sheets as dictionary
         from_hosp_combined = pd.concat(from_hosp.values(), ignore_index=True)
         from_hosp_combined.columns = from_hosp_combined.columns.str.strip().str.replace(" ", "_").str.lower()
         from_hosp_combined["block"] = from_hosp_combined["block"].apply(adjust_block)
@@ -78,7 +76,7 @@ def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
                     row["value_generated"] = row["ticket_sold_price"] - matching_game["seat_value"].values[0]
                     matched_data.append(row)
 
-        # Match From Hosp with TX Sales Data
+        # Match Hospitality Ticket Releases with TX Sales
         for _, row in from_hosp_combined.iterrows():
             sales_match = tx_sales_data[
                 (tx_sales_data["game_name"] == row["game_name"]) &
@@ -95,14 +93,15 @@ def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
         release_df = pd.DataFrame(release_data)
 
         return matched_df, release_df
+
     except Exception as e:
         st.error(f"❌ Error processing files: {e}")
         logging.error(f"Error processing files: {e}")
         return None, None
 
-# Main Streamlit app
+# Streamlit App
 def run_app():
-    """Main app function."""
+    """Main Streamlit app function."""
     st.title("🏟️ AFC Hospitality Seat Tracker")
     st.markdown("Upload your TX Sales file and From Hosp file to process and analyze seating data.")
 
