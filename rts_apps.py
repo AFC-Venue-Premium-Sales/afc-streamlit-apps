@@ -43,6 +43,8 @@ if "last_refresh_time" not in st.session_state:
     st.session_state["last_refresh_time"] = None
 if "next_refresh_time" not in st.session_state:
     st.session_state["next_refresh_time"] = None
+if "filtered_data" not in st.session_state:
+    st.session_state["filtered_data"] = None
 
 
 # Cached data fetcher
@@ -129,7 +131,6 @@ if not st.session_state["authenticated"]:
                     st.session_state["authenticated"] = True
                     st.session_state["redirected"] = True
                     st.success("🎉 Login successful!")
-                    st.rerun()  # Reload the app to display the authenticated view
 
                 # Handle login failure
                 else:
@@ -143,19 +144,38 @@ if not st.session_state["authenticated"]:
 else:
     # Always fetch the latest data (cached or fresh)
     try:
-        if "filtered_data" not in st.session_state or st.session_state["next_refresh_time"] is None:
+        current_time = datetime.datetime.now()
+
+        # Auto-fetch data on app load or when cache expires
+        if st.session_state["filtered_data"] is None or st.session_state["next_refresh_time"] is None:
+            logging.info("Fetching data for the first time or cache expired.")
             st.session_state["filtered_data"] = fetch_data()
-            st.session_state["last_refresh_time"] = datetime.datetime.now()
-            st.session_state["next_refresh_time"] = st.session_state["last_refresh_time"] + datetime.timedelta(seconds=300)
-            logging.info(f"Data refreshed at: {st.session_state['last_refresh_time']}.")
-            logging.info(f"Next refresh scheduled at: {st.session_state['next_refresh_time']}.")
-        else:
-            logging.info(f"Using cached data. Next refresh at: {st.session_state['next_refresh_time']}.")
+            st.session_state["last_refresh_time"] = current_time
+            st.session_state["next_refresh_time"] = current_time + datetime.timedelta(seconds=300)
+        elif current_time >= st.session_state["next_refresh_time"]:
+            logging.info("Cache expired. Fetching fresh data...")
+            st.cache_data.clear()  # Clear the cache
+            st.session_state["filtered_data"] = fetch_data()
+            st.session_state["last_refresh_time"] = current_time
+            st.session_state["next_refresh_time"] = current_time + datetime.timedelta(seconds=300)
+
+        logging.info(f"Using data fetched at: {st.session_state['last_refresh_time']}.")
+        logging.info(f"Next refresh scheduled at: {st.session_state['next_refresh_time']}.")
+
+        # Add Force Refresh Button
+        if st.sidebar.button("🔄 Force Data Refresh"):
+            logging.info("Force refreshing data...")
+            st.cache_data.clear()  # Clear cache
+            st.session_state["filtered_data"] = fetch_data()  # Fetch fresh data
+            st.session_state["last_refresh_time"] = current_time
+            st.session_state["next_refresh_time"] = current_time + datetime.timedelta(seconds=300)
+            st.success(f"Data refreshed at {st.session_state['last_refresh_time']}!")
 
     except Exception as e:
         logging.error(f"Failed to fetch data: {e}")
         st.error(f"❌ Failed to fetch data: {e}")
-    
+
+    # Sidebar Navigation
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio(
         "Choose Module",
@@ -163,24 +183,18 @@ else:
         format_func=lambda x: x.split(" ")[1],
     )
     
-    # Dummy Refresh Button
-    # if st.sidebar.button("🔄 Refresh Data"):
-    #     logging.info("User clicked Refresh Data button.")
-    #     st.success("🔄 Refresh is automatic in the background. Check logs for details.")
-
+    # Handle module choice
     with st.spinner("🔄 Loading..."):
         if app_choice == "📊 Sales Performance":
             sales_performance.run_app()
         elif app_choice == "📈 User Performance":
             user_performance_api.run_app()
 
+    # Logout Button
     if st.sidebar.button("🔓 Logout"):
-        with st.spinner("🔄 Logging out..."):
-            logging.info("User logged out.")
-            st.session_state.clear()
-            st.success("✅ You have been logged out successfully!")
-            st.experimental_set_query_params()
-            st.rerun()
+        logging.info("User logged out.")
+        st.session_state.clear()
+        st.success("✅ You have been logged out successfully!")
 
 st.markdown("---")
 st.markdown("""
@@ -189,4 +203,3 @@ st.markdown("""
         Need help? <a href="mailto:cmunthali@arsenal.co.uk" style="text-decoration:none; color:#FF4B4B;">Contact: cmunthali@arsenal.co.uk</a>
     </div>
 """, unsafe_allow_html=True)
-

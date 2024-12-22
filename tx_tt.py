@@ -196,56 +196,158 @@
 
 
 
-
-
-
-
 import pandas as pd
 
-# Define the file paths
+# Define file paths
 file_path = '/Users/cmunthali/Documents/PYTHON/APPS/sql_tx_tt.xlsx'
+file_path_1 = '/Users/cmunthali/Documents/PYTHON/APPS/HOSPITALITY TICKET RELEASES SEASON 24-25.xlsx'
 output_file = '/Users/cmunthali/Documents/PYTHON/APPS/updated_data2.xlsx'
 
-# Load specific sheets
+# Load data
 tx_sales_data = pd.read_excel(file_path, sheet_name="TX Sales Data")
 seat_list = pd.read_excel(file_path, sheet_name="Seat List")
+game_category = pd.read_excel(file_path, sheet_name="Game Category")
 
-# Normalize column names to avoid case or whitespace issues
-tx_sales_data.columns = tx_sales_data.columns.str.strip()
-seat_list.columns = seat_list.columns.str.strip()
+# Load all tabs from file_path_1
+try:
+    ticket_releases_sheets = pd.read_excel(file_path_1, sheet_name=None)  # Load all sheets as a dictionary
+    ticket_releases = pd.concat(ticket_releases_sheets.values(), ignore_index=True)  # Combine all sheets
+    if ticket_releases.empty:
+        print("File_Path_1 (HOSPITALITY TICKET RELEASES SEASON 24-25.xlsx) is empty.")
+except Exception as e:
+    print(f"Error loading file_path_1: {e}")
+    ticket_releases = None
 
-# Create a list to store matched rows
+# Normalize column names
+tx_sales_data.columns = tx_sales_data.columns.str.strip().str.replace(" ", "_").str.lower()
+seat_list.columns = seat_list.columns.str.strip().str.replace(" ", "_").str.lower()
+game_category.columns = game_category.columns.str.strip().str.replace(" ", "_").str.lower()
+if ticket_releases is not None:
+    ticket_releases.columns = ticket_releases.columns.str.strip().str.replace(" ", "_").str.lower()
+
+# Adjust block formatting in ticket releases and seat list
+def adjust_block(block):
+    if isinstance(block, str) and block.startswith("C") and block[1:].isdigit():
+        block_number = int(block[1:])  # Remove leading zeros
+        return f"{block_number} Club level"  # Normalize casing
+    elif isinstance(block, str) and block.isdigit():
+        block_number = int(block)
+        return f"{block_number} Club level"
+    return block
+
+if ticket_releases is not None:
+    ticket_releases["block"] = ticket_releases["block"].apply(adjust_block)
+seat_list["block"] = seat_list["block"].apply(adjust_block)
+
+# Strip whitespace in all string columns
+tx_sales_data = tx_sales_data.apply(lambda col: col.str.strip() if col.dtype == "object" else col)
+seat_list = seat_list.apply(lambda col: col.str.strip() if col.dtype == "object" else col)
+game_category = game_category.apply(lambda col: col.str.strip() if col.dtype == "object" else col)
+if ticket_releases is not None:
+    ticket_releases = ticket_releases.apply(lambda col: col.str.strip() if col.dtype == "object" else col)
+
+# Ensure numeric columns are properly typed
+game_category["seat_value"] = pd.to_numeric(game_category["seat_value"], errors="coerce")
+tx_sales_data["ticket_sold_price"] = pd.to_numeric(tx_sales_data["ticket_sold_price"], errors="coerce")
+
+# Matched and Metrics Data for TX Sales Data
 matched_data = []
+metrics_data = []
+missing_matches = []  # To track rows that don't match
 
-# Update the CRC_Desc column in TX Sales Data based on matching Block, Row, and Seat
+# Match and update data for TX Sales Data
 for index, row in tx_sales_data.iterrows():
-    matching_row = seat_list[
-        (seat_list["Block"] == row["Block"]) &
-        (seat_list["Row"] == row["Row"]) &
-        (seat_list["Seat"] == row["Seat"])
+    # Initialize Matched_YN as "N"
+    matched_yn = "N"
+
+    # Match TX Sales Data with Seat List
+    matching_seat = seat_list[
+        (seat_list["block"] == row["block"]) &
+        (seat_list["row"] == row["row"]) &
+        (seat_list["seat"] == row["seat"])
     ]
-    if not matching_row.empty:
-        # Update the CRC_Desc column with the matched value
-        tx_sales_data.at[index, "CRC_Desc"] = matching_row["CRC_Desc"].values[0]
-        matched_data.append(tx_sales_data.iloc[index])
+    if not matching_seat.empty:
+        # Update CRC_Desc and Price Band
+        row["crc_desc"] = matching_seat["crc_desc"].values[0]
+        row["price_band"] = matching_seat["price_band"].values[0]
 
-# Convert matched data to a DataFrame
+        # Match with Game Category
+        matching_game = game_category[
+            (game_category["game_name"] == row["game_name"]) &
+            (game_category["game_date"] == row["game_date"]) &
+            (game_category["price_band"] == matching_seat["price_band"].values[0])
+        ]
+        if not matching_game.empty:
+            # Update Matched_YN to "Y"
+            matched_yn = "Y"
+
+            # Add Category, Seat Value, and Value Generated
+            row["category"] = matching_game["category"].values[0]
+            row["seat_value"] = matching_game["seat_value"].values[0]
+            row["value_generated"] = row["ticket_sold_price"] - matching_game["seat_value"].values[0]
+            
+            # Add to metrics data
+            metrics_data.append({
+                "game_name": row["game_name"],
+                "category": matching_game["category"].values[0],
+                "price_band": row["price_band"],
+                "crc_desc": row["crc_desc"],
+                "transfer_type": row["transfer_type"],
+                "ticket_sold_price": row["ticket_sold_price"],
+                "seat_value": matching_game["seat_value"].values[0],
+                "value_generated": row["value_generated"]
+            })
+    else:
+        # Log unmatched row
+        missing_matches.append(row.to_dict())
+
+    # Add Matched_YN to the row and append to matched data
+    row["matched_yn"] = matched_yn
+    matched_data.append(row)
+
+# Process Ticket Releases (file_path_1) with the same logic
+release_data = []
+if ticket_releases is not None:
+    for index, row in ticket_releases.iterrows():
+        # Initialize Matched_YN as "N"
+        matched_yn = "N"
+
+        # Match Ticket Releases with TX Sales Data
+        sales_match = tx_sales_data[
+            (tx_sales_data["game_name"] == row["game_name"]) &
+            (tx_sales_data["block"] == row["block"]) &
+            (tx_sales_data["row"] == row["row"]) &
+            (tx_sales_data["seat"] == row["seat"])
+        ]
+        if not sales_match.empty:
+            # Update Matched_YN to "Y"
+            matched_yn = "Y"
+            row["ticket_sold_price"] = sales_match["ticket_sold_price"].values[0]
+        else:
+            row["ticket_sold_price"] = None
+
+        # Ensure consistent keys for the row
+        row_dict = row.to_dict()
+        row_dict["matched_yn"] = matched_yn
+
+        # Append to release_data
+        release_data.append(row_dict)
+
+# Convert matched data, metrics data, and unmatched rows to DataFrames
 matched_df = pd.DataFrame(matched_data)
+metrics_df = pd.DataFrame(metrics_data)
+release_df = pd.DataFrame(release_data)
+missing_matches_df = pd.DataFrame(missing_matches)
 
-# Save the updated data to two sheets in the output file
-with pd.ExcelWriter(output_file, mode="w", engine="openpyxl") as writer:
-    # Write all data to the first sheet
+# Save results to Excel
+with pd.ExcelWriter(output_file, engine="openpyxl") as writer:
     tx_sales_data.to_excel(writer, sheet_name="All Data", index=False)
-    # Write matched data to the second sheet
     matched_df.to_excel(writer, sheet_name="Matched Data", index=False)
+    metrics_df.to_excel(writer, sheet_name="Detailed Metrics", index=False)
+    release_df.to_excel(writer, sheet_name="From Hosp", index=False)
+    missing_matches_df.to_excel(writer, sheet_name="Missing Matches", index=False)
 
 print(f"Updated data saved to {output_file}")
-
-
-
-
-
-
 
 
 
