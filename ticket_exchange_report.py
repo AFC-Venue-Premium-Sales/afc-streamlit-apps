@@ -1,9 +1,11 @@
 import streamlit as st
 import pandas as pd
 import logging
+from io import StringIO
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
+# Configure logging to Streamlit and a log stream
+log_stream = StringIO()
+logging.basicConfig(stream=log_stream, level=logging.INFO, format="%(asctime)s - %(message)s")
 
 # Helper function to adjust block names
 def adjust_block(block):
@@ -17,49 +19,49 @@ def adjust_block(block):
 
 # Load Seat List and Game Category
 def load_seat_list_and_game_category(path):
+    """Load the Seat List and Game Category sheets."""
+    logging.info("Loading Seat List and Game Category...")
     seat_list = pd.read_excel(path, sheet_name="Seat List")
     game_category = pd.read_excel(path, sheet_name="Game Category")
-
-    # Normalize columns
     seat_list.columns = seat_list.columns.str.strip().str.lower()
     game_category.columns = game_category.columns.str.strip().str.lower()
-
-    # Adjust block column
     seat_list["block"] = seat_list["block"].apply(adjust_block)
-
-    # Ensure numeric values
     game_category["seat_value"] = pd.to_numeric(game_category["seat_value"], errors="coerce")
-
-    # Reset indices and remove duplicates
-    seat_list = seat_list.drop_duplicates().reset_index(drop=True)
-    game_category = game_category.drop_duplicates().reset_index(drop=True)
-
+    logging.info("Seat List and Game Category loaded successfully.")
     return seat_list, game_category
 
 # Process TX Sales and From Hosp files
 def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
+    """Process TX Sales and From Hosp files."""
     try:
-        # Load TX Sales file
+        logging.info("Loading TX Sales Data...")
         tx_sales_data = pd.read_excel(tx_sales_file, sheet_name="TX Sales Data")
         tx_sales_data.columns = tx_sales_data.columns.str.strip().str.replace(" ", "_").str.lower()
         tx_sales_data["block"] = tx_sales_data["block"].apply(adjust_block)
         tx_sales_data["ticket_sold_price"] = pd.to_numeric(tx_sales_data["ticket_sold_price"], errors="coerce")
+        logging.info(f"TX Sales Data loaded: {tx_sales_data.shape[0]} rows, {tx_sales_data.shape[1]} columns")
 
-        # Reset indices and remove duplicates
-        tx_sales_data = tx_sales_data.drop_duplicates().reset_index(drop=True)
+        # Check for duplicates in TX Sales Data
+        duplicates_tx_sales = tx_sales_data[tx_sales_data.duplicated()]
+        if not duplicates_tx_sales.empty:
+            logging.warning(f"TX Sales Data contains duplicates: {duplicates_tx_sales.shape[0]} rows")
 
-        # Load From Hosp file
+        logging.info("Loading From Hosp Data...")
         from_hosp = pd.read_excel(from_hosp_file, sheet_name=None)
         from_hosp_combined = pd.concat(from_hosp.values(), ignore_index=True)
         from_hosp_combined.columns = from_hosp_combined.columns.str.strip().str.replace(" ", "_").str.lower()
         from_hosp_combined["block"] = from_hosp_combined["block"].apply(adjust_block)
+        logging.info(f"From Hosp Data combined: {from_hosp_combined.shape[0]} rows, {from_hosp_combined.shape[1]} columns")
 
-        # Reset indices and remove duplicates
-        from_hosp_combined = from_hosp_combined.drop_duplicates().reset_index(drop=True)
+        # Check for duplicates in From Hosp Data
+        duplicates_from_hosp = from_hosp_combined[from_hosp_combined.duplicated()]
+        if not duplicates_from_hosp.empty:
+            logging.warning(f"From Hosp Data contains duplicates: {duplicates_from_hosp.shape[0]} rows")
 
         # Match TX Sales with Seat List and Game Category
         matched_data = []
         release_data = []
+        logging.info("Matching TX Sales with Seat List and Game Category...")
         for _, row in tx_sales_data.iterrows():
             matching_seat = seat_list[
                 (seat_list["block"] == row["block"]) &
@@ -81,6 +83,7 @@ def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
                     matched_data.append(row)
 
         # Match From Hosp with TX Sales
+        logging.info("Matching From Hosp Data with TX Sales...")
         for _, row in from_hosp_combined.iterrows():
             sales_match = tx_sales_data[
                 (tx_sales_data["game_name"] == row["game_name"]) &
@@ -92,19 +95,20 @@ def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
             row["ticket_sold_price"] = sales_match["ticket_sold_price"].values[0] if not sales_match.empty else None
             release_data.append(row)
 
-        # Convert to DataFrames
-        matched_df = pd.DataFrame(matched_data).drop_duplicates().reset_index(drop=True)
-        release_df = pd.DataFrame(release_data).drop_duplicates().reset_index(drop=True)
+        matched_df = pd.DataFrame(matched_data).reset_index(drop=True)
+        release_df = pd.DataFrame(release_data).reset_index(drop=True)
 
+        logging.info("Processing completed successfully.")
         return matched_df, release_df
     except Exception as e:
+        logging.error(f"Error processing files: {e}", exc_info=True)
         st.error(f"Error processing files: {e}")
-        logging.error(f"Error processing files: {e}")
         return None, None
 
 # Main Streamlit App
 def run_app():
-    st.title("AFC Hospitality Seat Tracker")
+    """Main app function."""
+    st.title("🏟️ AFC Hospitality Seat Tracker")
     st.markdown("Upload your TX Sales file and From Hosp file to analyze seating data.")
 
     tx_sales_file = st.file_uploader("Upload TX Sales File", type=["xlsx"])
@@ -125,17 +129,15 @@ def run_app():
 
         if matched_df is not None and release_df is not None:
             st.markdown("### Matched Data")
-            st.dataframe(matched_df, width=1200, height=500)
+            st.dataframe(matched_df)
 
             st.markdown("### From Hosp Results")
-            st.dataframe(release_df, width=1200, height=500)
+            st.dataframe(release_df)
 
-            # Metrics
-            sold_tickets = release_df[release_df["matched_yn"] == "Y"].shape[0]
-            total_value_generated = release_df["ticket_sold_price"].sum()
-            st.markdown(f"### Metrics")
-            st.markdown(f"- **Tickets Sold on Exchange:** {sold_tickets}")
-            st.markdown(f"- **Total Value Generated from Exchange:** £{total_value_generated:,.2f}")
+            # Display debug logs
+            st.markdown("### Debug Logs")
+            st.text(log_stream.getvalue())
+
         else:
             st.error("No data to display.")
 
