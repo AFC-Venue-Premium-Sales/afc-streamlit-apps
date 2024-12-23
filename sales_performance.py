@@ -52,21 +52,27 @@ def run_app():
     # Dynamically fetch hospitality data on app start
     loaded_api_df = filtered_df_without_seats
     
-    # Dynamically fetch hospitality data on app start
-    loaded_api_df = st.session_state.get("dashboard_data", None)  # Use session state for consistency
-
     if loaded_api_df is None or loaded_api_df.empty:
         st.warning("⚠️ No data available. Please refresh to load the latest data.")
-    else:
-        # Display progress bar
-        progress_bar = st.sidebar.progress(0)
-        for progress in [10, 30, 50, 100]:
-            progress_bar.progress(progress)
+        return
+    
 
+
+    # Display progress bar
+    progress_bar = st.sidebar.progress(0)
+    for progress in [10, 30, 50, 100]:
+        progress_bar.progress(progress)
+
+
+    if loaded_api_df is not None:
         st.sidebar.success("✅ Data retrieved successfully.")
+        progress_bar = st.sidebar.progress(0)
+        progress_bar.progress(10)
+        progress_bar.progress(30)
+        progress_bar.progress(50)
         progress_bar.progress(100)
 
-        # Initialize filtered_data with loaded_api_df
+        # Initialize filtered_data with processed_data
         filtered_data = loaded_api_df.copy()
 
         # Ensure 'Discount' column is treated as strings
@@ -76,13 +82,16 @@ def run_app():
         filtered_data['DiscountValue'] = pd.to_numeric(filtered_data['DiscountValue'], errors='coerce')
 
         # Ensure other numeric columns like 'TotalPrice' are also correctly treated as numeric
-        numeric_columns = ['TotalPrice', 'DiscountValue']
+        numeric_columns = ['TotalPrice', 'DiscountValue']  # Add any other numeric columns if necessary
         for column in numeric_columns:
             filtered_data[column] = pd.to_numeric(filtered_data[column], errors='coerce')
 
-        # Convert 'CreatedOn' column to datetime format
+        # Convert 'CreatedOn' column to datetime format for both filtered_data and loaded_api_df
         filtered_data['CreatedOn'] = pd.to_datetime(
             filtered_data['CreatedOn'], format='%d-%m-%Y %H:%M', errors='coerce'
+        )
+        loaded_api_df['CreatedOn'] = pd.to_datetime(
+            loaded_api_df['CreatedOn'], format='%d-%m-%Y %H:%M', errors='coerce'
         )
 
         # Merge with budget data
@@ -93,16 +102,32 @@ def run_app():
             filtered_data['KickOffEventStart'], format='%d-%m-%Y %H:%M', errors='coerce'
         )
 
+
         # Add 'Days to Fixture' column
         today = pd.Timestamp.now()
-        filtered_data['Days to Fixture'] = (filtered_data['KickOffEventStart'] - today).dt.days.fillna(-1).astype(int)
+        filtered_data['Days to Fixture'] = (filtered_data['KickOffEventStart'] - today).dt.days
 
-        # Sidebar filters (unchanged from your original logic)
+        # Handle missing or invalid dates
+        filtered_data['Days to Fixture'] = filtered_data['Days to Fixture'].fillna(-1).astype(int)
+
+
+
+        # Sidebar filters
         st.sidebar.header("Filter Data by Date and Time")
-        date_range = st.sidebar.date_input("📅 Select Date Range", [], key="unique_sales_date_range")
-        start_time = st.sidebar.time_input("⏰ Start Time", datetime.now().replace(hour=0, minute=0).time(), key="unique_start_time")
-        end_time = st.sidebar.time_input("⏰ End Time", datetime.now().replace(hour=23, minute=59).time(), key="unique_end_time")
+        # date_range = st.sidebar.date_input("📅 Select Date Range", [])
+        date_range = st.sidebar.date_input(
+            "📅 Select Date Range", [], key="unique_sales_date_range"
+        )
+        start_time = st.sidebar.time_input(
+            "⏰ Start Time", value=datetime.now().replace(hour=0, minute=0, second=0).time(), key="unique_start_time"
+        )
+        end_time = st.sidebar.time_input(
+            "⏰ End Time", value=datetime.now().replace(hour=23, minute=59, second=59).time(), key="unique_end_time"
+        )
 
+
+
+        # Combine date and time inputs into full datetime objects
         if len(date_range) == 1:
             min_date = datetime.combine(date_range[0], start_time)
             max_date = datetime.combine(date_range[0], end_time)
@@ -112,30 +137,113 @@ def run_app():
         else:
             min_date, max_date = None, None
 
-        # Apply sidebar filters (unchanged)
+        valid_usernames = [user for user in specified_users if user in pd.unique(filtered_data['CreatedBy'])]
+        event_names = pd.unique(filtered_data['Fixture Name'])
+        event_categories = pd.unique(filtered_data['EventCompetition'])  # Adjust column name if necessary
+
+        # Add filters
+        selected_categories = st.sidebar.multiselect(
+            "Select Event Category",
+            options=event_categories,
+            default=None,
+            key="unique_selected_categories_key"
+        )
+
+        sale_location = pd.unique(filtered_data['SaleLocation'])
+        selected_events = st.sidebar.multiselect(
+            "🎫 Select Events",
+            options=event_names,
+            default=None,
+            key="unique_selected_events_key"
+        )
+
+        selected_sale_location = st.sidebar.multiselect(
+            "📍 Select SaleLocation",
+            options=sale_location,
+            default=None,
+            key="unique_selected_sale_location_key"
+        )
+
+        selected_users = st.sidebar.multiselect(
+            "👤 Select Execs",
+            options=valid_usernames,
+            default=None,
+            key="unique_selected_users_key"
+        )
+
+        paid_options = pd.unique(filtered_data['IsPaid'])
+        selected_paid = st.sidebar.selectbox(
+            "💰 Filter by IsPaid",
+            options=paid_options,
+            key="unique_selected_paid_key"
+        )
+
+        selected_paid = st.sidebar.selectbox("💰 Filter by IsPaid", options=paid_options)
+
+        # Apply date range filter with time
         if min_date and max_date:
             filtered_data = filtered_data[(filtered_data['CreatedOn'] >= min_date) & (filtered_data['CreatedOn'] <= max_date)]
 
-        # Other sidebar filters remain unchanged...
+        # Apply SaleLocation filter
+        if selected_sale_location:
+            filtered_data = filtered_data[filtered_data['SaleLocation'].isin(selected_sale_location)]
 
-        # Filter out "Platinum" and "Woolwich Restaurant" packages
+        # Apply user filter
+        if selected_users:
+            filtered_data = filtered_data[filtered_data['CreatedBy'].isin(selected_users)]
+
+        # Apply event category filter
+        if selected_categories:
+            filtered_data = filtered_data[filtered_data['EventCompetition'].isin(selected_categories)]
+
+        # Apply event filter
+        if selected_events:
+            filtered_data = filtered_data[filtered_data['Fixture Name'].isin(selected_events)]
+
+
+        # Dynamically update the discount options based on selected events
+        if selected_events:
+            available_discounts = pd.unique(filtered_data[filtered_data['Fixture Name'].isin(selected_events)]['Discount'])
+        else:
+            available_discounts = pd.unique(filtered_data['Discount'])
+
+        # Discount Filter with "Select All" option
+        select_all_discounts = st.sidebar.checkbox("Select All Discounts", value=True, key="unique_select_all_discounts_key")
+        if select_all_discounts:
+            selected_discount_options = available_discounts.tolist()
+        else:
+            selected_discount_options = st.sidebar.multiselect(
+                "🔖 Filter by Discount Type",
+                options=available_discounts,
+                default=available_discounts.tolist(),
+                key="unique_discount_multiselect_key"
+            )
+
+        # Apply discount filter
+        filtered_data = filtered_data[filtered_data['Discount'].isin(selected_discount_options)]
+
+
+       # Filter out "Platinum" and "Woolwich Restaurant" packages
         filtered_data_excluding_packages = filtered_data[
             ~filtered_data['Package Name'].isin(['Platinum', 'Woolwich Restaurant'])
         ]
 
-        # Static and dynamic totals
+        # Static total: Get accumulated sales from June 18th, 2024 till now, excluding specific packages
+        
         static_start_date = datetime(2024, 6, 18, 0, 0, 0)
         static_total = loaded_api_df[
             (loaded_api_df['CreatedOn'] >= static_start_date) &
             ~loaded_api_df['Package Name'].isin(['Platinum', 'Woolwich Restaurant'])
         ]['TotalPrice'].sum()
 
+
+        # Dynamic total: Affected by filters, excluding specific packages
         dynamic_total = filtered_data_excluding_packages['TotalPrice'].sum()
 
         # Define exclude keywords for filtering the Discount column
         exclude_keywords = ["credit", "voucher", "gift voucher", "discount", "pldl"]
         mask = ~filtered_data_excluding_packages['Discount'].str.contains('|'.join([re.escape(keyword) for keyword in exclude_keywords]), 
-                                                                            case=False, na=False)
+                                                                        case=False, na=False)
 
         # Filter data to include only rows without excluded keywords
         filtered_data_without_excluded_keywords = filtered_data_excluding_packages[mask]
@@ -144,13 +252,8 @@ def run_app():
         total_sold_by_other = filtered_data_without_excluded_keywords['DiscountValue'].sum()
         other_sales_total = dynamic_total + total_sold_by_other
 
-        # Display results (unchanged)
-        st.write("### 💼 Total Sales")
-        st.write(f"**Total Static Sales:** £{static_total:,.2f}")
-        st.write(f"**Total Filtered Sales (Dynamic):** £{dynamic_total:,.2f}")
-        st.write(f"**Total Sales with Other Payments:** £{other_sales_total:,.2f}")
-
-        # Rest of the calculations and display remain unchanged...
+        
+    
 
         # Display results
         if not filtered_data.empty:
@@ -439,10 +542,10 @@ def run_app():
 
             
 
-            else:
-                st.warning("⚠️ No data available for the selected filters.")
         else:
-            st.sidebar.warning("🚨 Please upload a file to proceed.")
+            st.warning("⚠️ No data available for the selected filters.")
+    else:
+        st.sidebar.warning("🚨 Please upload a file to proceed.")
 
 
 if __name__ == "__main__":
