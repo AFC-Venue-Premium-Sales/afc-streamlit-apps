@@ -57,6 +57,7 @@ def run_app():
         return
     
 
+
     # Display progress bar
     progress_bar = st.sidebar.progress(0)
     for progress in [10, 30, 50, 100]:

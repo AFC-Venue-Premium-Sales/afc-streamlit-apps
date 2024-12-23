@@ -42,36 +42,31 @@ if "redirected" not in st.session_state:
 if "dashboard_data" not in st.session_state:
     st.session_state["dashboard_data"] = None  # Store dashboard data
 
-if st.session_state["dashboard_data"] is None:
-    st.warning("⚠️ Data not loaded. Please refresh to load the latest data.")
-    st.stop()
 
-
+# Function to reload data
 def reload_data():
-    """Reloads data from `tjt_hosp_api` and updates the session state."""
+    """Reloads data from `tjt_hosp_api`."""
     logging.info("🔄 Reloading data from `tjt_hosp_api`...")
     try:
         import tjt_hosp_api
         importlib.reload(tjt_hosp_api)
 
-        # Fetch fresh data
+        # Verify data loading
         from tjt_hosp_api import filtered_df_without_seats
-
-        # Ensure data contains required columns
         required_columns = ['Fixture Name', 'Order Id', 'First Name']
-        missing_columns = [col for col in required_columns if col not in filtered_df_without_seats.columns]
+        missing_columns = [
+            col for col in required_columns if col not in filtered_df_without_seats.columns
+        ]
         if missing_columns:
             raise ValueError(f"Missing required columns: {missing_columns}")
 
-        # Store refreshed data in session state
-        st.session_state["dashboard_data"] = filtered_df_without_seats
+        # Success log
         logging.info(f"✅ Data successfully reloaded. Total rows: {len(filtered_df_without_seats)}")
         st.success("✅ Data refreshed successfully!")
+
     except Exception as e:
         logging.error(f"❌ Failed to reload data: {e}")
         st.error(f"❌ Failed to reload data: {e}")
-
-
 
 
 
@@ -149,14 +144,12 @@ else:
         format_func=lambda x: x.split(" ")[1],
     )
 
+    # Refresh Button
     if st.sidebar.button("🔄 Refresh Data"):
         logging.info("🔄 Refresh button clicked. Attempting to reload data...")
         reload_data()  # Call the reload function
         logging.info("🔄 Data refresh process triggered successfully.")
-        # Avoid clearing session state but force a reload
-        st.experimental_set_query_params(refresh="true")  # Add a query param to indicate refresh
-        st.stop()  # Stop execution to allow the app to reload naturally
-
+        st.stop()  # Replace deprecated st.rerun() with st.stop() to trigger a reload
 
 
     # Handle module choice dynamically

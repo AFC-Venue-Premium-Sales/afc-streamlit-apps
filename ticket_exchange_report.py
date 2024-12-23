@@ -83,6 +83,32 @@ def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
         logging.error(f"Error processing files: {e}")
         return None, None
 
+# Calculate metrics
+def calculate_metrics(matched_df, release_df, game_category):
+    try:
+        # 1) Total Tickets Released
+        total_tickets_released = release_df.shape[0]
+
+        # 2) Total Tickets Sold on Exchange
+        tickets_sold_on_exchange = release_df[release_df["matched_yn"] == "Y"].shape[0]
+
+        # 3) Value Generated from Tickets Sold
+        value_generated = release_df["ticket_sold_price"].sum()
+
+        # 4) Average Sale Price of Tickets Sold
+        avg_sale_price = release_df["ticket_sold_price"].mean()
+
+        metrics = {
+            "Total Tickets Released": total_tickets_released,
+            "Tickets Sold on Exchange": tickets_sold_on_exchange,
+            "Value Generated (Total)": f"£{value_generated:.2f}" if pd.notna(value_generated) else "N/A",
+            "Average Sale Price": f"£{avg_sale_price:.2f}" if pd.notna(avg_sale_price) else "N/A",
+        }
+        return metrics
+    except Exception as e:
+        logging.error(f"Error calculating metrics: {e}")
+        return {}
+
 # Main Streamlit App
 def run_app():
     st.title("AFC Hospitality Seat Tracker")
@@ -105,8 +131,17 @@ def run_app():
             matched_df, release_df = process_files(tx_sales_file, from_hosp_file, seat_list, game_category)
 
         if matched_df is not None and release_df is not None:
+            # Display tabs
+            st.markdown("### Matched Data")
             st.dataframe(matched_df, width=1200, height=500)
+            st.markdown("### From Hosp Results")
             st.dataframe(release_df, width=1200, height=500)
+
+            # Calculate and display metrics
+            st.markdown("### Metrics")
+            metrics = calculate_metrics(matched_df, release_df, game_category)
+            for metric, value in metrics.items():
+                st.metric(label=metric, value=value)
         else:
             st.error("No data to display.")
 
