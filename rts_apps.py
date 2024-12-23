@@ -60,14 +60,14 @@ def reload_data():
         if missing_columns:
             raise ValueError(f"Missing required columns: {missing_columns}")
 
-        # Success log
+        # Update the dashboard data
+        st.session_state["dashboard_data"] = filtered_df_without_seats
         logging.info(f"✅ Data successfully reloaded. Total rows: {len(filtered_df_without_seats)}")
         st.success("✅ Data refreshed successfully!")
 
     except Exception as e:
         logging.error(f"❌ Failed to reload data: {e}")
         st.error(f"❌ Failed to reload data: {e}")
-
 
 
 # App Header with a logo
@@ -119,7 +119,7 @@ if not st.session_state["authenticated"]:
                     st.session_state["redirected"] = True
                     logging.info("Login successful. Redirecting user...")
                     st.success("🎉 Login successful! Redirecting...")
-                    st.rerun()
+                    st.stop()
                 else:
                     logging.warning("Failed to acquire access token.")
                     st.error("❌ Failed to log in. Please try again.")
@@ -132,7 +132,6 @@ if not st.session_state["authenticated"]:
     else:
         if "code" not in query_params:
             logging.info("No authorization code in query parameters.")
-            # st.info("🔑 Please log in using the authentication portal.")
 
 
 else:
@@ -149,8 +148,12 @@ else:
         logging.info("🔄 Refresh button clicked. Attempting to reload data...")
         reload_data()  # Call the reload function
         logging.info("🔄 Data refresh process triggered successfully.")
-        st.stop()  # Replace deprecated st.rerun() with st.stop() to trigger a reload
+        st.stop()
 
+    # Check if data is loaded before rendering the dashboard
+    if st.session_state["dashboard_data"] is None:
+        st.warning("⚠️ Data not loaded. Please refresh to load the latest data.")
+        st.stop()
 
     # Handle module choice dynamically
     app_registry = {
@@ -171,29 +174,13 @@ else:
     else:
         st.error("❌ Invalid selection. Please choose a valid app option.")
 
-
-    # Initialize logout state
-    if "logout_triggered" not in st.session_state:
-        st.session_state["logout_triggered"] = False
-
-    if "logged_in" not in st.session_state:
-        st.session_state["logged_in"] = True  # Default state is logged in
-
     # Logout Button
     if st.sidebar.button("🔓 Logout"):
-        if not st.session_state["logout_triggered"]:
-            logging.info("User logged out.")
-            st.session_state["logout_triggered"] = True
-            st.session_state["logged_in"] = False  # Mark as logged out
-            st.session_state.clear()
-            st.success("✅ You have been logged out successfully!")
-            st.stop()
-
-   # Handle post-logout state
-    if not st.session_state.get("authenticated", True):
+        logging.info("User logged out.")
+        st.session_state.clear()
         st.warning("🔒 You have been logged out. Please log in again.")
         st.stop()
-        
+
 # Footer Section
 st.markdown("---")
 st.markdown("""
