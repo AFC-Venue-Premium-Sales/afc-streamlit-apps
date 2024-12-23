@@ -45,24 +45,29 @@ if "dashboard_data" not in st.session_state:
 
 # Function to reload data
 def reload_data():
-    """Reloads data from `tjt_hosp_api`."""
-    logging.info("🔄 Reloading data from `tjt_hosp_api`...")
+    """Reloads data from tjt_hosp_api."""
+    logging.info("🔄 Reloading data from tjt_hosp_api...")
     try:
         import tjt_hosp_api
         importlib.reload(tjt_hosp_api)
 
         # Verify data loading
         from tjt_hosp_api import filtered_df_without_seats
-        required_columns = ['Fixture Name', 'Order Id', 'First Name']
+        required_columns = ['Fixture Name', 'Order Id', 'First Name', 'CreatedOn']  # Ensure 'CreatedOn' exists for filtering
         missing_columns = [
             col for col in required_columns if col not in filtered_df_without_seats.columns
         ]
         if missing_columns:
             raise ValueError(f"Missing required columns: {missing_columns}")
 
-        # Update the dashboard data
+        # Update session state data
         st.session_state["dashboard_data"] = filtered_df_without_seats
         logging.info(f"✅ Data successfully reloaded. Total rows: {len(filtered_df_without_seats)}")
+
+        # Clear cached filtered data
+        if "filtered_data" in st.session_state:
+            del st.session_state["filtered_data"]
+
         st.success("✅ Data refreshed successfully!")
     except Exception as e:
         logging.error(f"❌ Failed to reload data: {e}")
