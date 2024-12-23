@@ -201,12 +201,13 @@ import pandas as pd
 # Define file paths
 file_path = '/Users/cmunthali/Documents/PYTHON/APPS/sql_tx_tt.xlsx'
 file_path_1 = '/Users/cmunthali/Documents/PYTHON/APPS/HOSPITALITY TICKET RELEASES SEASON 24-25.xlsx'
-output_file = '/Users/cmunthali/Documents/PYTHON/APPS/updated_data2.xlsx'
+file_path_2 = '/Users/cmunthali/Documents/PYTHON/APPS/seat_list_game_cat.xlsx'
+output_file = '/Users/cmunthali/Documents/PYTHON/APPS/tx_tt_processed.xlsx'
 
 # Load data
 tx_sales_data = pd.read_excel(file_path, sheet_name="TX Sales Data")
-seat_list = pd.read_excel(file_path, sheet_name="Seat List")
-game_category = pd.read_excel(file_path, sheet_name="Game Category")
+seat_list = pd.read_excel(file_path_2, sheet_name="Seat List")  # Load from new file
+game_category = pd.read_excel(file_path_2, sheet_name="Game Category")  # Load from new file
 
 # Load all tabs from file_path_1
 try:
@@ -326,6 +327,7 @@ with pd.ExcelWriter(output_file, engine="openpyxl") as writer:
     missing_matches_df.to_excel(writer, sheet_name="Missing Matches", index=False)
 
 print(f"Updated data saved to {output_file}")
+
 
 
 

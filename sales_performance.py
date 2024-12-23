@@ -56,8 +56,6 @@ def run_app():
         st.warning("⚠️ No data available. Please refresh to load the latest data.")
         return
     
-    # Data successfully loaded
-    st.sidebar.success("✅ Data retrieved successfully.")
 
     # Display progress bar
     progress_bar = st.sidebar.progress(0)
