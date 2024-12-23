@@ -6,7 +6,7 @@ import logging
 import importlib
 import sales_performance
 import user_performance_api
-import ticket_exchange_report  # Import the new module
+import ticket_exchange_report
 
 # Configure logging
 logging.basicConfig(
@@ -32,26 +32,15 @@ app = ConfidentialClientApplication(
     authority=AUTHORITY
 )
 
-# Initialize session states
-if "authenticated" not in st.session_state:
-    st.session_state["authenticated"] = False
-if "access_token" not in st.session_state:
-    st.session_state["access_token"] = None
-if "redirected" not in st.session_state:
-    st.session_state["redirected"] = False
-if "dashboard_data" not in st.session_state:
-    st.session_state["dashboard_data"] = None  # Store dashboard data
-
-
 # Function to reload data
 def reload_data():
-    """Reloads data from `tjt_hosp_api`."""
+    """Reloads data dynamically from `tjt_hosp_api`."""
     logging.info("🔄 Reloading data from `tjt_hosp_api`...")
     try:
         import tjt_hosp_api
         importlib.reload(tjt_hosp_api)
 
-        # Verify data loading
+        # Load and return the data
         from tjt_hosp_api import filtered_df_without_seats
         required_columns = ['Fixture Name', 'Order Id', 'First Name']
         missing_columns = [
@@ -60,13 +49,12 @@ def reload_data():
         if missing_columns:
             raise ValueError(f"Missing required columns: {missing_columns}")
 
-        # Update the dashboard data
-        st.session_state["dashboard_data"] = filtered_df_without_seats
         logging.info(f"✅ Data successfully reloaded. Total rows: {len(filtered_df_without_seats)}")
-        st.success("✅ Data refreshed successfully!")
+        return filtered_df_without_seats
     except Exception as e:
         logging.error(f"❌ Failed to reload data: {e}")
         st.error(f"❌ Failed to reload data: {e}")
+        return None
 
 
 # App Header with a logo
@@ -75,6 +63,9 @@ st.title("🏟️ AFC Venue - MBM Hospitality")
 st.markdown("---")  # A horizontal line for better UI
 
 # Handle login
+if "authenticated" not in st.session_state:
+    st.session_state["authenticated"] = False
+
 if not st.session_state["authenticated"]:
     # Display Welcome Message
     st.markdown("""
@@ -113,30 +104,16 @@ if not st.session_state["authenticated"]:
                     redirect_uri=REDIRECT_URI
                 )
                 if "access_token" in result:
-                    st.session_state["access_token"] = result["access_token"]
                     st.session_state["authenticated"] = True
-                    st.session_state["redirected"] = True
-                    logging.info("Login successful. Redirecting user...")
-
-                    # Preload data after login
-                    logging.info("🔄 Preloading data after login...")
-                    reload_data()
-
-                    st.success("🎉 Login successful! Redirecting...")
+                    st.success("🎉 Login successful! Reloading app...")
                     st.rerun()
                 else:
-                    logging.warning("Failed to acquire access token.")
                     st.error("❌ Failed to log in. Please try again.")
             except Exception as e:
                 logging.error(f"An error occurred during login: {e}")
-                if "invalid_grant" in str(e):
-                    st.error("❌ The authorization code is invalid or expired. Please log in again.")
-                else:
-                    st.error(f"❌ An unexpected error occurred: {str(e)}")
+                st.error(f"❌ An unexpected error occurred: {str(e)}")
     else:
-        if "code" not in query_params:
-            logging.info("No authorization code in query parameters.")
-
+        logging.info("No authorization code in query parameters.")
 
 else:
     # Sidebar Navigation
@@ -149,34 +126,32 @@ else:
 
     # Refresh Button
     if st.sidebar.button("🔄 Refresh Data"):
-        logging.info("🔄 Refresh button clicked. Attempting to reload data...")
-        reload_data()  # Call the reload function
-        logging.info("🔄 Data refresh process triggered successfully.")
-
-    # Handle "Ticket Exchange Report" independently
-    if app_choice == "📄 Ticket Exchange Report":
-        logging.info("📄 Loading Ticket Exchange Report independently...")
-        ticket_exchange_report.run_app()
+        st.write("🔄 Reloading data...")
+        data = reload_data()
     else:
-        # Check if data is loaded before rendering the dashboard
-        if st.session_state["dashboard_data"] is None:
-            st.warning("⚠️ Data not loaded. Please refresh to load the latest data.")
-            st.stop()
+        data = reload_data()
 
-        # Handle other modules dynamically
-        app_registry = {
-            "📊 Sales Performance": sales_performance.run_app,
-            "📈 User Performance": user_performance_api.run_app,
-        }
-        app_function = app_registry.get(app_choice)
-        if app_function:
-            try:
-                with st.spinner("🔄 Loading..."):
-                    app_function()
-                st.success(f"✅ {app_choice} app loaded successfully!")
-            except Exception as e:
-                st.error(f"❌ An error occurred while loading the app: {e}")
-                logging.error(f"Error loading app '{app_choice}': {e}")
+    if data is not None and not data.empty:
+        if app_choice == "📄 Ticket Exchange Report":
+            logging.info("📄 Loading Ticket Exchange Report independently...")
+            ticket_exchange_report.run_app()
+        else:
+            # Handle other modules dynamically
+            app_registry = {
+                "📊 Sales Performance": sales_performance.run_app,
+                "📈 User Performance": user_performance_api.run_app,
+            }
+            app_function = app_registry.get(app_choice)
+            if app_function:
+                try:
+                    with st.spinner("🔄 Loading..."):
+                        app_function(data)
+                    st.success(f"✅ {app_choice} app loaded successfully!")
+                except Exception as e:
+                    st.error(f"❌ An error occurred while loading the app: {e}")
+                    logging.error(f"Error loading app '{app_choice}': {e}")
+    else:
+        st.warning("⚠️ Data not loaded. Please refresh to load the latest data.")
 
     # Logout Button
     if st.sidebar.button("🔓 Logout"):

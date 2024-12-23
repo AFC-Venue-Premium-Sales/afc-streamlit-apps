@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 log_stream = StringIO()
 logging.basicConfig(stream=log_stream, level=logging.INFO, format="%(asctime)s - %(message)s")
 
-# Helper function to adjust block names
+# Helper function to adjust block namess
 def adjust_block(block):
     if isinstance(block, str) and block.startswith("C") and block[1:].isdigit():
         block_number = int(block[1:])
@@ -54,7 +54,6 @@ def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
 
     # Match TX Sales with Seat List and Game Category
     matched_data = []
-    missing_matches = []
     release_data = []
 
     for _, row in tx_sales_data.iterrows():
@@ -76,10 +75,6 @@ def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
                 row["seat_value"] = matching_game["seat_value"].values[0]
                 row["value_generated"] = row["ticket_sold_price"] - matching_game["seat_value"].values[0]
                 matched_data.append(row)
-            else:
-                missing_matches.append(row.to_dict())
-        else:
-            missing_matches.append(row.to_dict())
 
     for _, row in from_hosp_combined.iterrows():
         sales_match = tx_sales_data[
@@ -92,12 +87,10 @@ def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
         row["ticket_sold_price"] = sales_match["ticket_sold_price"].values[0] if not sales_match.empty else None
         release_data.append(row.to_dict())
 
-    # Only keep rows with valid `seat_value` and `value_generated` in matched_df
-    matched_df = pd.DataFrame(matched_data).dropna(subset=["seat_value", "value_generated"]).reset_index(drop=True)
+    matched_df = pd.DataFrame(matched_data).reset_index(drop=True)
     release_df = pd.DataFrame(release_data).pipe(lambda df: df.loc[:, ~df.columns.duplicated()])
-    missing_df = pd.DataFrame(missing_matches).reset_index(drop=True)
 
-    return matched_df, release_df, missing_df
+    return matched_df, release_df
 
 # Main Streamlit App
 def run_app():
@@ -118,44 +111,62 @@ def run_app():
 
     if tx_sales_file and from_hosp_file:
         with st.spinner("Processing files..."):
-            matched_df, release_df, missing_df = process_files(tx_sales_file, from_hosp_file, seat_list, game_category)
+            matched_df, release_df = process_files(tx_sales_file, from_hosp_file, seat_list, game_category)
 
         if matched_df is not None and release_df is not None:
-            # Filters
             st.sidebar.markdown("### Filters")
             game_filter = st.sidebar.multiselect("Filter by Game Name", matched_df["game_name"].unique())
+            crc_filter = st.sidebar.multiselect("Filter by CRC Description", matched_df["crc_desc"].unique())
+
             if game_filter:
                 matched_df = matched_df[matched_df["game_name"].isin(game_filter)]
                 release_df = release_df[release_df["game_name"].isin(game_filter)]
-                missing_df = missing_df[missing_df["game_name"].isin(game_filter)]
+            if crc_filter:
+                matched_df = matched_df[matched_df["crc_desc"].isin(crc_filter)]
+                release_df = release_df[release_df["crc_desc"].isin(crc_filter)]
 
-            # Matched Data
             st.markdown("### Matched Data From Pre-Assigned Club Level Seats")
-            st.write(f"Number of matched rows: {len(matched_df)}")
+            st.write(f"**Number of Matched Rows:** {len(matched_df)}")
             st.dataframe(matched_df)
-            st.download_button("Download Matched Data", matched_df.to_csv(index=False), "matched_data.csv")
+            st.download_button(
+                label="📥 Download Matched Data From Pre-Assigned Club Level Seats",
+                data=matched_df.to_csv(index=False),
+                file_name="matched_data_club_level.csv",
+                mime="text/csv",
+            )
 
-            # Release Data
             st.markdown("### Matched Data from Hospitality Ticket Releases")
-            st.write(f"Number of matched rows: {len(release_df)}")
+            st.write(f"**Number of Matched Rows:** {len(release_df)}")
             st.dataframe(release_df)
-            st.download_button("Download Release Data", release_df.to_csv(index=False), "release_data.csv")
+            st.download_button(
+                label="📥 Download Matched Data from Hospitality Ticket Releases",
+                data=release_df.to_csv(index=False),
+                file_name="matched_data_hosp_releases.csv",
+                mime="text/csv",
+            )
 
-            # Missing Matches
-            st.markdown("### Missing Matches")
-            st.write(f"Number of unmatched rows: {len(missing_df)}")
-            st.dataframe(missing_df)
-            st.download_button("Download Missing Matches", missing_df.to_csv(index=False), "missing_matches.csv")
-
-            # Metrics
             st.sidebar.markdown("### Metrics")
             total_matched = len(matched_df)
             avg_value_generated = matched_df["value_generated"].mean()
             total_value_generated = matched_df["value_generated"].sum()
+            tickets_by_transfer = matched_df["transfer_type"].value_counts().to_dict()
 
             st.sidebar.metric("Total Matched Rows", total_matched)
             st.sidebar.metric("Avg Value Generated", f"£{avg_value_generated:.2f}")
             st.sidebar.metric("Total Value Generated", f"£{total_value_generated:.2f}")
+            st.sidebar.markdown("### Tickets by Transfer Type")
+            for key, value in tickets_by_transfer.items():
+                st.sidebar.metric(f"{key}", value)
+
+            st.markdown("### Tickets Sold on Exchange")
+            fig, ax = plt.subplots()
+            exchange_data = matched_df[matched_df["transfer_type"] == "Ticket Exchange"]
+            exchange_data.groupby("game_name")["value_generated"].sum().plot(kind="bar", ax=ax)
+            ax.set_title("Value Generated by Ticket Exchange")
+            st.pyplot(fig)
+
+            st.markdown("### Debug Logs")
+            st.text(log_stream.getvalue())
 
 if __name__ == "__main__":
     run_app()
