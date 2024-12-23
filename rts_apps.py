@@ -118,7 +118,7 @@ if not st.session_state["authenticated"]:
                     st.session_state["redirected"] = True
                     logging.info("Login successful. Redirecting user...")
                     st.success("🎉 Login successful! Redirecting...")
-                    st.stop()
+                    st.rerun()
                 else:
                     logging.warning("Failed to acquire access token.")
                     st.error("❌ Failed to log in. Please try again.")

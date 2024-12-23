@@ -85,12 +85,14 @@ def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
         ]
         row["matched_yn"] = "Y" if not sales_match.empty else "N"
         row["ticket_sold_price"] = sales_match["ticket_sold_price"].values[0] if not sales_match.empty else None
-        release_data.append(row)
+        release_data.append(row.to_dict())
 
-    matched_df = pd.DataFrame(matched_data)
-    release_df = pd.DataFrame(release_data)
+    # Create DataFrames and handle duplicate columns
+    matched_df = pd.DataFrame(matched_data).reset_index(drop=True)
+    release_df = pd.DataFrame(release_data).pipe(lambda df: df.loc[:, ~df.columns.duplicated()])
 
     return matched_df, release_df
+
 
 # Main Streamlit App
 def run_app():
