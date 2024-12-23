@@ -43,10 +43,10 @@ if "dashboard_data" not in st.session_state:
     st.session_state["dashboard_data"] = None  # Store dashboard data
 
 
-# Function to reload dataq
+# Function to reload data
 def reload_data():
     """Reloads data from `tjt_hosp_api`."""
-    logging.info("🔄 Reloading data from `tjt_hosp_api`....")
+    logging.info("🔄 Reloading data from `tjt_hosp_api`...")
     try:
         import tjt_hosp_api
         importlib.reload(tjt_hosp_api)
@@ -64,6 +64,7 @@ def reload_data():
         st.session_state["dashboard_data"] = filtered_df_without_seats
         logging.info(f"✅ Data successfully reloaded. Total rows: {len(filtered_df_without_seats)}")
         st.success("✅ Data refreshed successfully!")
+
     except Exception as e:
         logging.error(f"❌ Failed to reload data: {e}")
         st.error(f"❌ Failed to reload data: {e}")
@@ -118,6 +119,7 @@ if not st.session_state["authenticated"]:
                     st.session_state["redirected"] = True
                     logging.info("Login successful. Redirecting user...")
                     st.success("🎉 Login successful! Redirecting...")
+                    st.rerun()
                     st.stop()
                 else:
                     logging.warning("Failed to acquire access token.")
@@ -134,11 +136,6 @@ if not st.session_state["authenticated"]:
 
 
 else:
-    # Load data only once if not already loaded
-    if st.session_state["dashboard_data"] is None:
-        logging.info("🔄 Initial data load...")
-        reload_data()
-
     # Sidebar Navigation
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio(
@@ -152,6 +149,7 @@ else:
         logging.info("🔄 Refresh button clicked. Attempting to reload data...")
         reload_data()  # Call the reload function
         logging.info("🔄 Data refresh process triggered successfully.")
+        st.stop()
 
     # Check if data is loaded before rendering the dashboard
     if st.session_state["dashboard_data"] is None:
