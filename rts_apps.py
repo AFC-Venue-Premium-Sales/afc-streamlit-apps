@@ -134,11 +134,6 @@ if not st.session_state["authenticated"]:
 
 
 else:
-    # Load data only once if not already loaded
-    if st.session_state["dashboard_data"] is None:
-        logging.info("🔄 Initial data load...")
-        reload_data()
-
     # Sidebar Navigation
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio(
@@ -153,8 +148,8 @@ else:
         reload_data()  # Call the reload function
         logging.info("🔄 Data refresh process triggered successfully.")
 
-    # Check if data is loaded before rendering the dashboard
-    if st.session_state["dashboard_data"] is None:
+    # Check if data is loaded before rendering the dashboard (excluding Ticket Exchange Report)
+    if app_choice != "📄 Ticket Exchange Report" and st.session_state["dashboard_data"] is None:
         st.warning("⚠️ Data not loaded. Please refresh to load the latest data.")
         st.stop()
 
@@ -162,7 +157,7 @@ else:
     app_registry = {
         "📊 Sales Performance": sales_performance.run_app,
         "📈 User Performance": user_performance_api.run_app,
-        "📄 Ticket Exchange Report": ticket_exchange_report.run_app
+        "📄 Ticket Exchange Report": ticket_exchange_report.run_app  # Independent logic
     }
 
     app_function = app_registry.get(app_choice)
