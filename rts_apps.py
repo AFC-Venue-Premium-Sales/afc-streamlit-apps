@@ -61,8 +61,8 @@ def reload_data():
         if missing_columns:
             raise ValueError(f"Missing required columns: {missing_columns}")
 
-        st.session_state["dashboard_data"] = filtered_df_without_seats
         logging.info("Data successfully reloaded.")
+        st.success("✅ Data refreshed successfully!")
 
     except Exception as e:
         logging.error(f"Failed to reload data: {e}")
@@ -79,7 +79,7 @@ if not st.session_state["authenticated"]:
     # Display Welcome Message
     st.markdown("""
     ### 👋 Welcome to the Venue Hospitality App!
-    **Log in using AFC credentials to access your dashboard.**
+    **Log in using AFC credentials to access the dashboards.**
     """)
 
     # Generate the Login URL
@@ -102,8 +102,9 @@ if not st.session_state["authenticated"]:
 
     # Process login by checking query parameters for the authorization code
     query_params = st.experimental_get_query_params()
-    if "code" in query_params and not st.session_state["redirected"]:
+    if "code" in query_params and not st.session_state.get("redirected", False):
         auth_code = query_params["code"][0]
+        logging.info("Authorization code received. Initiating login process...")
         with st.spinner("🔄 Logging you in..."):
             try:
                 result = app.acquire_token_by_authorization_code(
@@ -115,12 +116,22 @@ if not st.session_state["authenticated"]:
                     st.session_state["access_token"] = result["access_token"]
                     st.session_state["authenticated"] = True
                     st.session_state["redirected"] = True
+                    logging.info("Login successful. Redirecting user...")
                     st.success("🎉 Login successful! Redirecting...")
                     st.rerun()
                 else:
+                    logging.warning("Failed to acquire access token.")
                     st.error("❌ Failed to log in. Please try again.")
             except Exception as e:
-                st.error(f"❌ An error occurred: {str(e)}")
+                logging.error(f"An error occurred during login: {e}")
+                if "invalid_grant" in str(e):
+                    st.error("❌ The authorization code is invalid or expired. Please log in again.")
+                else:
+                    st.error(f"❌ An unexpected error occurred: {str(e)}")
+    else:
+        if "code" not in query_params:
+            logging.info("No authorization code in query parameters.")
+            st.info("🔑 Please log in using the authentication portal.")
 
 
 else:
@@ -138,20 +149,47 @@ else:
         reload_data()  # Call the reload function
         st.rerun()  # Trigger a full app rerun after reload
 
-    # Handle module choice
-    with st.spinner("🔄 Loading..."):
-        if app_choice == "📊 Sales Performance":
-            sales_performance.run_app()
-        elif app_choice == "📈 User Performance":
-            user_performance_api.run_app()
-        elif app_choice == "📄 Ticket Exchange Report":
-            ticket_exchange_report.run_app()
+    # Handle module choice dynamically
+    app_registry = {
+        "📊 Sales Performance": sales_performance.run_app,
+        "📈 User Performance": user_performance_api.run_app,
+        "📄 Ticket Exchange Report": ticket_exchange_report.run_app
+    }
+
+    app_function = app_registry.get(app_choice)
+    if app_function:
+        try:
+            with st.spinner("🔄 Loading..."):
+                app_function()
+            st.success(f"✅ {app_choice} app loaded successfully!")
+        except Exception as e:
+            st.error(f"❌ An error occurred while loading the app: {e}")
+            logging.error(f"Error loading app '{app_choice}': {e}")
+    else:
+        st.error("❌ Invalid selection. Please choose a valid app option.")
+
+
+    # Initialize logout state
+    if "logout_triggered" not in st.session_state:
+        st.session_state["logout_triggered"] = False
+
+    if "logged_in" not in st.session_state:
+        st.session_state["logged_in"] = True  # Default state is logged in
 
     # Logout Button
     if st.sidebar.button("🔓 Logout"):
-        logging.info("User logged out.")
-        st.session_state.clear()
-        st.success("✅ You have been logged out successfully!")
+        if not st.session_state["logout_triggered"]:
+            logging.info("User logged out.")
+            st.session_state["logout_triggered"] = True
+            st.session_state["logged_in"] = False  # Mark as logged out
+            st.success("✅ You have been logged out successfully!")
+            st.rerun()  # Trigger a full rerun
+
+    # Handle post-logout state
+    if st.session_state.get("logout_triggered", False):
+        st.session_state.clear()  # Clear session state
+        st.session_state["logout_triggered"] = True  # Maintain logout state to avoid flicker
+        st.stop()  # Stop further execution to avoid login checks
 
 # Footer Section
 st.markdown("---")

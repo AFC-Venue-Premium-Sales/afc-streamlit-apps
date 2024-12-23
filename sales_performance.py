@@ -6,20 +6,9 @@ from tjt_hosp_api import filtered_df_without_seats
 import re
 
 
-def refresh_data():
-    """Fetch the latest data for Sales Performance."""
-    try:
-        with st.spinner("Fetching latest data..."):
-            # Dynamically fetch the latest data
-            updated_data = filtered_df_without_seats
-            st.session_state["sales_data"] = updated_data  # Reload sales-specific data
-            st.success("✅ Sales performance data refreshed successfully!")
-    except Exception as e:
-        st.error(f"❌ Failed to refresh sales performance data: {str(e)}")
-
-
 
 def run_app():
+    
     specified_users = ['dcoppin', 'Jedwards', 'jedwards', 'bgardiner', 'BenT', 'jmurphy', 'ayildirim',
                        'MeganS', 'BethNW', 'HayleyA', 'LucyB', 'Conor', 'SavR', 'MillieS', 'dmontague']
     
@@ -62,8 +51,18 @@ def run_app():
 
     # Dynamically fetch hospitality data on app start
     loaded_api_df = filtered_df_without_seats
-       
-  
+    
+    if loaded_api_df is None or loaded_api_df.empty:
+        st.warning("⚠️ No data available. Please refresh to load the latest data.")
+        return
+    
+    # Data successfully loaded
+    st.sidebar.success("✅ Data retrieved successfully.")
+
+    # Display progress bar
+    progress_bar = st.sidebar.progress(0)
+    for progress in [10, 30, 50, 100]:
+        progress_bar.progress(progress)
 
 
     if loaded_api_df is not None:
