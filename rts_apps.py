@@ -118,8 +118,12 @@ if not st.session_state["authenticated"]:
                     st.session_state["authenticated"] = True
                     st.session_state["redirected"] = True
                     logging.info("Login successful. Redirecting user...")
+
+                    # Preload data after login
+                    logging.info("🔄 Preloading data after login...")
+                    reload_data()
+
                     st.success("🎉 Login successful! Redirecting...")
-                    st.rerun()
                     st.stop()
                 else:
                     logging.warning("Failed to acquire access token.")
@@ -133,6 +137,7 @@ if not st.session_state["authenticated"]:
     else:
         if "code" not in query_params:
             logging.info("No authorization code in query parameters.")
+
 
 
 else:

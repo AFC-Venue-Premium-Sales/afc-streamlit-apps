@@ -17,6 +17,14 @@ def adjust_block(block):
         return f"{block_number} Club level"
     return block
 
+# Preprocess DataFrame
+def preprocess_dataframe(df):
+    """Preprocess DataFrame by stripping whitespace and standardizing block formatting."""
+    df = df.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+    if "block" in df.columns:
+        df["block"] = df["block"].apply(adjust_block)
+    return df
+
 # Load Seat List and Game Category
 def load_seat_list_and_game_category(path):
     """Load the Seat List and Game Category sheets."""
@@ -25,7 +33,7 @@ def load_seat_list_and_game_category(path):
     game_category = pd.read_excel(path, sheet_name="Game Category")
     seat_list.columns = seat_list.columns.str.strip().str.lower()
     game_category.columns = game_category.columns.str.strip().str.lower()
-    seat_list["block"] = seat_list["block"].apply(adjust_block)
+    seat_list = preprocess_dataframe(seat_list)
     game_category["seat_value"] = pd.to_numeric(game_category["seat_value"], errors="coerce")
     logging.info("Seat List and Game Category loaded successfully.")
     return seat_list, game_category
@@ -37,23 +45,18 @@ def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
         logging.info("Loading TX Sales Data...")
         tx_sales_data = pd.read_excel(tx_sales_file, sheet_name="TX Sales Data")
         tx_sales_data.columns = tx_sales_data.columns.str.strip().str.replace(" ", "_").str.lower()
-        tx_sales_data["block"] = tx_sales_data["block"].apply(adjust_block)
+        tx_sales_data = preprocess_dataframe(tx_sales_data)
         tx_sales_data["ticket_sold_price"] = pd.to_numeric(tx_sales_data["ticket_sold_price"], errors="coerce")
         logging.info(f"TX Sales Data loaded: {tx_sales_data.shape[0]} rows, {tx_sales_data.shape[1]} columns")
-
-        # Check for duplicates in TX Sales Data
-        duplicates_tx_sales = tx_sales_data[tx_sales_data.duplicated()]
-        if not duplicates_tx_sales.empty:
-            logging.warning(f"TX Sales Data contains duplicates: {duplicates_tx_sales.shape[0]} rows")
 
         logging.info("Loading From Hosp Data...")
         from_hosp = pd.read_excel(from_hosp_file, sheet_name=None)
         from_hosp_combined = pd.concat(from_hosp.values(), ignore_index=True)
         from_hosp_combined.columns = from_hosp_combined.columns.str.strip().str.replace(" ", "_").str.lower()
-        from_hosp_combined["block"] = from_hosp_combined["block"].apply(adjust_block)
+        from_hosp_combined = preprocess_dataframe(from_hosp_combined)
         logging.info(f"From Hosp Data combined: {from_hosp_combined.shape[0]} rows, {from_hosp_combined.shape[1]} columns")
 
-        # Check for duplicates in From Hosp Data
+        # Check for duplicates
         duplicates_from_hosp = from_hosp_combined[from_hosp_combined.duplicated()]
         if not duplicates_from_hosp.empty:
             logging.warning(f"From Hosp Data contains duplicates: {duplicates_from_hosp.shape[0]} rows")
@@ -91,9 +94,14 @@ def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
                 (tx_sales_data["row"] == row["row"]) &
                 (tx_sales_data["seat"] == row["seat"])
             ]
-            row["matched_yn"] = "Y" if not sales_match.empty else "N"
-            row["ticket_sold_price"] = sales_match["ticket_sold_price"].values[0] if not sales_match.empty else None
-            release_data.append(row)
+            row_dict = row.to_dict()
+            row_dict["matched_yn"] = "Y" if not sales_match.empty else "N"
+            row_dict["ticket_sold_price"] = sales_match["ticket_sold_price"].values[0] if not sales_match.empty else None
+            release_data.append(row_dict)
+
+        # Ensure consistent columns in release_data
+        all_columns = set().union(*(row.keys() for row in release_data))
+        release_data = [{col: row.get(col, None) for col in all_columns} for row in release_data]
 
         matched_df = pd.DataFrame(matched_data).reset_index(drop=True)
         release_df = pd.DataFrame(release_data).reset_index(drop=True)
@@ -137,7 +145,6 @@ def run_app():
             # Display debug logs
             st.markdown("### Debug Logs")
             st.text(log_stream.getvalue())
-
         else:
             st.error("No data to display.")
 
