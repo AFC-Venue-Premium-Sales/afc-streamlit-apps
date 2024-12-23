@@ -45,15 +45,14 @@ if "dashboard_data" not in st.session_state:
 
 # Function to reload data
 def reload_data():
-    """Reloads data from `tjt_hosp_api` and updates the session state."""
-    logging.info("Reloading data from `tjt_hosp_api`...")
+    """Reloads data from `tjt_hosp_api`."""
+    logging.info("🔄 Reloading data from `tjt_hosp_api`...")
     try:
         import tjt_hosp_api
         importlib.reload(tjt_hosp_api)
 
-        # Fetch fresh data
+        # Verify data loading
         from tjt_hosp_api import filtered_df_without_seats
-
         required_columns = ['Fixture Name', 'Order Id', 'First Name']
         missing_columns = [
             col for col in required_columns if col not in filtered_df_without_seats.columns
@@ -61,12 +60,14 @@ def reload_data():
         if missing_columns:
             raise ValueError(f"Missing required columns: {missing_columns}")
 
-        logging.info("Data successfully reloaded.")
+        # Success log
+        logging.info(f"✅ Data successfully reloaded. Total rows: {len(filtered_df_without_seats)}")
         st.success("✅ Data refreshed successfully!")
 
     except Exception as e:
-        logging.error(f"Failed to reload data: {e}")
+        logging.error(f"❌ Failed to reload data: {e}")
         st.error(f"❌ Failed to reload data: {e}")
+
 
 
 # App Header with a logo
@@ -101,7 +102,7 @@ if not st.session_state["authenticated"]:
     """, unsafe_allow_html=True)
 
     # Process login by checking query parameters for the authorization code
-    query_params = st.experimental_get_query_params()
+    query_params = st.query_params
     if "code" in query_params and not st.session_state.get("redirected", False):
         auth_code = query_params["code"][0]
         logging.info("Authorization code received. Initiating login process...")
@@ -131,7 +132,7 @@ if not st.session_state["authenticated"]:
     else:
         if "code" not in query_params:
             logging.info("No authorization code in query parameters.")
-            st.info("🔑 Please log in using the authentication portal.")
+            # st.info("🔑 Please log in using the authentication portal.")
 
 
 else:
@@ -145,9 +146,11 @@ else:
 
     # Refresh Button
     if st.sidebar.button("🔄 Refresh Data"):
-        logging.info("🔄 Refreshing data...")
+        logging.info("🔄 Refresh button clicked. Attempting to reload data...")
         reload_data()  # Call the reload function
-        st.rerun()  # Trigger a full app rerun after reload
+        logging.info("🔄 Data refresh process triggered successfully.")
+        st.stop()  # Replace deprecated st.rerun() with st.stop() to trigger a reload
+
 
     # Handle module choice dynamically
     app_registry = {
@@ -182,15 +185,15 @@ else:
             logging.info("User logged out.")
             st.session_state["logout_triggered"] = True
             st.session_state["logged_in"] = False  # Mark as logged out
+            st.session_state.clear()
             st.success("✅ You have been logged out successfully!")
-            st.rerun()  # Trigger a full rerun
+            st.stop()
 
-    # Handle post-logout state
-    if st.session_state.get("logout_triggered", False):
-        st.session_state.clear()  # Clear session state
-        st.session_state["logout_triggered"] = True  # Maintain logout state to avoid flicker
-        st.stop()  # Stop further execution to avoid login checks
-
+   # Handle post-logout state
+    if not st.session_state.get("authenticated", True):
+        st.warning("🔒 You have been logged out. Please log in again.")
+        st.stop()
+        
 # Footer Section
 st.markdown("---")
 st.markdown("""
