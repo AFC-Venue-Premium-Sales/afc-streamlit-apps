@@ -102,7 +102,7 @@ if not st.session_state["authenticated"]:
     """, unsafe_allow_html=True)
 
     # Process login by checking query parameters for the authorization code
-    query_params = st.query_params
+    query_params = st.experimental_get_query_params()
     if "code" in query_params and not st.session_state.get("redirected", False):
         auth_code = query_params["code"][0]
         logging.info("Authorization code received. Initiating login process...")
