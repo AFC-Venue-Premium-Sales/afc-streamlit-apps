@@ -64,7 +64,6 @@ def reload_data():
         st.session_state["dashboard_data"] = filtered_df_without_seats
         logging.info(f"✅ Data successfully reloaded. Total rows: {len(filtered_df_without_seats)}")
         st.success("✅ Data refreshed successfully!")
-
     except Exception as e:
         logging.error(f"❌ Failed to reload data: {e}")
         st.error(f"❌ Failed to reload data: {e}")
@@ -118,11 +117,6 @@ if not st.session_state["authenticated"]:
                     st.session_state["authenticated"] = True
                     st.session_state["redirected"] = True
                     logging.info("Login successful. Redirecting user...")
-
-                    # Preload data after login
-                    logging.info("🔄 Preloading data after login...")
-                    reload_data()
-
                     st.success("🎉 Login successful! Redirecting...")
                     st.stop()
                 else:
@@ -139,8 +133,12 @@ if not st.session_state["authenticated"]:
             logging.info("No authorization code in query parameters.")
 
 
-
 else:
+    # Load data only once if not already loaded
+    if st.session_state["dashboard_data"] is None:
+        logging.info("🔄 Initial data load...")
+        reload_data()
+
     # Sidebar Navigation
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio(
@@ -154,7 +152,6 @@ else:
         logging.info("🔄 Refresh button clicked. Attempting to reload data...")
         reload_data()  # Call the reload function
         logging.info("🔄 Data refresh process triggered successfully.")
-        st.stop()
 
     # Check if data is loaded before rendering the dashboard
     if st.session_state["dashboard_data"] is None:
