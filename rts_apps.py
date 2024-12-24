@@ -45,15 +45,15 @@ if "dashboard_data" not in st.session_state:
 
 # Function to reload data
 def reload_data():
-    """Reloads data from `tjt_hosp_api` and updates the session state."""
+    """Reloads data from `tjt_hosp_api` and ensures the latest data is available globally."""
     logging.info("Reloading data from `tjt_hosp_api`...")
     try:
+        # Reload `tjt_hosp_api` dynamically to fetch the latest data
         import tjt_hosp_api
         importlib.reload(tjt_hosp_api)
 
-        # Fetch fresh data
+        # Validate the reloaded data
         from tjt_hosp_api import filtered_df_without_seats
-
         required_columns = ['Fixture Name', 'Order Id', 'First Name']
         missing_columns = [
             col for col in required_columns if col not in filtered_df_without_seats.columns
@@ -61,12 +61,17 @@ def reload_data():
         if missing_columns:
             raise ValueError(f"Missing required columns: {missing_columns}")
 
-        logging.info("Data successfully reloaded.")
+        # Log success and notify the user
+        logging.info(f"✅ Data successfully reloaded. Rows: {len(filtered_df_without_seats)}")
         st.success("✅ Data refreshed successfully!")
 
+        # Trigger a rerun to refresh the dashboards
+        st.experimental_rerun()
+
     except Exception as e:
-        logging.error(f"Failed to reload data: {e}")
+        logging.error(f"❌ Failed to reload data: {e}")
         st.error(f"❌ Failed to reload data: {e}")
+
 
 
 # App Header with a logo
@@ -147,7 +152,7 @@ else:
     if st.sidebar.button("🔄 Refresh Data"):
         logging.info("🔄 Refreshing data...")
         reload_data()  # Call the reload function
-        st.rerun()  # Trigger a full app rerun after reload
+        # st.rerun()  # Trigger a full app rerun after reload
 
     # Handle module choice dynamically
     app_registry = {
