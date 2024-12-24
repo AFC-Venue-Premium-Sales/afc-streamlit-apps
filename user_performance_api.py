@@ -5,7 +5,6 @@ from io import BytesIO
 import re
 from datetime import datetime
 import seaborn as sns
-from tjt_hosp_api import filtered_df_without_seats
 
 # Helper Functions
 def filter_data_by_date_time(df, min_date, max_date):
@@ -48,9 +47,9 @@ def generate_kpis(filtered_data):
     )
 
     st.write("### Key Metrics")
-    st.metric("💷 Total Revenue", f"£{total_revenue:,.2f}")
+    st.metric("💷 Total Revenue", f"\u00a3{total_revenue:,.2f}")
     st.metric("🎟️ Total Packages Sold", total_packages)
-    st.metric("📈 Average Revenue per Package", f"£{average_revenue_per_package:,.2f}")
+    st.metric("📈 Average Revenue per Package", f"\u00a3{average_revenue_per_package:,.2f}")
     st.metric("🏆 Top Exec (Revenue)", top_exec)
 
 def generate_heatmap(filtered_data):
@@ -90,22 +89,26 @@ def generate_revenue_chart(filtered_data):
     plt.xticks(rotation=45, ha='right')
     st.pyplot(fig)
 
-def run_app():
+def run_app(dashboard_data):
     """Main application function."""
+    if dashboard_data is None or dashboard_data.empty:
+        st.warning("⚠️ No data available. Please refresh to load the latest data.")
+        return
+
     specified_users = ['dcoppin', 'Jedwards', 'jedwards', 'bgardiner', 'BenT', 'jmurphy', 'ayildirim',
                        'MeganS', 'BethNW', 'HayleyA', 'LucyB', 'Conor', 'SavR', 'MillieS', 'dmontague']
 
-    st.title('👤AFC Premium Exec Dashboard👤')
+    st.title('👩‍💼AFC Premium Exec Dashboard👩‍💼')
 
     st.markdown("""
     ### ℹ️ About
     This application provides detailed Exec Sales Metrics ONLY, derived from RTS data. The data is retrieved from TJT's MBM sales API.
     """)
 
-    # Load data
-    loaded_api_df = filtered_df_without_seats 
+    # Use `dashboard_data` instead of reloading `filtered_df_without_seats`
+    filtered_data = dashboard_data.copy()
 
-    if loaded_api_df is not None and not loaded_api_df.empty:
+    if not filtered_data.empty:
         st.sidebar.success("✅ Data retrieved successfully.")
         display_progress_bar()
 
@@ -126,15 +129,15 @@ def run_app():
             min_date, max_date = None, None
 
         # Sidebar filters for users, events, and competitions
-        valid_usernames = [user for user in pd.unique(loaded_api_df['CreatedBy'])]
+        valid_usernames = [user for user in pd.unique(filtered_data['CreatedBy'])]
         filtered_default_users = [user for user in specified_users if user in valid_usernames]
         selected_users = st.sidebar.multiselect("👤 Select Execs", options=valid_usernames, default=filtered_default_users)
-        selected_events = st.sidebar.multiselect("🎫 Select Events", options=pd.unique(loaded_api_df['Fixture Name']))
-        event_competitions = pd.unique(loaded_api_df['EventCompetition'])
+        selected_events = st.sidebar.multiselect("🎟️ Select Events", options=pd.unique(filtered_data['Fixture Name']))
+        event_competitions = pd.unique(filtered_data['EventCompetition'])
         selected_competitions = st.sidebar.multiselect("🏆 Select Event Competitions", options=event_competitions)
 
         # Apply Filters
-        filtered_data = filter_data_by_date_time(loaded_api_df, min_date, max_date)
+        filtered_data = filter_data_by_date_time(filtered_data, min_date, max_date)
         filtered_data = filter_data(filtered_data, selected_users, selected_events, None, selected_competitions)
 
         # Display Filtered Data and Metrics

@@ -185,12 +185,15 @@ def run_app():
 
     # Chart for Hospitality Ticket Releases
     st.markdown("### Tickets Found on TX by Game")
-    fig, ax = plt.subplots()
-    matched_on_tx.groupby("game_name")["ticket_sold_price"].sum().plot(kind="bar", ax=ax)
-    ax.set_title("Tickets Found on TX by Game")
-    ax.set_xlabel("Game")
-    ax.set_ylabel("Total Tickets Sold Price")
-    st.pyplot(fig)
+    if matched_on_tx.empty:
+        st.write("Sorry, no matching data found on Ticket Exchange from Hospitality Released Tickets.")
+    else:
+        fig, ax = plt.subplots()
+        matched_on_tx.groupby("game_name")["ticket_sold_price"].sum().plot(kind="bar", ax=ax)
+        ax.set_title("Tickets Found on TX by Game")
+        ax.set_xlabel("Game")
+        ax.set_ylabel("Total Tickets Sold Price")
+        st.pyplot(fig)
 
 if __name__ == "__main__":
     run_app()
