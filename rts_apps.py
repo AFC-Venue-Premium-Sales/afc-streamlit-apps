@@ -45,47 +45,32 @@ if "dashboard_data" not in st.session_state:
 
 # Function to reload data
 def reload_data():
-    """Reloads data from `tjt_hosp_api`."""
-    logging.info("🔄 [START] Reloading data from `tjt_hosp_api`...")
+    """Reloads data from `tjt_hosp_api` script."""
+    logging.info("🔄 Reloading `tjt_hosp_api`...")
     try:
         import tjt_hosp_api
         importlib.reload(tjt_hosp_api)
 
-        # Verify data loading
-        from tjt_hosp_api import filtered_df_without_seats
+        # Validate the DataFrame
         required_columns = ['Fixture Name', 'Order Id', 'First Name']
         missing_columns = [
-            col for col in required_columns if col not in filtered_df_without_seats.columns
+            col for col in required_columns if col not in tjt_hosp_api.filtered_df_without_seats.columns
         ]
         if missing_columns:
-            logging.error(f"❌ Missing required columns: {missing_columns}")
             raise ValueError(f"Missing required columns: {missing_columns}")
 
-        # Log the previous row count if available
-        if "dashboard_data" in st.session_state and st.session_state["dashboard_data"] is not None:
-            previous_row_count = len(st.session_state["dashboard_data"])
-            logging.info(f"🔢 Rows before reload: {previous_row_count}")
-        else:
-            previous_row_count = 0
-            logging.info("🔢 No previous data loaded.")
+        # Update session state
+        previous_row_count = len(st.session_state.get("dashboard_data", []))
+        st.session_state["dashboard_data"] = tjt_hosp_api.filtered_df_without_seats
+        current_row_count = len(tjt_hosp_api.filtered_df_without_seats)
 
-        # Reload and update session state
-        st.session_state["dashboard_data"] = filtered_df_without_seats
-        current_row_count = len(filtered_df_without_seats)
-
-        # Log the row count after reload
-        logging.info(f"🔢 Rows after reload: {current_row_count}")
-        logging.info(f"🔢 Change in rows: {current_row_count - previous_row_count}")
-
-        # Success log
-        logging.info("✅ [END] Data successfully reloaded.")
+        logging.info(f"✅ Reload complete. Row change: {current_row_count - previous_row_count}")
         st.success("✅ Data refreshed successfully!")
-
     except Exception as e:
-        logging.error(f"❌ Failed to reload data: {e}")
+        logging.error(f"❌ Error reloading data: {e}")
         st.error(f"❌ Failed to reload data: {e}")
     finally:
-        logging.info("🔄 [COMPLETE] Data reload process finished.")
+        logging.info("🔄 Data reload finished.")
 
 
 
@@ -176,10 +161,11 @@ else:
 
     # Handle module choice dynamically
     app_registry = {
-        "📊 Sales Performance": sales_performance.run_app,
-        "📈 User Performance": user_performance_api.run_app,
-        "📄 Ticket Exchange Report": ticket_exchange_report.run_app
-    }
+    "📊 Sales Performance": lambda: sales_performance.run_app(st.session_state["dashboard_data"]),
+    "📈 User Performance": lambda: user_performance_api.run_app(st.session_state["dashboard_data"]),
+    "📄 Ticket Exchange Report": lambda: ticket_exchange_report.run_app
+}
+
 
     app_function = app_registry.get(app_choice)
     if app_function:
