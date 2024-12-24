@@ -2,11 +2,16 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from io import BytesIO
-from tjt_hosp_api import filtered_df_without_seats
 import re
 
-def run_app():
-    
+def run_app(dashboard_data):
+    if dashboard_data is None or dashboard_data.empty:
+        st.warning("⚠️ No data available. Please refresh to load the latest data.")
+        return
+
+    # Use `dashboard_data` instead of reloading `filtered_df_without_seats`
+    filtered_data = dashboard_data.copy()
+
     specified_users = ['dcoppin', 'Jedwards', 'jedwards', 'bgardiner', 'BenT', 'jmurphy', 'ayildirim',
                        'MeganS', 'BethNW', 'HayleyA', 'LucyB', 'Conor', 'SavR', 'MillieS', 'dmontague']
     
@@ -41,401 +46,383 @@ def run_app():
     You can filter results by date, user, fixture, payment status, and paid status for tailored insights. 
     """)
 
-    # Dynamically fetch hospitality data on app start
-    loaded_api_df = filtered_df_without_seats
-    
-    if loaded_api_df is None or loaded_api_df.empty:
-        st.warning("⚠️ No data available. Please refresh to load the latest data.")
-        return
-    
     # Display progress bar
     progress_bar = st.sidebar.progress(0)
     for progress in [10, 30, 50, 100]:
         progress_bar.progress(progress)
 
-    if loaded_api_df is not None:
-        st.sidebar.success("✅ Data retrieved successfully.")
-        
-        filtered_data = loaded_api_df.copy()
+    st.sidebar.success("✅ Data retrieved successfully.")
 
-        # Ensure 'Discount' column is treated as strings
-        filtered_data['Discount'] = filtered_data['Discount'].astype(str)
+    # Ensure 'Discount' column is treated as strings
+    filtered_data['Discount'] = filtered_data['Discount'].astype(str)
 
-        # Ensure 'DiscountValue' is treated as numeric, converting invalid entries to NaN
-        filtered_data['DiscountValue'] = pd.to_numeric(filtered_data['DiscountValue'], errors='coerce')
+    # Ensure 'DiscountValue' is treated as numeric, converting invalid entries to NaN
+    filtered_data['DiscountValue'] = pd.to_numeric(filtered_data['DiscountValue'], errors='coerce')
 
-        # Ensure other numeric columns like 'TotalPrice' are also correctly treated as numeric
-        numeric_columns = ['TotalPrice', 'DiscountValue']
-        for column in numeric_columns:
-            filtered_data[column] = pd.to_numeric(filtered_data[column], errors='coerce')
+    # Ensure other numeric columns like 'TotalPrice' are also correctly treated as numeric
+    numeric_columns = ['TotalPrice', 'DiscountValue']
+    for column in numeric_columns:
+        filtered_data[column] = pd.to_numeric(filtered_data[column], errors='coerce')
 
-        # Convert 'CreatedOn' column to datetime format
-        filtered_data['CreatedOn'] = pd.to_datetime(
-            filtered_data['CreatedOn'], format='%d-%m-%Y %H:%M', errors='coerce'
+    # Convert 'CreatedOn' column to datetime format
+    filtered_data['CreatedOn'] = pd.to_datetime(
+        filtered_data['CreatedOn'], format='%d-%m-%Y %H:%M', errors='coerce'
+    )
+
+    # Merge with budget data
+    filtered_data = pd.merge(filtered_data, budget_df, how="left", left_on="Fixture Name", right_on="Fixture")
+
+    # Parse 'KickOffEventStart' with the correct format
+    filtered_data['KickOffEventStart'] = pd.to_datetime(
+        filtered_data['KickOffEventStart'], format='%d-%m-%Y %H:%M', errors='coerce'
+    )
+
+    # Add 'Days to Fixture' column
+    today = pd.Timestamp.now()
+    filtered_data['Days to Fixture'] = (filtered_data['KickOffEventStart'] - today).dt.days
+
+    # Handle missing or invalid dates
+    filtered_data['Days to Fixture'] = filtered_data['Days to Fixture'].fillna(-1).astype(int)
+
+    # Sidebar filters
+    st.sidebar.header("Filter Data by Date and Time")
+    date_range = st.sidebar.date_input("📅 Select Date Range", [], key="unique_sales_date_range")
+    start_time = st.sidebar.time_input(
+        "⏰ Start Time", value=datetime.now().replace(hour=0, minute=0, second=0).time(), key="unique_start_time"
+    )
+    end_time = st.sidebar.time_input(
+        "⏰ End Time", value=datetime.now().replace(hour=23, minute=59, second=59).time(), key="unique_end_time"
+    )
+    
+    if len(date_range) == 1:
+        min_date = datetime.combine(date_range[0], start_time)
+        max_date = datetime.combine(date_range[0], end_time)
+    elif len(date_range) == 2:
+        min_date = datetime.combine(date_range[0], start_time)
+        max_date = datetime.combine(date_range[1], end_time)
+    else:
+        min_date, max_date = None, None
+
+    valid_usernames = [user for user in specified_users if user in pd.unique(filtered_data['CreatedBy'])]
+    event_names = pd.unique(filtered_data['Fixture Name'])
+    event_categories = pd.unique(filtered_data['EventCompetition'])
+
+    selected_categories = st.sidebar.multiselect(
+        "Select Event Category",
+        options=event_categories,
+        default=None,
+        key="unique_selected_categories_key"
+    )
+
+    sale_location = pd.unique(filtered_data['SaleLocation'])
+    selected_events = st.sidebar.multiselect(
+        "🎫 Select Events",
+        options=event_names,
+        default=None,
+        key="unique_selected_events_key"
+    )
+
+    selected_sale_location = st.sidebar.multiselect(
+        "📍 Select SaleLocation",
+        options=sale_location,
+        default=None,
+        key="unique_selected_sale_location_key"
+    )
+
+    selected_users = st.sidebar.multiselect(
+        "👤 Select Execs",
+        options=valid_usernames,
+        default=None,
+        key="unique_selected_users_key"
+    )
+
+    paid_options = pd.unique(filtered_data['IsPaid'])
+    selected_paid = st.sidebar.selectbox(
+        "💰 Filter by IsPaid",
+        options=paid_options,
+        key="unique_selected_paid_key"
+    )
+
+    if min_date and max_date:
+        filtered_data = filtered_data[(filtered_data['CreatedOn'] >= min_date) & (filtered_data['CreatedOn'] <= max_date)]
+
+    if selected_sale_location:
+        filtered_data = filtered_data[filtered_data['SaleLocation'].isin(selected_sale_location)]
+
+    if selected_users:
+        filtered_data = filtered_data[filtered_data['CreatedBy'].isin(selected_users)]
+
+    if selected_categories:
+        filtered_data = filtered_data[filtered_data['EventCompetition'].isin(selected_categories)]
+
+    if selected_events:
+        filtered_data = filtered_data[filtered_data['Fixture Name'].isin(selected_events)]
+
+    if selected_events:
+        available_discounts = pd.unique(filtered_data[filtered_data['Fixture Name'].isin(selected_events)]['Discount'])
+    else:
+        available_discounts = pd.unique(filtered_data['Discount'])
+
+    select_all_discounts = st.sidebar.checkbox("Select All Discounts", value=True, key="unique_select_all_discounts_key")
+    if select_all_discounts:
+        selected_discount_options = available_discounts.tolist()
+    else:
+        selected_discount_options = st.sidebar.multiselect(
+            "🔖 Filter by Discount Type",
+            options=available_discounts,
+            default=available_discounts.tolist(),
+            key="unique_discount_multiselect_key"
         )
-        loaded_api_df['CreatedOn'] = pd.to_datetime(
-            loaded_api_df['CreatedOn'], format='%d-%m-%Y %H:%M', errors='coerce'
-        )
 
-        # Merge with budget data
-        filtered_data = pd.merge(filtered_data, budget_df, how="left", left_on="Fixture Name", right_on="Fixture")
+    filtered_data = filtered_data[filtered_data['Discount'].isin(selected_discount_options)]
 
-        # Parse 'KickOffEventStart' with the correct format
-        filtered_data['KickOffEventStart'] = pd.to_datetime(
-            filtered_data['KickOffEventStart'], format='%d-%m-%Y %H:%M', errors='coerce'
-        )
+    filtered_data_excluding_packages = filtered_data[
+        ~filtered_data['Package Name'].isin(['Platinum', 'Woolwich Restaurant'])
+    ]
 
-        # Add 'Days to Fixture' column
-        today = pd.Timestamp.now()
-        filtered_data['Days to Fixture'] = (filtered_data['KickOffEventStart'] - today).dt.days
+    static_start_date = datetime(2024, 6, 18, 0, 0, 0)
+    static_total = dashboard_data[
+        (dashboard_data['CreatedOn'] >= static_start_date) &
+        ~dashboard_data['Package Name'].isin(['Platinum', 'Woolwich Restaurant'])
+    ]['TotalPrice'].sum()
 
-        # Handle missing or invalid dates
-        filtered_data['Days to Fixture'] = filtered_data['Days to Fixture'].fillna(-1).astype(int)
+    dynamic_total = filtered_data_excluding_packages['TotalPrice'].sum()
 
-        # Sidebar filters
-        st.sidebar.header("Filter Data by Date and Time")
-        date_range = st.sidebar.date_input("📅 Select Date Range", [], key="unique_sales_date_range")
-        start_time = st.sidebar.time_input(
-            "⏰ Start Time", value=datetime.now().replace(hour=0, minute=0, second=0).time(), key="unique_start_time"
-        )
-        end_time = st.sidebar.time_input(
-            "⏰ End Time", value=datetime.now().replace(hour=23, minute=59, second=59).time(), key="unique_end_time"
-        )
-        
-        if len(date_range) == 1:
-            min_date = datetime.combine(date_range[0], start_time)
-            max_date = datetime.combine(date_range[0], end_time)
-        elif len(date_range) == 2:
-            min_date = datetime.combine(date_range[0], start_time)
-            max_date = datetime.combine(date_range[1], end_time)
-        else:
-            min_date, max_date = None, None
+    exclude_keywords = ["credit", "voucher", "gift voucher", "discount", "pldl"]
+    mask = ~filtered_data_excluding_packages['Discount'].str.contains('|'.join([re.escape(keyword) for keyword in exclude_keywords]), 
+                                                                    case=False, na=False)
 
-        valid_usernames = [user for user in specified_users if user in pd.unique(filtered_data['CreatedBy'])]
-        event_names = pd.unique(filtered_data['Fixture Name'])
-        event_categories = pd.unique(filtered_data['EventCompetition'])
+    filtered_data_without_excluded_keywords = filtered_data_excluding_packages[mask]
 
-        selected_categories = st.sidebar.multiselect(
-            "Select Event Category",
-            options=event_categories,
-            default=None,
-            key="unique_selected_categories_key"
-        )
+    total_sold_by_other = filtered_data_without_excluded_keywords['DiscountValue'].sum()
+    other_sales_total = dynamic_total + total_sold_by_other
 
-        sale_location = pd.unique(filtered_data['SaleLocation'])
-        selected_events = st.sidebar.multiselect(
-            "🎫 Select Events",
-            options=event_names,
-            default=None,
-            key="unique_selected_events_key"
-        )
+    if not filtered_data.empty:
+        st.write("### 💼 Total Accumulated Sales")
+        st.write(f"Total Accumulated Sales (Static) since June 18th : **£{static_total:,.2f}** ")
 
-        selected_sale_location = st.sidebar.multiselect(
-            "📍 Select SaleLocation",
-            options=sale_location,
-            default=None,
-            key="unique_selected_sale_location_key"
-        )
+        st.write("### 💼 Filtered Accumulated Sales")
+        st.write(f"Total Accumulated Sales (Filtered): **£{dynamic_total:,.2f}** ")
 
-        selected_users = st.sidebar.multiselect(
-            "👤 Select Execs",
-            options=valid_usernames,
-            default=None,
-            key="unique_selected_users_key"
-        )
+        total_discount_value = filtered_data_without_excluded_keywords.groupby(
+            ['Order Id', 'Country Code', 'First Name', 'Surname', 'Fixture Name', 'GLCode', 'CreatedOn']
+        )[['Discount', 'DiscountValue', 'TotalPrice']].sum().reset_index()
 
-        paid_options = pd.unique(filtered_data['IsPaid'])
-        selected_paid = st.sidebar.selectbox(
-            "💰 Filter by IsPaid",
-            options=paid_options,
-            key="unique_selected_paid_key"
-        )
-
-        if min_date and max_date:
-            filtered_data = filtered_data[(filtered_data['CreatedOn'] >= min_date) & (filtered_data['CreatedOn'] <= max_date)]
-
-        if selected_sale_location:
-            filtered_data = filtered_data[filtered_data['SaleLocation'].isin(selected_sale_location)]
-
-        if selected_users:
-            filtered_data = filtered_data[filtered_data['CreatedBy'].isin(selected_users)]
-
-        if selected_categories:
-            filtered_data = filtered_data[filtered_data['EventCompetition'].isin(selected_categories)]
-
-        if selected_events:
-            filtered_data = filtered_data[filtered_data['Fixture Name'].isin(selected_events)]
-
-        if selected_events:
-            available_discounts = pd.unique(filtered_data[filtered_data['Fixture Name'].isin(selected_events)]['Discount'])
-        else:
-            available_discounts = pd.unique(filtered_data['Discount'])
-
-        select_all_discounts = st.sidebar.checkbox("Select All Discounts", value=True, key="unique_select_all_discounts_key")
-        if select_all_discounts:
-            selected_discount_options = available_discounts.tolist()
-        else:
-            selected_discount_options = st.sidebar.multiselect(
-                "🔖 Filter by Discount Type",
-                options=available_discounts,
-                default=available_discounts.tolist(),
-                key="unique_discount_multiselect_key"
-            )
-
-        filtered_data = filtered_data[filtered_data['Discount'].isin(selected_discount_options)]
+        total_discount_value['TotalPrice'] = total_discount_value['TotalPrice'].apply(lambda x: f"£{x:,.2f}")
+        total_discount_value['DiscountValue'] = total_discount_value['DiscountValue'].apply(lambda x: f"£{x:,.2f}")
 
         filtered_data_excluding_packages = filtered_data[
             ~filtered_data['Package Name'].isin(['Platinum', 'Woolwich Restaurant'])
         ]
 
-        static_start_date = datetime(2024, 6, 18, 0, 0, 0)
-        static_total = loaded_api_df[
-            (loaded_api_df['CreatedOn'] >= static_start_date) &
-            ~loaded_api_df['Package Name'].isin(['Platinum', 'Woolwich Restaurant'])
-        ]['TotalPrice'].sum()
+        st.write("### ⚽ Total Sales Summary")
+        st.write(f"Accumulated sales with 'Other' payments included: **£{other_sales_total:,.2f}** ")
 
-        dynamic_total = filtered_data_excluding_packages['TotalPrice'].sum()
+        total_sold_per_match = (
+            filtered_data_excluding_packages.groupby("Fixture Name")
+            .agg(
+                DaysToFixture=("Days to Fixture", "min"),
+                RTS_Sales=("TotalPrice", "sum"),
+                Budget=("Budget", "first")
+            )
+            .reset_index()
+        )
+
+        other_sales = (
+            filtered_data_without_excluded_keywords[
+                ~filtered_data_without_excluded_keywords['Package Name'].isin(['Platinum', 'Woolwich Restaurant'])
+            ]
+            .groupby("Fixture Name")['DiscountValue'].sum()
+        )
+
+        total_sold_per_match = pd.merge(
+            total_sold_per_match, 
+            other_sales, 
+            how="left", 
+            on="Fixture Name"
+        ).rename(columns={"DiscountValue": "OtherSales"})
+
+        total_sold_per_match['OtherSales'] = total_sold_per_match['OtherSales'].fillna(0)
+
+        total_sold_per_match['OtherSales'] += total_sold_per_match['RTS_Sales']
+
+        covers_sold = (
+            filtered_data_excluding_packages.groupby("Fixture Name")['Seats'].sum()
+        )
+
+        total_sold_per_match = pd.merge(
+            total_sold_per_match,
+            covers_sold,
+            how="left",
+            on="Fixture Name"
+        ).rename(columns={"Seats": "CoversSold"})
+
+        total_sold_per_match['CoversSold'] = total_sold_per_match['CoversSold'].fillna(0).astype(int)
+
+        total_sold_per_match['Avg Spend'] = total_sold_per_match.apply(
+            lambda row: row['OtherSales'] / row['CoversSold'] if row['CoversSold'] > 0 else 0,
+            axis=1
+        )
+        total_sold_per_match['Avg Spend'] = total_sold_per_match['Avg Spend'].apply(lambda x: f"£{x:,.2f}")
+
+        total_sold_per_match['BudgetPercentage'] = total_sold_per_match.apply(
+            lambda row: f"{(row['OtherSales'] / row['Budget'] * 100):.0f}%" 
+            if pd.notnull(row['Budget']) and row['Budget'] > 0 else "N/A", 
+            axis=1
+        )
+
+        total_sold_per_match['RTS_Sales'] = total_sold_per_match['RTS_Sales'].apply(lambda x: f"£{x:,.0f}")
+        total_sold_per_match['OtherSales'] = total_sold_per_match['OtherSales'].apply(lambda x: f"£{x:,.0f}")
+        total_sold_per_match['Budget Target'] = total_sold_per_match['Budget'].apply(
+            lambda x: f"£{x:,.0f}" if pd.notnull(x) else "None"
+        )
+
+        total_sold_per_match = total_sold_per_match[
+            ['Fixture Name', 'DaysToFixture', 'CoversSold', 'RTS_Sales', 'OtherSales', 'Avg Spend', 'Budget Target', 'BudgetPercentage']
+        ]
+
+        st.dataframe(total_sold_per_match)
+
+        total_discount_value = filtered_data_without_excluded_keywords.groupby(
+            ['Order Id', 'Country Code', 'First Name', 'Surname', 'Fixture Name', 'GLCode', 'CreatedOn']
+        )[['Discount', 'DiscountValue', 'TotalPrice']].sum().reset_index()
+
+        total_discount_value['TotalPrice'] = total_discount_value['TotalPrice'].apply(lambda x: f"£{x:,.2f}")
+        total_discount_value['DiscountValue'] = total_discount_value['DiscountValue'].apply(lambda x: f"£{x:,.2f}")
+
+        st.write("### Other Payments")
+
+        total_discount_value = filtered_data_without_excluded_keywords.groupby(
+            ['Order Id', 'Country Code', 'First Name', 'Surname', 'Fixture Name', 'GLCode', 'CreatedOn']
+        )[['Discount', 'DiscountValue', 'TotalPrice']].sum().reset_index()
+
+        total_discount_value['TotalPrice'] = total_discount_value['TotalPrice'].apply(lambda x: f"£{x:,.2f}")
+        total_discount_value['DiscountValue'] = total_discount_value['DiscountValue'].apply(lambda x: f"£{x:,.2f}")
+
+        st.dataframe(total_discount_value)
+
+        filtered_data_excluding_packages = filtered_data[
+            ~filtered_data['Package Name'].isin(['Platinum', 'Woolwich Restaurant'])
+        ]
 
         exclude_keywords = ["credit", "voucher", "gift voucher", "discount", "pldl"]
-        mask = ~filtered_data_excluding_packages['Discount'].str.contains('|'.join([re.escape(keyword) for keyword in exclude_keywords]), 
-                                                                        case=False, na=False)
+        mask = ~filtered_data_excluding_packages['Discount'].str.contains(
+            '|'.join([re.escape(keyword) for keyword in exclude_keywords]), case=False, na=False
+        )
 
         filtered_data_without_excluded_keywords = filtered_data_excluding_packages[mask]
 
-        total_sold_by_other = filtered_data_without_excluded_keywords['DiscountValue'].sum()
-        other_sales_total = dynamic_total + total_sold_by_other
+        other_payments_per_package = (
+            filtered_data_without_excluded_keywords.groupby('Package Name')['DiscountValue'].sum()
+        )
+
+        st.write("### 🎟️ MBM Package Sales")
+        total_sold_per_package = filtered_data_excluding_packages.groupby('Package Name')['TotalPrice'].sum().reset_index()
+        total_sold_per_package = pd.merge(
+            total_sold_per_package,
+            other_payments_per_package,
+            how="left",
+            on="Package Name"
+        ).rename(columns={"DiscountValue": "OtherPayments"})
+
+        total_sold_per_package['TotalWithOtherPayments'] = (
+            total_sold_per_package['TotalPrice'] + total_sold_per_package['OtherPayments'].fillna(0)
+        )
+
+        total_sold_per_package['TotalPrice'] = total_sold_per_package['TotalPrice'].apply(lambda x: f"£{x:,.2f}")
+        total_sold_per_package['OtherPayments'] = total_sold_per_package['OtherPayments'].fillna(0).apply(lambda x: f"£{x:,.2f}")
+        total_sold_per_package['TotalWithOtherPayments'] = total_sold_per_package['TotalWithOtherPayments'].apply(lambda x: f"£{x:,.2f}")
+
+        st.dataframe(total_sold_per_package)
+
+        other_payments_per_location = (
+            filtered_data_without_excluded_keywords.groupby('SaleLocation')['DiscountValue'].sum()
+        )
+
+        st.write("### 🏟️ Payment Channel")
+        total_sold_per_location = filtered_data_excluding_packages.groupby('SaleLocation')['TotalPrice'].sum().reset_index()
+        total_sold_per_location = pd.merge(
+            total_sold_per_location,
+            other_payments_per_location,
+            how="left",
+            on="SaleLocation"
+        ).rename(columns={"DiscountValue": "OtherPayments"})
+
+        total_sold_per_location['TotalWithOtherPayments'] = (
+            total_sold_per_location['TotalPrice'] + total_sold_per_location['OtherPayments'].fillna(0)
+        )
+
+        total_sold_per_location['TotalPrice'] = total_sold_per_location['TotalPrice'].apply(lambda x: f"£{x:,.2f}")
+        total_sold_per_location['OtherPayments'] = total_sold_per_location['OtherPayments'].fillna(0).apply(lambda x: f"£{x:,.2f}")
+        total_sold_per_location['TotalWithOtherPayments'] = total_sold_per_location['TotalWithOtherPayments'].apply(lambda x: f"£{x:,.2f}")
+
+        st.dataframe(total_sold_per_location)
+
+        st.write("### 🍴 Woolwich Restaurant Sales")
+
+        woolwich_restaurant_data = filtered_data[
+            (filtered_data['Package Name'].isin(['Platinum', 'Woolwich Restaurant'])) &
+            (filtered_data['IsPaid'].astype(str).str.strip().str.upper() == 'TRUE')
+        ]
+
+        total_sales_revenue = woolwich_restaurant_data['TotalPrice'].sum()
+        total_covers_sold = woolwich_restaurant_data['Seats'].sum()
+
+        st.write(f"Total Sales Revenue: **£{total_sales_revenue:,.0f}** ")
+        st.write(f"Total Covers Sold: **{int(total_covers_sold)}** ")
+
+        woolwich_sales_summary = woolwich_restaurant_data.groupby(['Fixture Name', 'KickOffEventStart']).agg({
+            'Seats': 'sum',
+            'TotalPrice': 'sum'
+        }).reset_index()
+
+        woolwich_sales_summary = woolwich_sales_summary.rename(columns={
+            'Fixture Name': 'Event',
+            'KickOffEventStart': 'Event Date',
+            'Seats': 'Covers Sold',
+            'TotalPrice': 'Revenue'
+        })
+
+        woolwich_sales_summary['Revenue'] = woolwich_sales_summary['Revenue'].apply(lambda x: f"£{x:,.0f}")
+
+        st.dataframe(woolwich_sales_summary)
+
+        st.write("### 📥 Downloads")
+
+        if not woolwich_restaurant_data.empty:
+            output = BytesIO()
+            output.write(woolwich_restaurant_data.to_csv(index=False).encode('utf-8'))
+            output.seek(0)
+
+            st.download_button(
+                label="💾 Download Woolwich Restaurant Data",
+                data=output,
+                file_name='woolwich_restaurant_sales_data.csv',
+                mime='text/csv',
+            )
 
         if not filtered_data.empty:
-            st.write("### 💼 Total Accumulated Sales")
-            st.write(f"Total Accumulated Sales (Static) since June 18th : **£{static_total:,.2f}** ")
+            filtered_report = BytesIO()
+            filtered_report.write(filtered_data.to_csv(index=False).encode('utf-8'))
+            filtered_report.seek(0)
 
-            st.write("### 💼 Filtered Accumulated Sales")
-            st.write(f"Total Accumulated Sales (Filtered): **£{dynamic_total:,.2f}** ")
-
-            total_discount_value = filtered_data_without_excluded_keywords.groupby(
-                ['Order Id', 'Country Code', 'First Name', 'Surname', 'Fixture Name', 'GLCode', 'CreatedOn']
-            )[['Discount', 'DiscountValue', 'TotalPrice']].sum().reset_index()
-
-            total_discount_value['TotalPrice'] = total_discount_value['TotalPrice'].apply(lambda x: f"£{x:,.2f}")
-            total_discount_value['DiscountValue'] = total_discount_value['DiscountValue'].apply(lambda x: f"£{x:,.2f}")
-
-            filtered_data_excluding_packages = filtered_data[
-                ~filtered_data['Package Name'].isin(['Platinum', 'Woolwich Restaurant'])
-            ]
-
-            st.write("### ⚽ Total Sales Summary")
-            st.write(f"Accumulated sales with 'Other' payments included: **£{other_sales_total:,.2f}** ")
-
-            total_sold_per_match = (
-                filtered_data_excluding_packages.groupby("Fixture Name")
-                .agg(
-                    DaysToFixture=("Days to Fixture", "min"),
-                    RTS_Sales=("TotalPrice", "sum"),
-                    Budget=("Budget", "first")
-                )
-                .reset_index()
+            st.download_button(
+                label="💾 Download Filtered Data",
+                data=filtered_report,
+                file_name='filtered_data.csv',
+                mime='text/csv',
             )
 
-            other_sales = (
-                filtered_data_without_excluded_keywords[
-                    ~filtered_data_without_excluded_keywords['Package Name'].isin(['Platinum', 'Woolwich Restaurant'])
-                ]
-                .groupby("Fixture Name")['DiscountValue'].sum()
+        if not dashboard_data.empty:
+            sales_report = BytesIO()
+            sales_report.write(dashboard_data.to_csv(index=False).encode('utf-8'))
+            sales_report.seek(0)
+
+            st.download_button(
+                label="💾 Download Sales Report",
+                data=sales_report,
+                file_name='sales_report.csv',
+                mime='text/csv',
             )
-
-            total_sold_per_match = pd.merge(
-                total_sold_per_match, 
-                other_sales, 
-                how="left", 
-                on="Fixture Name"
-            ).rename(columns={"DiscountValue": "OtherSales"})
-
-            total_sold_per_match['OtherSales'] = total_sold_per_match['OtherSales'].fillna(0)
-
-            total_sold_per_match['OtherSales'] += total_sold_per_match['RTS_Sales']
-
-            covers_sold = (
-                filtered_data_excluding_packages.groupby("Fixture Name")['Seats'].sum()
-            )
-
-            total_sold_per_match = pd.merge(
-                total_sold_per_match,
-                covers_sold,
-                how="left",
-                on="Fixture Name"
-            ).rename(columns={"Seats": "CoversSold"})
-
-            total_sold_per_match['CoversSold'] = total_sold_per_match['CoversSold'].fillna(0).astype(int)
-
-            total_sold_per_match['Avg Spend'] = total_sold_per_match.apply(
-                lambda row: row['OtherSales'] / row['CoversSold'] if row['CoversSold'] > 0 else 0,
-                axis=1
-            )
-            total_sold_per_match['Avg Spend'] = total_sold_per_match['Avg Spend'].apply(lambda x: f"£{x:,.2f}")
-
-            total_sold_per_match['BudgetPercentage'] = total_sold_per_match.apply(
-                lambda row: f"{(row['OtherSales'] / row['Budget'] * 100):.0f}%" 
-                if pd.notnull(row['Budget']) and row['Budget'] > 0 else "N/A", 
-                axis=1
-            )
-
-            total_sold_per_match['RTS_Sales'] = total_sold_per_match['RTS_Sales'].apply(lambda x: f"£{x:,.0f}")
-            total_sold_per_match['OtherSales'] = total_sold_per_match['OtherSales'].apply(lambda x: f"£{x:,.0f}")
-            total_sold_per_match['Budget Target'] = total_sold_per_match['Budget'].apply(
-                lambda x: f"£{x:,.0f}" if pd.notnull(x) else "None"
-            )
-
-            total_sold_per_match = total_sold_per_match[
-                ['Fixture Name', 'DaysToFixture', 'CoversSold', 'RTS_Sales', 'OtherSales', 'Avg Spend', 'Budget Target', 'BudgetPercentage']
-            ]
-
-            st.dataframe(total_sold_per_match)
-
-            total_discount_value = filtered_data_without_excluded_keywords.groupby(
-                ['Order Id', 'Country Code', 'First Name', 'Surname', 'Fixture Name', 'GLCode', 'CreatedOn']
-            )[['Discount', 'DiscountValue', 'TotalPrice']].sum().reset_index()
-
-            total_discount_value['TotalPrice'] = total_discount_value['TotalPrice'].apply(lambda x: f"£{x:,.2f}")
-            total_discount_value['DiscountValue'] = total_discount_value['DiscountValue'].apply(lambda x: f"£{x:,.2f}")
-
-            st.write("### Other Payments")
-
-            total_discount_value = filtered_data_without_excluded_keywords.groupby(
-                ['Order Id', 'Country Code', 'First Name', 'Surname', 'Fixture Name', 'GLCode', 'CreatedOn']
-            )[['Discount', 'DiscountValue', 'TotalPrice']].sum().reset_index()
-
-            total_discount_value['TotalPrice'] = total_discount_value['TotalPrice'].apply(lambda x: f"£{x:,.2f}")
-            total_discount_value['DiscountValue'] = total_discount_value['DiscountValue'].apply(lambda x: f"£{x:,.2f}")
-
-            st.dataframe(total_discount_value)
-
-            filtered_data_excluding_packages = filtered_data[
-                ~filtered_data['Package Name'].isin(['Platinum', 'Woolwich Restaurant'])
-            ]
-
-            exclude_keywords = ["credit", "voucher", "gift voucher", "discount", "pldl"]
-            mask = ~filtered_data_excluding_packages['Discount'].str.contains(
-                '|'.join([re.escape(keyword) for keyword in exclude_keywords]), case=False, na=False
-            )
-
-            filtered_data_without_excluded_keywords = filtered_data_excluding_packages[mask]
-
-            other_payments_per_package = (
-                filtered_data_without_excluded_keywords.groupby('Package Name')['DiscountValue'].sum()
-            )
-
-            st.write("### 🎟️ MBM Package Sales")
-            total_sold_per_package = filtered_data_excluding_packages.groupby('Package Name')['TotalPrice'].sum().reset_index()
-            total_sold_per_package = pd.merge(
-                total_sold_per_package,
-                other_payments_per_package,
-                how="left",
-                on="Package Name"
-            ).rename(columns={"DiscountValue": "OtherPayments"})
-
-            total_sold_per_package['TotalWithOtherPayments'] = (
-                total_sold_per_package['TotalPrice'] + total_sold_per_package['OtherPayments'].fillna(0)
-            )
-
-            total_sold_per_package['TotalPrice'] = total_sold_per_package['TotalPrice'].apply(lambda x: f"£{x:,.2f}")
-            total_sold_per_package['OtherPayments'] = total_sold_per_package['OtherPayments'].fillna(0).apply(lambda x: f"£{x:,.2f}")
-            total_sold_per_package['TotalWithOtherPayments'] = total_sold_per_package['TotalWithOtherPayments'].apply(lambda x: f"£{x:,.2f}")
-
-            st.dataframe(total_sold_per_package)
-
-            other_payments_per_location = (
-                filtered_data_without_excluded_keywords.groupby('SaleLocation')['DiscountValue'].sum()
-            )
-
-            st.write("### 🏟️ Payment Channel")
-            total_sold_per_location = filtered_data_excluding_packages.groupby('SaleLocation')['TotalPrice'].sum().reset_index()
-            total_sold_per_location = pd.merge(
-                total_sold_per_location,
-                other_payments_per_location,
-                how="left",
-                on="SaleLocation"
-            ).rename(columns={"DiscountValue": "OtherPayments"})
-
-            total_sold_per_location['TotalWithOtherPayments'] = (
-                total_sold_per_location['TotalPrice'] + total_sold_per_location['OtherPayments'].fillna(0)
-            )
-
-            total_sold_per_location['TotalPrice'] = total_sold_per_location['TotalPrice'].apply(lambda x: f"£{x:,.2f}")
-            total_sold_per_location['OtherPayments'] = total_sold_per_location['OtherPayments'].fillna(0).apply(lambda x: f"£{x:,.2f}")
-            total_sold_per_location['TotalWithOtherPayments'] = total_sold_per_location['TotalWithOtherPayments'].apply(lambda x: f"£{x:,.2f}")
-
-            st.dataframe(total_sold_per_location)
-
-            st.write("### 🍴 Woolwich Restaurant Sales")
-
-            woolwich_restaurant_data = filtered_data[
-                (filtered_data['Package Name'].isin(['Platinum', 'Woolwich Restaurant'])) &
-                (filtered_data['IsPaid'].astype(str).str.strip().str.upper() == 'TRUE')
-            ]
-
-            total_sales_revenue = woolwich_restaurant_data['TotalPrice'].sum()
-            total_covers_sold = woolwich_restaurant_data['Seats'].sum()
-
-            st.write(f"Total Sales Revenue: **£{total_sales_revenue:,.0f}** ")
-            st.write(f"Total Covers Sold: **{int(total_covers_sold)}** ")
-
-            woolwich_sales_summary = woolwich_restaurant_data.groupby(['Fixture Name', 'KickOffEventStart']).agg({
-                'Seats': 'sum',
-                'TotalPrice': 'sum'
-            }).reset_index()
-
-            woolwich_sales_summary = woolwich_sales_summary.rename(columns={
-                'Fixture Name': 'Event',
-                'KickOffEventStart': 'Event Date',
-                'Seats': 'Covers Sold',
-                'TotalPrice': 'Revenue'
-            })
-
-            woolwich_sales_summary['Revenue'] = woolwich_sales_summary['Revenue'].apply(lambda x: f"£{x:,.0f}")
-
-            st.dataframe(woolwich_sales_summary)
-
-            st.write("### 📥 Downloads")
-
-            if not woolwich_restaurant_data.empty:
-                output = BytesIO()
-                output.write(woolwich_restaurant_data.to_csv(index=False).encode('utf-8'))
-                output.seek(0)
-
-                st.download_button(
-                    label="💾 Download Woolwich Restaurant Data",
-                    data=output,
-                    file_name='woolwich_restaurant_sales_data.csv',
-                    mime='text/csv',
-                )
-
-            if not filtered_data.empty:
-                filtered_report = BytesIO()
-                filtered_report.write(filtered_data.to_csv(index=False).encode('utf-8'))
-                filtered_report.seek(0)
-
-                st.download_button(
-                    label="💾 Download Filtered Data",
-                    data=filtered_report,
-                    file_name='filtered_data.csv',
-                    mime='text/csv',
-                )
-
-            if not loaded_api_df.empty:
-                sales_report = BytesIO()
-                sales_report.write(loaded_api_df.to_csv(index=False).encode('utf-8'))
-                sales_report.seek(0)
-
-                st.download_button(
-                    label="💾 Download Sales Report",
-                    data=sales_report,
-                    file_name='sales_report.csv',
-                    mime='text/csv',
-                )
-        else:
-            st.warning("⚠️ No data available for the selected filters.")
     else:
-        st.sidebar.warning("🚨 Please upload a file to proceed.")
-
-if __name__ == "__main__":
-    run_app()
+        st.warning("⚠️ No data available for the selected filters.")
