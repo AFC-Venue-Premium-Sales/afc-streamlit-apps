@@ -124,9 +124,7 @@ def run_app():
         end_time = st.sidebar.time_input(
             "⏰ End Time", value=datetime.now().replace(hour=23, minute=59, second=59).time(), key="unique_end_time"
         )
-
-
-
+        
         # Combine date and time inputs into full datetime objects
         if len(date_range) == 1:
             min_date = datetime.combine(date_range[0], start_time)
@@ -252,9 +250,6 @@ def run_app():
         total_sold_by_other = filtered_data_without_excluded_keywords['DiscountValue'].sum()
         other_sales_total = dynamic_total + total_sold_by_other
 
-        
-    
-
         # Display results
         if not filtered_data.empty:
             st.write("### 💼 Total Accumulated Sales")
@@ -372,7 +367,6 @@ def run_app():
             # Format the TotalPrice and DiscountValue columns as currency
             total_discount_value['TotalPrice'] = total_discount_value['TotalPrice'].apply(lambda x: f"£{x:,.2f}")
             total_discount_value['DiscountValue'] = total_discount_value['DiscountValue'].apply(lambda x: f"£{x:,.2f}")
-        
             
             # Other Summary Table
             st.write("### Other Payments")
@@ -387,7 +381,6 @@ def run_app():
 
             # Display the filtered table
             st.dataframe(total_discount_value)
-
 
             # Filter out "Platinum" and "Woolwich Restaurant" packages
             filtered_data_excluding_packages = filtered_data[
@@ -539,9 +532,6 @@ def run_app():
                     file_name='sales_report.csv',
                     mime='text/csv',
                 )
-
-            
-
         else:
             st.warning("⚠️ No data available for the selected filters.")
     else:

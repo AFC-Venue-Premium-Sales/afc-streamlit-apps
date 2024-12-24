@@ -102,20 +102,47 @@ if not st.session_state["authenticated"]:
         </a>
     """, unsafe_allow_html=True)
 
+    # Process login by checking query parameters for the authorization code
+    query_params = st.experimental_get_query_params()
+    if "code" in query_params:
+        auth_code = query_params["code"][0]
+        logging.info("Authorization code received. Initiating login process...")
+        with st.spinner("🔄 Logging you in..."):
+            try:
+                result = app.acquire_token_by_authorization_code(
+                    code=auth_code,
+                    scopes=SCOPES,
+                    redirect_uri=REDIRECT_URI
+                )
+                if "access_token" in result:
+                    st.session_state["access_token"] = result["access_token"]
+                    st.session_state["authenticated"] = True
+                    logging.info("✅ Login successful.")
+
+                    # Preload data after login
+                    logging.info("🔄 Preloading data after login...")
+                    reload_data()
+
+                    st.success("🎉 Login successful! Redirecting...")
+                    st.experimental_rerun()
+                else:
+                    logging.error("❌ Failed to acquire access token.")
+                    st.error("❌ Failed to log in. Please try again.")
+            except Exception as e:
+                logging.error(f"❌ An error occurred during login: {e}")
+                st.error(f"❌ {e}")
 else:
     # Sidebar Navigation
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio(
         "Choose Module",
         ["📊 Sales Performance", "📈 User Performance", "📄 Ticket Exchange Report"],
-        format_func=lambda x: x.split(" ")[1],
     )
 
     # Refresh Data Button
     if st.sidebar.button("🔄 Refresh Data"):
         logging.info("🔄 Refresh button clicked.")
         reload_data()
-        logging.info("🔄 Data refresh process successfully triggered.")
 
     # Render the chosen module
     if app_choice == "📄 Ticket Exchange Report":
@@ -135,8 +162,17 @@ else:
             if app_function:
                 try:
                     with st.spinner("🔄 Loading..."):
-                        app_function()
+                        app_function(st.session_state["dashboard_data"])
                     logging.info(f"✅ {app_choice} module loaded successfully.")
                 except Exception as e:
                     logging.error(f"❌ Failed to load {app_choice}: {e}")
                     st.error(f"❌ An error occurred while loading the app: {e}")
+
+# Footer Section
+st.markdown("---")
+st.markdown("""
+    <div style="text-align:center; font-size:12px; color:gray;">
+        🏟️ **Arsenal Property** | All Rights Reserved © 2024  
+        Need help? <a href="mailto:cmunthali@arsenal.co.uk" style="text-decoration:none; color:#FF4B4B;">Contact: cmunthali@arsenal.co.uk</a>
+    </div>
+""", unsafe_allow_html=True)

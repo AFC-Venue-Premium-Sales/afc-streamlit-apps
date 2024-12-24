@@ -54,7 +54,6 @@ def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
 
     # Match TX Sales with Seat List and Game Category
     matched_data = []
-    missing_matches = []
     release_data = []
 
     for _, row in tx_sales_data.iterrows():
@@ -76,10 +75,6 @@ def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
                 row["seat_value"] = matching_game["seat_value"].values[0]
                 row["value_generated"] = row["ticket_sold_price"] - matching_game["seat_value"].values[0]
                 matched_data.append(row)
-            else:
-                missing_matches.append(row.to_dict())
-        else:
-            missing_matches.append(row.to_dict())
 
     for _, row in from_hosp_combined.iterrows():
         sales_match = tx_sales_data[
@@ -92,12 +87,11 @@ def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
         row["ticket_sold_price"] = sales_match["ticket_sold_price"].values[0] if not sales_match.empty else None
         release_data.append(row.to_dict())
 
-    # Only keep rows with valid `seat_value` and `value_generated` in matched_df
-    matched_df = pd.DataFrame(matched_data).dropna(subset=["seat_value", "value_generated"]).reset_index(drop=True)
+    matched_df = pd.DataFrame(matched_data).reset_index(drop=True)
     release_df = pd.DataFrame(release_data).pipe(lambda df: df.loc[:, ~df.columns.duplicated()])
-    missing_df = pd.DataFrame(missing_matches).reset_index(drop=True)
+    all_games = sorted(set(tx_sales_data["game_name"]).union(set(from_hosp_combined["game_name"])))
 
-    return matched_df, release_df, missing_df
+    return matched_df, release_df, all_games
 
 # Main Streamlit App
 def run_app():
@@ -118,44 +112,66 @@ def run_app():
 
     if tx_sales_file and from_hosp_file:
         with st.spinner("Processing files..."):
-            matched_df, release_df, missing_df = process_files(tx_sales_file, from_hosp_file, seat_list, game_category)
+            matched_df, release_df, all_games = process_files(tx_sales_file, from_hosp_file, seat_list, game_category)
 
-        if matched_df is not None and release_df is not None:
-            # Filters
-            st.sidebar.markdown("### Filters")
-            game_filter = st.sidebar.multiselect("Filter by Game Name", matched_df["game_name"].unique())
-            if game_filter:
-                matched_df = matched_df[matched_df["game_name"].isin(game_filter)]
-                release_df = release_df[release_df["game_name"].isin(game_filter)]
-                missing_df = missing_df[missing_df["game_name"].isin(game_filter)]
+        st.sidebar.markdown("### Filters")
+        game_filter = st.sidebar.multiselect("Filter by Game Name", all_games)
+        if game_filter:
+            matched_df = matched_df[matched_df["game_name"].isin(game_filter)]
+            release_df = release_df[release_df["game_name"].isin(game_filter)]
 
-            # Matched Data
-            st.markdown("### Matched Data From Pre-Assigned Club Level Seats")
-            st.write(f"Number of matched rows: {len(matched_df)}")
-            st.dataframe(matched_df)
-            st.download_button("Download Matched Data", matched_df.to_csv(index=False), "matched_data.csv")
+        st.markdown("### Matched Data From Pre-Assigned Club Level Seats")
+        st.write(f"**Number of Matched Rows:** {len(matched_df)}")
+        st.dataframe(matched_df)
+        st.download_button(
+            label="📥 Download Matched Data",
+            data=matched_df.to_csv(index=False),
+            file_name="matched_data.csv",
+            mime="text/csv",
+        )
 
-            # Release Data
-            st.markdown("### Matched Data from Hospitality Ticket Releases")
-            st.write(f"Number of matched rows: {len(release_df)}")
-            st.dataframe(release_df)
-            st.download_button("Download Release Data", release_df.to_csv(index=False), "release_data.csv")
+        st.markdown("### Matched Data from Hospitality Ticket Releases")
+        matched_release = release_df[release_df["found_on_tx_file"] == "Y"]
+        st.write(f"**Number of Matched Rows:** {len(matched_release)}")
+        st.dataframe(matched_release)
+        st.download_button(
+            label="📥 Download Matched Data from Hospitality Ticket Releases",
+            data=matched_release.to_csv(index=False),
+            file_name="matched_hosp_data.csv",
+            mime="text/csv",
+        )
 
-            # Missing Matches
-            st.markdown("### Missing Matches")
-            st.write(f"Number of unmatched rows: {len(missing_df)}")
-            st.dataframe(missing_df)
-            st.download_button("Download Missing Matches", missing_df.to_csv(index=False), "missing_matches.csv")
+        # Charts
+        st.markdown("### Charts")
 
-            # Metrics
-            st.sidebar.markdown("### Metrics")
-            total_matched = len(matched_df)
-            avg_value_generated = matched_df["value_generated"].mean()
-            total_value_generated = matched_df["value_generated"].sum()
+        # Chart 1: Total value generated by game
+        if not matched_df.empty:
+            st.markdown("#### Total Value Generated by Game")
+            fig, ax = plt.subplots()
+            matched_df.groupby("game_name")["value_generated"].sum().plot(kind="bar", ax=ax, color="skyblue")
+            ax.set_title("Total Value Generated by Game")
+            ax.set_ylabel("Value (£)")
+            ax.set_xlabel("Game Name")
+            st.pyplot(fig)
 
-            st.sidebar.metric("Total Matched Rows", total_matched)
-            st.sidebar.metric("Avg Value Generated", f"£{avg_value_generated:.2f}")
-            st.sidebar.metric("Total Value Generated", f"£{total_value_generated:.2f}")
+        # Chart 2: Tickets sold by transfer type
+        if not matched_df.empty:
+            st.markdown("#### Tickets Sold by Transfer Type")
+            fig, ax = plt.subplots()
+            matched_df["transfer_type"].value_counts().plot(kind="bar", ax=ax, color="orange")
+            ax.set_title("Tickets Sold by Transfer Type")
+            ax.set_ylabel("Count")
+            ax.set_xlabel("Transfer Type")
+            st.pyplot(fig)
+
+        st.sidebar.markdown("### Metrics")
+        total_matched = len(matched_df)
+        avg_value_generated = matched_df["value_generated"].mean()
+        total_value_generated = matched_df["value_generated"].sum()
+
+        st.sidebar.metric("Total Matched Rows", total_matched)
+        st.sidebar.metric("Avg Value Generated", f"£{avg_value_generated:.2f}")
+        st.sidebar.metric("Total Value Generated", f"£{total_value_generated:.2f}")
 
 if __name__ == "__main__":
     run_app()
