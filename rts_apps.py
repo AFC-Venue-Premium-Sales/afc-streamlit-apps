@@ -46,11 +46,15 @@ if "dashboard_data" not in st.session_state:
 # Function to reload data
 def reload_data():
     """Reloads data from `tjt_hosp_api`."""
-    logging.info("🔄 Reloading data from `tjt_hosp_api`...")
+    logging.info("🔄 [Start] Data reload process initiated.")
     try:
         import tjt_hosp_api
         importlib.reload(tjt_hosp_api)
-
+        
+        # Log number of rows before reload
+        current_rows = len(st.session_state["dashboard_data"]) if st.session_state["dashboard_data"] is not None else 0
+        logging.info(f"🔢 Rows before reload: {current_rows}")
+        
         # Verify data loading
         from tjt_hosp_api import filtered_df_without_seats
         required_columns = ['Fixture Name', 'Order Id', 'First Name']
@@ -58,15 +62,21 @@ def reload_data():
             col for col in required_columns if col not in filtered_df_without_seats.columns
         ]
         if missing_columns:
+            logging.error(f"❌ Missing required columns: {missing_columns}")
             raise ValueError(f"Missing required columns: {missing_columns}")
 
         # Update the dashboard data
         st.session_state["dashboard_data"] = filtered_df_without_seats
-        logging.info(f"✅ Data successfully reloaded. Total rows: {len(filtered_df_without_seats)}")
+        new_rows = len(filtered_df_without_seats)
+        logging.info(f"🔢 Rows after reload: {new_rows} (Change: {new_rows - current_rows})")
+        
+        logging.info("✅ Data successfully reloaded.")
         st.success("✅ Data refreshed successfully!")
     except Exception as e:
         logging.error(f"❌ Failed to reload data: {e}")
         st.error(f"❌ Failed to reload data: {e}")
+    finally:
+        logging.info("🔄 [End] Data reload process complete.")
 
 
 # App Header with a logo
@@ -149,7 +159,7 @@ else:
 
     # Refresh Button
     if st.sidebar.button("🔄 Refresh Data"):
-        logging.info("🔄 Refresh button clicked. Attempting to reload data...")
+        logging.info("🔄 Refresh button clicked. Triggering data reload.")
         reload_data()  # Call the reload function
         logging.info("🔄 Data refresh process triggered successfully.")
 
