@@ -94,6 +94,31 @@ def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
 
 # Main Streamlit App
 def run_app():
+    st.title("🏟️ AFC Hospitality Seat Tracker")
+    
+    # Instructions
+    st.markdown(
+        """
+        ### Welcome to the AFC Hospitality Seat Tracker App!
+        
+        This app helps you analyze and track seat data for AFC Hospitality:
+        - **TX Sales File**: Contains data about ticket sales on the exchange.
+        - **Hospitality Ticket Releases File**: Includes tickets released by Hospitality.
+        - **Seat List & Game Category File**: Preloaded with data on predefined seat allocations and game categories.
+
+        ### How to Use
+        1. **Upload your files**:
+            - **TX Sales File**: Upload your sales data (`TX Sales Data` tab).
+            - **From Hosp File**: Upload the hospitality ticket releases file.
+        2. **View results**:
+            - Matched rows from predefined seats and released tickets.
+            - Metrics, charts, and export options.
+        3. **Use filters** in the sidebar to narrow down results by game or CRC description.
+
+        **Note**: Ensure the files are in `.xlsx` format and match the required structure.
+        """
+    )
+
     st.sidebar.title("File Uploads")
     seat_list_game_cat_path = "seat_list_game_cat.xlsx"
     tx_sales_file = st.sidebar.file_uploader("Upload TX Sales File", type=["xlsx"])
@@ -199,3 +224,4 @@ def run_app():
 
 if __name__ == "__main__":
     run_app()
+
