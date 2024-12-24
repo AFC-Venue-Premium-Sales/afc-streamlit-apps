@@ -99,13 +99,8 @@ def run_app():
     from_hosp_file = st.sidebar.file_uploader("Upload From Hosp File", type=["xlsx"])
     seat_list_game_cat_path = "seat_list_game_cat.xlsx"
 
-    with st.spinner("Loading Seat List and Game Category..."):
-        try:
-            seat_list, game_category = load_seat_list_and_game_category(seat_list_game_cat_path)
-            st.sidebar.success("Seat List and Game Category loaded successfully.")
-        except Exception as e:
-            st.sidebar.error(f"Failed to load Seat List and Game Category: {e}")
-            return
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### Filters")
 
     if tx_sales_file and from_hosp_file:
         with st.spinner("Processing files..."):

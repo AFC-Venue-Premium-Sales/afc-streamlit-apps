@@ -46,7 +46,7 @@ if "dashboard_data" not in st.session_state:
 # Function to reload data
 def reload_data():
     """Reloads data from `tjt_hosp_api`."""
-    logging.info("🔄 Reloading data from `tjt_hosp_api`...")
+    logging.info("🔄 [START] Reloading data from `tjt_hosp_api`...")
     try:
         import tjt_hosp_api
         importlib.reload(tjt_hosp_api)
@@ -58,15 +58,35 @@ def reload_data():
             col for col in required_columns if col not in filtered_df_without_seats.columns
         ]
         if missing_columns:
+            logging.error(f"❌ Missing required columns: {missing_columns}")
             raise ValueError(f"Missing required columns: {missing_columns}")
 
+        # Log the previous row count if available
+        if "dashboard_data" in st.session_state and st.session_state["dashboard_data"] is not None:
+            previous_row_count = len(st.session_state["dashboard_data"])
+            logging.info(f"🔢 Rows before reload: {previous_row_count}")
+        else:
+            previous_row_count = 0
+            logging.info("🔢 No previous data loaded.")
+
+        # Reload and update session state
+        st.session_state["dashboard_data"] = filtered_df_without_seats
+        current_row_count = len(filtered_df_without_seats)
+
+        # Log the row count after reload
+        logging.info(f"🔢 Rows after reload: {current_row_count}")
+        logging.info(f"🔢 Change in rows: {current_row_count - previous_row_count}")
+
         # Success log
-        logging.info(f"✅ Data successfully reloaded. Total rows: {len(filtered_df_without_seats)}")
+        logging.info("✅ [END] Data successfully reloaded.")
         st.success("✅ Data refreshed successfully!")
 
     except Exception as e:
         logging.error(f"❌ Failed to reload data: {e}")
         st.error(f"❌ Failed to reload data: {e}")
+    finally:
+        logging.info("🔄 [COMPLETE] Data reload process finished.")
+
 
 
 
