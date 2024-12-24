@@ -63,7 +63,7 @@ def reload_data():
 
         # Log change in data rows
         logging.info(f"🔢 Rows after reload: {current_row_count} (Change: {current_row_count - previous_row_count})")
-        st.success("✅ Data refreshed successfully!")
+        # st.success("✅ Data refreshed successfully!")
     except Exception as e:
         logging.error(f"❌ Failed to reload data: {e}")
         st.error(f"❌ Failed to reload data: {e}")
@@ -124,7 +124,7 @@ if not st.session_state["authenticated"]:
                     reload_data()
 
                     st.success("🎉 Login successful! Redirecting...")
-                    st.experimental_rerun()
+                    st.rerun() 
                 else:
                     logging.error("❌ Failed to acquire access token.")
                     st.error("❌ Failed to log in. Please try again.")
