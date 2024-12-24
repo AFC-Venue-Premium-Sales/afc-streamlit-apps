@@ -41,7 +41,8 @@ if "redirected" not in st.session_state:
     st.session_state["redirected"] = False
 if "dashboard_data" not in st.session_state:
     st.session_state["dashboard_data"] = None  # Store dashboard data
-
+if "data_loaded" not in st.session_state:
+    st.session_state["data_loaded"] = False
 
 # Function to reload data
 def reload_data():
@@ -71,9 +72,6 @@ def reload_data():
         st.error(f"❌ Failed to reload data: {e}")
     finally:
         logging.info("🔄 Data reload finished.")
-
-
-
 
 # App Header with a logo
 st.image("assets/arsenal-logo.png", width=250)  # Placeholder for the logo
@@ -128,8 +126,13 @@ if not st.session_state["authenticated"]:
             except Exception as e:
                 st.error(f"❌ An error occurred: {str(e)}")
 
-
 else:
+    # Automatically load data after successful login
+    if not st.session_state["data_loaded"]:
+        logging.info("🔄 Automatically loading data after login...")
+        reload_data()
+        st.session_state["data_loaded"] = True  # Set flag to avoid multiple reloads
+
     # Sidebar Navigation
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio(
@@ -146,15 +149,12 @@ else:
         logging.info("✅ Data refresh process completed successfully.")
         st.stop()  # Replace deprecated st.rerun() with st.stop() to trigger a reload
 
-
-
     # Handle module choice dynamically
     app_registry = {
-    "📊 Sales Performance": lambda: sales_performance.run_app(st.session_state["dashboard_data"]),
-    "📈 User Performance": lambda: user_performance_api.run_app(st.session_state["dashboard_data"]),
-    "📄 Ticket Exchange Report": lambda: ticket_exchange_report.run_app
-}
-
+        "📊 Sales Performance": lambda: sales_performance.run_app(st.session_state["dashboard_data"]),
+        "📈 User Performance": lambda: user_performance_api.run_app(st.session_state["dashboard_data"]),
+        "📄 Ticket Exchange Report": lambda: ticket_exchange_report.run_app
+    }
 
     app_function = app_registry.get(app_choice)
     if app_function:
@@ -167,7 +167,6 @@ else:
             logging.error(f"Error loading app '{app_choice}': {e}")
     else:
         st.error("❌ Invalid selection. Please choose a valid app option.")
-
 
     # Initialize logout state
     if "logout_triggered" not in st.session_state:
@@ -186,11 +185,11 @@ else:
             st.success("✅ You have been logged out successfully!")
             st.stop()
 
-   # Handle post-logout state
+    # Handle post-logout state
     if not st.session_state.get("authenticated", True):
         st.warning("🔒 You have been logged out. Please log in again.")
         st.stop()
-        
+
 # Footer Section
 st.markdown("---")
 st.markdown("""
