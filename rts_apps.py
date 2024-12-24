@@ -106,11 +106,10 @@ if not st.session_state["authenticated"]:
         </div>
     """, unsafe_allow_html=True)
 
-    # Process login by checking query parameters for the authorization code
+    # Process login
     query_params = st.experimental_get_query_params()
-    if "code" in query_params and not st.session_state.get("redirected", False):
+    if "code" in query_params and not st.session_state["redirected"]:
         auth_code = query_params["code"][0]
-        logging.info("Authorization code received. Initiating login process...")
         with st.spinner("🔄 Logging you in..."):
             try:
                 result = app.acquire_token_by_authorization_code(
@@ -122,22 +121,12 @@ if not st.session_state["authenticated"]:
                     st.session_state["access_token"] = result["access_token"]
                     st.session_state["authenticated"] = True
                     st.session_state["redirected"] = True
-                    logging.info("Login successful. Redirecting user...")
                     st.success("🎉 Login successful! Redirecting...")
-                    st.rerun()
+                    st.rerun()  # Reload the app to show authenticated view
                 else:
-                    logging.warning("Failed to acquire access token.")
                     st.error("❌ Failed to log in. Please try again.")
             except Exception as e:
-                logging.error(f"An error occurred during login: {e}")
-                if "invalid_grant" in str(e):
-                    st.error("❌ The authorization code is invalid or expired. Please log in again.")
-                else:
-                    st.error(f"❌ An unexpected error occurred: {str(e)}")
-    else:
-        if "code" not in query_params:
-            logging.info("No authorization code in query parameters.")
-            # st.info("🔑 Please log in using the authentication portal.")
+                st.error(f"❌ An error occurred: {str(e)}")
 
 
 else:
