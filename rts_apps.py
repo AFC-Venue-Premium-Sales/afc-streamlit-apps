@@ -48,11 +48,11 @@ def reload_data():
     """Reloads data from `tjt_hosp_api` and ensures the latest data is available globally."""
     logging.info("Reloading data from `tjt_hosp_api`...")
     try:
-        # Reload `tjt_hosp_api` dynamically to fetch the latest data
+        # Dynamically reload `tjt_hosp_api` to fetch the latest data
         import tjt_hosp_api
         importlib.reload(tjt_hosp_api)
 
-        # Validate the reloaded data
+        # Revalidate the reloaded data
         from tjt_hosp_api import filtered_df_without_seats
         required_columns = ['Fixture Name', 'Order Id', 'First Name']
         missing_columns = [
@@ -61,11 +61,17 @@ def reload_data():
         if missing_columns:
             raise ValueError(f"Missing required columns: {missing_columns}")
 
-        # Log success and notify the user
+        # Log success
         logging.info(f"✅ Data successfully reloaded. Rows: {len(filtered_df_without_seats)}")
+
+        # Reload dependent modules to ensure they use the latest data
+        importlib.reload(sales_performance)
+        importlib.reload(user_performance_api)
+
+        # Notify the user
         st.success("✅ Data refreshed successfully!")
 
-        # Trigger a rerun to refresh the dashboards
+        # Trigger a rerun to refresh the app state
         st.experimental_rerun()
 
     except Exception as e:
