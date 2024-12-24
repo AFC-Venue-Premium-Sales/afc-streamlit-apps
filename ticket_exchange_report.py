@@ -39,59 +39,48 @@ def load_seat_list_and_game_category(path):
 
 # Process TX Sales and From Hosp files
 def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
-    """Process TX Sales and From Hosp files."""
+    """Process TX Sales and From Hosp files with vectorized operations."""
+    # Load TX Sales Data
     tx_sales_data = pd.read_excel(tx_sales_file, sheet_name="TX Sales Data")
     tx_sales_data.columns = tx_sales_data.columns.str.strip().str.replace(" ", "_").str.lower()
     tx_sales_data["block"] = tx_sales_data["block"].apply(adjust_block)
     tx_sales_data["ticket_sold_price"] = pd.to_numeric(tx_sales_data["ticket_sold_price"], errors="coerce")
     tx_sales_data = preprocess_data(tx_sales_data)
 
+    # Load From Hosp Data
     from_hosp = pd.read_excel(from_hosp_file, sheet_name=None)
     from_hosp_combined = pd.concat(from_hosp.values(), ignore_index=True)
     from_hosp_combined.columns = from_hosp_combined.columns.str.strip().str.replace(" ", "_").str.lower()
     from_hosp_combined["block"] = from_hosp_combined["block"].apply(adjust_block)
-    from_hosp_combined = from_hosp_combined[from_hosp_combined["crc_desc"].notnull()]
     from_hosp_combined = preprocess_data(from_hosp_combined)
 
-    # Match TX Sales with Seat List and Game Category
-    matched_data = []
-    release_data = []
+    # Merge TX Sales Data with Seat List
+    tx_merged = tx_sales_data.merge(
+        seat_list, on=["block", "row", "seat"], how="left", suffixes=("", "_seat")
+    )
 
-    for _, row in tx_sales_data.iterrows():
-        matching_seat = seat_list[
-            (seat_list["block"] == row["block"]) &
-            (seat_list["row"] == row["row"]) &
-            (seat_list["seat"] == row["seat"])
-        ]
-        if not matching_seat.empty:
-            row["crc_desc"] = matching_seat["crc_desc"].values[0]
-            row["price_band"] = matching_seat["price_band"].values[0]
-            matching_game = game_category[
-                (game_category["game_name"] == row["game_name"]) &
-                (game_category["game_date"] == row["game_date"]) &
-                (game_category["price_band"] == matching_seat["price_band"].values[0])
-            ]
-            if not matching_game.empty:
-                row["category"] = matching_game["category"].values[0]
-                row["seat_value"] = matching_game["seat_value"].values[0]
-                row["value_generated"] = row["ticket_sold_price"] - matching_game["seat_value"].values[0]
-                matched_data.append(row)
+    # Merge TX Data with Game Category
+    tx_merged = tx_merged.merge(
+        game_category,
+        left_on=["game_name", "game_date", "price_band"],
+        right_on=["game_name", "game_date", "price_band"],
+        how="left",
+    )
 
-    for _, row in from_hosp_combined.iterrows():
-        sales_match = tx_sales_data[
-            (tx_sales_data["game_name"] == row["game_name"]) &
-            (tx_sales_data["block"] == row["block"]) &
-            (tx_sales_data["row"] == row["row"]) &
-            (tx_sales_data["seat"] == row["seat"])
-        ]
-        row["found_on_tx_file"] = "Y" if not sales_match.empty else "N"
-        row["ticket_sold_price"] = sales_match["ticket_sold_price"].values[0] if not sales_match.empty else None
-        release_data.append(row.to_dict())
+    # Calculate value generated
+    tx_merged["value_generated"] = tx_merged["ticket_sold_price"] - tx_merged["seat_value"]
+    matched_df = tx_merged.dropna(subset=["crc_desc", "seat_value"])
 
-    matched_df = pd.DataFrame(matched_data).reset_index(drop=True)
-    release_df = pd.DataFrame(release_data).pipe(lambda df: df.loc[:, ~df.columns.duplicated()])
+    # Merge From Hosp Data with TX Sales Data
+    release_merged = from_hosp_combined.merge(
+        tx_sales_data,
+        on=["game_name", "block", "row", "seat"],
+        how="left",
+        suffixes=("", "_tx"),
+    )
+    release_merged["found_on_tx_file"] = release_merged["ticket_sold_price"].notna().map({True: "Y", False: "N"})
 
-    return tx_sales_data, matched_df, release_df
+    return tx_sales_data, matched_df, release_merged
 
 # Main Streamlit App
 def run_app():

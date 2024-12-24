@@ -41,37 +41,33 @@ if "redirected" not in st.session_state:
     st.session_state["redirected"] = False
 if "dashboard_data" not in st.session_state:
     st.session_state["dashboard_data"] = None  # Store dashboard data
-if "data_loaded" not in st.session_state:
-    st.session_state["data_loaded"] = False
+
 
 # Function to reload data
 def reload_data():
-    """Reloads data from `tjt_hosp_api` script."""
-    logging.info("🔄 Reloading `tjt_hosp_api`...")
+    """Reloads data from `tjt_hosp_api` and updates the session state."""
+    logging.info("Reloading data from `tjt_hosp_api`...")
     try:
         import tjt_hosp_api
         importlib.reload(tjt_hosp_api)
 
-        # Validate the DataFrame
+        # Fetch fresh data
+        from tjt_hosp_api import filtered_df_without_seats
+
         required_columns = ['Fixture Name', 'Order Id', 'First Name']
         missing_columns = [
-            col for col in required_columns if col not in tjt_hosp_api.filtered_df_without_seats.columns
+            col for col in required_columns if col not in filtered_df_without_seats.columns
         ]
         if missing_columns:
             raise ValueError(f"Missing required columns: {missing_columns}")
 
-        # Update session state
-        previous_row_count = len(st.session_state.get("dashboard_data", []))
-        st.session_state["dashboard_data"] = tjt_hosp_api.filtered_df_without_seats
-        current_row_count = len(tjt_hosp_api.filtered_df_without_seats)
-
-        logging.info(f"✅ Reload complete. Row change: {current_row_count - previous_row_count}")
+        logging.info("Data successfully reloaded.")
         st.success("✅ Data refreshed successfully!")
+
     except Exception as e:
-        logging.error(f"❌ Error reloading data: {e}")
+        logging.error(f"Failed to reload data: {e}")
         st.error(f"❌ Failed to reload data: {e}")
-    finally:
-        logging.info("🔄 Data reload finished.")
+
 
 # App Header with a logo
 st.image("assets/arsenal-logo.png", width=250)  # Placeholder for the logo
@@ -104,10 +100,11 @@ if not st.session_state["authenticated"]:
         </div>
     """, unsafe_allow_html=True)
 
-    # Process login
+    # Process login by checking query parameters for the authorization code
     query_params = st.experimental_get_query_params()
-    if "code" in query_params and not st.session_state["redirected"]:
+    if "code" in query_params and not st.session_state.get("redirected", False):
         auth_code = query_params["code"][0]
+        logging.info("Authorization code received. Initiating login process...")
         with st.spinner("🔄 Logging you in..."):
             try:
                 result = app.acquire_token_by_authorization_code(
@@ -119,20 +116,25 @@ if not st.session_state["authenticated"]:
                     st.session_state["access_token"] = result["access_token"]
                     st.session_state["authenticated"] = True
                     st.session_state["redirected"] = True
+                    logging.info("Login successful. Redirecting user...")
                     st.success("🎉 Login successful! Redirecting...")
-                    st.rerun()  # Reload the app to show authenticated view
+                    st.rerun()
                 else:
+                    logging.warning("Failed to acquire access token.")
                     st.error("❌ Failed to log in. Please try again.")
             except Exception as e:
-                st.error(f"❌ An error occurred: {str(e)}")
+                logging.error(f"An error occurred during login: {e}")
+                if "invalid_grant" in str(e):
+                    st.error("❌ The authorization code is invalid or expired. Please log in again.")
+                else:
+                    st.error(f"❌ An unexpected error occurred: {str(e)}")
+    else:
+        if "code" not in query_params:
+            logging.info("No authorization code in query parameters.")
+            # st.info("🔑 Please log in using the authentication portal.")
+
 
 else:
-    # Automatically load data after successful login
-    if not st.session_state["data_loaded"]:
-        logging.info("🔄 Automatically loading data after login...")
-        reload_data()
-        st.session_state["data_loaded"] = True  # Set flag to avoid multiple reloads
-
     # Sidebar Navigation
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio(
@@ -143,17 +145,15 @@ else:
 
     # Refresh Button
     if st.sidebar.button("🔄 Refresh Data"):
-        logging.info("🔄 [CLICKED] Refresh button pressed by the user.")
-        logging.info("🔄 Initiating data reload process...")
+        logging.info("🔄 Refreshing data...")
         reload_data()  # Call the reload function
-        logging.info("✅ Data refresh process completed successfully.")
-        st.stop()  # Replace deprecated st.rerun() with st.stop() to trigger a reload
+        st.rerun()  # Trigger a full app rerun after reload
 
     # Handle module choice dynamically
     app_registry = {
-        "📊 Sales Performance": lambda: sales_performance.run_app(st.session_state["dashboard_data"]),
-        "📈 User Performance": lambda: user_performance_api.run_app(st.session_state["dashboard_data"]),
-        "📄 Ticket Exchange Report": lambda: ticket_exchange_report.run_app
+        "📊 Sales Performance": sales_performance.run_app,
+        "📈 User Performance": user_performance_api.run_app,
+        "📄 Ticket Exchange Report": ticket_exchange_report.run_app
     }
 
     app_function = app_registry.get(app_choice)
@@ -167,6 +167,7 @@ else:
             logging.error(f"Error loading app '{app_choice}': {e}")
     else:
         st.error("❌ Invalid selection. Please choose a valid app option.")
+
 
     # Initialize logout state
     if "logout_triggered" not in st.session_state:
@@ -183,12 +184,13 @@ else:
             st.session_state["logged_in"] = False  # Mark as logged out
             st.session_state.clear()
             st.success("✅ You have been logged out successfully!")
-            st.stop()
+            st.rerun()  # Trigger a full rerun
 
     # Handle post-logout state
-    if not st.session_state.get("authenticated", True):
-        st.warning("🔒 You have been logged out. Please log in again.")
-        st.stop()
+    if st.session_state.get("logout_triggered", False):
+        st.session_state.clear()  # Clear session state
+        st.session_state["logout_triggered"] = True  # Maintain logout state to avoid flicker
+        st.stop()  # Stop further execution to avoid login checks
 
 # Footer Section
 st.markdown("---")
