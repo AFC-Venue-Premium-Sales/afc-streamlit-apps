@@ -64,7 +64,6 @@ def reload_data():
         st.session_state["dashboard_data"] = filtered_df_without_seats
         logging.info(f"✅ Data successfully reloaded. Total rows: {len(filtered_df_without_seats)}")
         st.success("✅ Data refreshed successfully!")
-
     except Exception as e:
         logging.error(f"❌ Failed to reload data: {e}")
         st.error(f"❌ Failed to reload data: {e}")
@@ -118,9 +117,13 @@ if not st.session_state["authenticated"]:
                     st.session_state["authenticated"] = True
                     st.session_state["redirected"] = True
                     logging.info("Login successful. Redirecting user...")
+
+                    # Preload data after login
+                    logging.info("🔄 Preloading data after login...")
+                    reload_data()
+
                     st.success("🎉 Login successful! Redirecting...")
                     st.rerun()
-                    st.stop()
                 else:
                     logging.warning("Failed to acquire access token.")
                     st.error("❌ Failed to log in. Please try again.")
@@ -149,31 +152,31 @@ else:
         logging.info("🔄 Refresh button clicked. Attempting to reload data...")
         reload_data()  # Call the reload function
         logging.info("🔄 Data refresh process triggered successfully.")
-        st.stop()
 
-    # Check if data is loaded before rendering the dashboard
-    if st.session_state["dashboard_data"] is None:
-        st.warning("⚠️ Data not loaded. Please refresh to load the latest data.")
-        st.stop()
-
-    # Handle module choice dynamically
-    app_registry = {
-        "📊 Sales Performance": sales_performance.run_app,
-        "📈 User Performance": user_performance_api.run_app,
-        "📄 Ticket Exchange Report": ticket_exchange_report.run_app
-    }
-
-    app_function = app_registry.get(app_choice)
-    if app_function:
-        try:
-            with st.spinner("🔄 Loading..."):
-                app_function()
-            st.success(f"✅ {app_choice} app loaded successfully!")
-        except Exception as e:
-            st.error(f"❌ An error occurred while loading the app: {e}")
-            logging.error(f"Error loading app '{app_choice}': {e}")
+    # Handle "Ticket Exchange Report" independently
+    if app_choice == "📄 Ticket Exchange Report":
+        logging.info("📄 Loading Ticket Exchange Report independently...")
+        ticket_exchange_report.run_app()
     else:
-        st.error("❌ Invalid selection. Please choose a valid app option.")
+        # Check if data is loaded before rendering the dashboard
+        if st.session_state["dashboard_data"] is None:
+            st.warning("⚠️ Data not loaded. Please refresh to load the latest data.")
+            st.stop()
+
+        # Handle other modules dynamically
+        app_registry = {
+            "📊 Sales Performance": sales_performance.run_app,
+            "📈 User Performance": user_performance_api.run_app,
+        }
+        app_function = app_registry.get(app_choice)
+        if app_function:
+            try:
+                with st.spinner("🔄 Loading..."):
+                    app_function()
+                st.success(f"✅ {app_choice} app loaded successfully!")
+            except Exception as e:
+                st.error(f"❌ An error occurred while loading the app: {e}")
+                logging.error(f"Error loading app '{app_choice}': {e}")
 
     # Logout Button
     if st.sidebar.button("🔓 Logout"):

@@ -54,6 +54,7 @@ def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
 
     # Match TX Sales with Seat List and Game Category
     matched_data = []
+    missing_matches = []
     release_data = []
 
     for _, row in tx_sales_data.iterrows():
@@ -75,6 +76,10 @@ def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
                 row["seat_value"] = matching_game["seat_value"].values[0]
                 row["value_generated"] = row["ticket_sold_price"] - matching_game["seat_value"].values[0]
                 matched_data.append(row)
+            else:
+                missing_matches.append(row.to_dict())
+        else:
+            missing_matches.append(row.to_dict())
 
     for _, row in from_hosp_combined.iterrows():
         sales_match = tx_sales_data[
@@ -87,21 +92,12 @@ def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
         row["ticket_sold_price"] = sales_match["ticket_sold_price"].values[0] if not sales_match.empty else None
         release_data.append(row.to_dict())
 
-    # Debugging: Log columns and sample rows
-    logging.info("TX Sales Data Columns: %s", tx_sales_data.columns.tolist())
-    if matched_data:
-        logging.info("Sample Matched Row: %s", matched_data[0])
-    else:
-        logging.warning("No rows matched during processing.")
-
-    # Default columns if no data is matched
-    if not matched_data:
-        matched_data = [{"game_name": None, "game_date": None, "block": None, "row": None, "seat": None}]
-
-    matched_df = pd.DataFrame(matched_data).reset_index(drop=True)
+    # Only keep rows with valid `seat_value` and `value_generated` in matched_df
+    matched_df = pd.DataFrame(matched_data).dropna(subset=["seat_value", "value_generated"]).reset_index(drop=True)
     release_df = pd.DataFrame(release_data).pipe(lambda df: df.loc[:, ~df.columns.duplicated()])
+    missing_df = pd.DataFrame(missing_matches).reset_index(drop=True)
 
-    return matched_df, release_df
+    return matched_df, release_df, missing_df
 
 # Main Streamlit App
 def run_app():
@@ -122,19 +118,44 @@ def run_app():
 
     if tx_sales_file and from_hosp_file:
         with st.spinner("Processing files..."):
-            matched_df, release_df = process_files(tx_sales_file, from_hosp_file, seat_list, game_category)
+            matched_df, release_df, missing_df = process_files(tx_sales_file, from_hosp_file, seat_list, game_category)
 
         if matched_df is not None and release_df is not None:
+            # Filters
             st.sidebar.markdown("### Filters")
-            if "game_name" in matched_df.columns:
-                game_filter = st.sidebar.multiselect("Filter by Game Name", matched_df["game_name"].dropna().unique())
-                if game_filter:
-                    matched_df = matched_df[matched_df["game_name"].isin(game_filter)]
-                    release_df = release_df[release_df["game_name"].isin(game_filter)]
+            game_filter = st.sidebar.multiselect("Filter by Game Name", matched_df["game_name"].unique())
+            if game_filter:
+                matched_df = matched_df[matched_df["game_name"].isin(game_filter)]
+                release_df = release_df[release_df["game_name"].isin(game_filter)]
+                missing_df = missing_df[missing_df["game_name"].isin(game_filter)]
 
+            # Matched Data
             st.markdown("### Matched Data From Pre-Assigned Club Level Seats")
-            st.write(f"**Number of Matched Rows:** {len(matched_df)}")
+            st.write(f"Number of matched rows: {len(matched_df)}")
             st.dataframe(matched_df)
+            st.download_button("Download Matched Data", matched_df.to_csv(index=False), "matched_data.csv")
+
+            # Release Data
+            st.markdown("### Matched Data from Hospitality Ticket Releases")
+            st.write(f"Number of matched rows: {len(release_df)}")
+            st.dataframe(release_df)
+            st.download_button("Download Release Data", release_df.to_csv(index=False), "release_data.csv")
+
+            # Missing Matches
+            st.markdown("### Missing Matches")
+            st.write(f"Number of unmatched rows: {len(missing_df)}")
+            st.dataframe(missing_df)
+            st.download_button("Download Missing Matches", missing_df.to_csv(index=False), "missing_matches.csv")
+
+            # Metrics
+            st.sidebar.markdown("### Metrics")
+            total_matched = len(matched_df)
+            avg_value_generated = matched_df["value_generated"].mean()
+            total_value_generated = matched_df["value_generated"].sum()
+
+            st.sidebar.metric("Total Matched Rows", total_matched)
+            st.sidebar.metric("Avg Value Generated", f"£{avg_value_generated:.2f}")
+            st.sidebar.metric("Total Value Generated", f"£{total_value_generated:.2f}")
 
 if __name__ == "__main__":
     run_app()
