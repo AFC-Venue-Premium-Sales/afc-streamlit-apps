@@ -166,10 +166,12 @@ else:
 
     # Refresh Button
     if st.sidebar.button("🔄 Refresh Data"):
-        logging.info("🔄 Refresh button clicked. Attempting to reload data...")
+        logging.info("🔄 [CLICKED] Refresh button pressed by the user.")
+        logging.info("🔄 Initiating data reload process...")
         reload_data()  # Call the reload function
-        logging.info("🔄 Data refresh process triggered successfully.")
+        logging.info("✅ Data refresh process completed successfully.")
         st.stop()  # Replace deprecated st.rerun() with st.stop() to trigger a reload
+
 
 
     # Handle module choice dynamically
