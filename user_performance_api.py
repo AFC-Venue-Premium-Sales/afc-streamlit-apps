@@ -162,6 +162,28 @@ def run_app():
     ### ℹ️ About
     This application provides detailed Exec Sales Metrics ONLY, derived from RTS data. The data is retrieved from TJT's MBM sales API.
     """)
+    
+    with st.expander("📖 How to Use This App - User Performance"):
+        st.markdown("""
+        **Step-by-Step Guide:**
+        1. **Select User**:
+        - Use the sidebar to choose specific users or teams.
+        2. **Filter Data**:
+        - Apply filters such as date range or performance criteria.
+        3. **Analyze Performance**:
+        - View detailed metrics for each user, including:
+            - Total revenue generated.
+            - Number of transactions completed.
+            - Average transaction value.
+        4. **Visualize Trends**:
+        - Explore charts showing user performance over time.
+        - Analyse bar charts for top-performing users.
+        5. **Export Reports**:
+        - Download detailed performance data for further analysis.
+        """)
+
+# Add this section to the User Performance app similarly.
+
 
     # Load data
     loaded_api_df = filtered_df_without_seats 
