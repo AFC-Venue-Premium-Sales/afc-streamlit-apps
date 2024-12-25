@@ -5,19 +5,11 @@ from io import BytesIO
 from tjt_hosp_api import filtered_df_without_seats
 import re
 
-
-
 def run_app():
-    
     specified_users = ['dcoppin', 'Jedwards', 'jedwards', 'bgardiner', 'BenT', 'jmurphy', 'ayildirim',
                        'MeganS', 'BethNW', 'HayleyA', 'LucyB', 'Conor', 'SavR', 'MillieS', 'dmontague']
-    
-    # # Reset Sate & flag after refresh
-    # if st.session_state.get("refresh_triggered", False):
-    #     st.session_state["refresh_triggered"] = False 
 
-    
-    #  Budget data for fixtures
+    # Budget data for fixtures
     budget_data = {
         "Fixture": [
             "Arsenal v Bayer 04 Leverkusen", "Arsenal v Olympique Lyonnais", "Arsenal Women v Manchester City Women",
@@ -37,9 +29,8 @@ def run_app():
             617500, 712500, 97412, 97412
         ]
     }
- 
-    budget_df = pd.DataFrame(budget_data)
 
+    budget_df = pd.DataFrame(budget_data)
 
     st.title('💷 MBM Sales 💷')
 
@@ -51,18 +42,15 @@ def run_app():
 
     # Dynamically fetch hospitality data on app start
     loaded_api_df = filtered_df_without_seats
-    
+
     if loaded_api_df is None or loaded_api_df.empty:
         st.warning("⚠️ No data available. Please refresh to load the latest data.")
         return
-    
-
 
     # Display progress bar
     progress_bar = st.sidebar.progress(0)
     for progress in [10, 30, 50, 100]:
         progress_bar.progress(progress)
-
 
     if loaded_api_df is not None:
         st.sidebar.success("✅ Data retrieved successfully.")
@@ -82,7 +70,7 @@ def run_app():
         filtered_data['DiscountValue'] = pd.to_numeric(filtered_data['DiscountValue'], errors='coerce')
 
         # Ensure other numeric columns like 'TotalPrice' are also correctly treated as numeric
-        numeric_columns = ['TotalPrice', 'DiscountValue']  # Add any other numeric columns if necessary
+        numeric_columns = ['TotalPrice', 'DiscountValue']
         for column in numeric_columns:
             filtered_data[column] = pd.to_numeric(filtered_data[column], errors='coerce')
 
@@ -102,7 +90,6 @@ def run_app():
             filtered_data['KickOffEventStart'], format='%d-%m-%Y %H:%M', errors='coerce'
         )
 
-
         # Add 'Days to Fixture' column
         today = pd.Timestamp.now()
         filtered_data['Days to Fixture'] = (filtered_data['KickOffEventStart'] - today).dt.days
@@ -110,11 +97,8 @@ def run_app():
         # Handle missing or invalid dates
         filtered_data['Days to Fixture'] = filtered_data['Days to Fixture'].fillna(-1).astype(int)
 
-
-
         # Sidebar filters
         st.sidebar.header("Filter Data by Date and Time")
-        # date_range = st.sidebar.date_input("📅 Select Date Range", [])
         date_range = st.sidebar.date_input(
             "📅 Select Date Range", [], key="unique_sales_date_range"
         )
@@ -124,7 +108,7 @@ def run_app():
         end_time = st.sidebar.time_input(
             "⏰ End Time", value=datetime.now().replace(hour=23, minute=59, second=59).time(), key="unique_end_time"
         )
-        
+
         # Combine date and time inputs into full datetime objects
         if len(date_range) == 1:
             min_date = datetime.combine(date_range[0], start_time)
@@ -137,7 +121,7 @@ def run_app():
 
         valid_usernames = [user for user in specified_users if user in pd.unique(filtered_data['CreatedBy'])]
         event_names = pd.unique(filtered_data['Fixture Name'])
-        event_categories = pd.unique(filtered_data['EventCompetition'])  # Adjust column name if necessary
+        event_categories = pd.unique(filtered_data['EventCompetition'])
 
         # Add filters
         selected_categories = st.sidebar.multiselect(
@@ -176,8 +160,6 @@ def run_app():
             key="unique_selected_paid_key"
         )
 
-        selected_paid = st.sidebar.selectbox("💰 Filter by IsPaid", options=paid_options)
-
         # Apply date range filter with time
         if min_date and max_date:
             filtered_data = filtered_data[(filtered_data['CreatedOn'] >= min_date) & (filtered_data['CreatedOn'] <= max_date)]
@@ -197,7 +179,6 @@ def run_app():
         # Apply event filter
         if selected_events:
             filtered_data = filtered_data[filtered_data['Fixture Name'].isin(selected_events)]
-
 
         # Dynamically update the discount options based on selected events
         if selected_events:
@@ -220,20 +201,17 @@ def run_app():
         # Apply discount filter
         filtered_data = filtered_data[filtered_data['Discount'].isin(selected_discount_options)]
 
-
-       # Filter out "Platinum" and "Woolwich Restaurant" packages
+        # Filter out "Platinum" and "Woolwich Restaurant" packages
         filtered_data_excluding_packages = filtered_data[
             ~filtered_data['Package Name'].isin(['Platinum', 'Woolwich Restaurant'])
         ]
 
         # Static total: Get accumulated sales from June 18th, 2024 till now, excluding specific packages
-        
         static_start_date = datetime(2024, 6, 18, 0, 0, 0)
         static_total = loaded_api_df[
             (loaded_api_df['CreatedOn'] >= static_start_date) &
             ~loaded_api_df['Package Name'].isin(['Platinum', 'Woolwich Restaurant'])
         ]['TotalPrice'].sum()
-
 
         # Dynamic total: Affected by filters, excluding specific packages
         dynamic_total = filtered_data_excluding_packages['TotalPrice'].sum()
@@ -250,7 +228,6 @@ def run_app():
         total_sold_by_other = filtered_data_without_excluded_keywords['DiscountValue'].sum()
         other_sales_total = dynamic_total + total_sold_by_other
 
-
         # Display results
         if not filtered_data.empty:
             st.write("### 💼 Total Accumulated Sales")
@@ -258,7 +235,6 @@ def run_app():
 
             st.write("### 💼 Filtered Accumulated Sales")
             st.write(f"Total Accumulated Sales (Filtered): **£{dynamic_total:,.2f}** ")
-            
 
             # Apply discount filter to total_discount_value table
             total_discount_value = filtered_data_without_excluded_keywords.groupby(
@@ -268,13 +244,6 @@ def run_app():
             # Format the TotalPrice and DiscountValue columns as currency
             total_discount_value['TotalPrice'] = total_discount_value['TotalPrice'].apply(lambda x: f"£{x:,.2f}")
             total_discount_value['DiscountValue'] = total_discount_value['DiscountValue'].apply(lambda x: f"£{x:,.2f}")
-            
-            
-            
-           # Filter out rows with "Platinum" and "Woolwich Restaurant" from the dataset
-            filtered_data_excluding_packages = filtered_data[
-                ~filtered_data['Package Name'].isin(['Platinum', 'Woolwich Restaurant'])
-            ]
 
             # Total Sales Per Fixture Section
             st.write("### ⚽ Total Sales Summary")
@@ -359,7 +328,6 @@ def run_app():
             # Display the final table
             st.dataframe(total_sold_per_match)
 
-            
             # Apply discount filter to total_discount_value table
             total_discount_value = filtered_data_without_excluded_keywords.groupby(
                 ['Order Id', 'Country Code', 'First Name', 'Surname', 'Fixture Name', 'GLCode', 'CreatedOn']
@@ -368,8 +336,7 @@ def run_app():
             # Format the TotalPrice and DiscountValue columns as currency
             total_discount_value['TotalPrice'] = total_discount_value['TotalPrice'].apply(lambda x: f"£{x:,.2f}")
             total_discount_value['DiscountValue'] = total_discount_value['DiscountValue'].apply(lambda x: f"£{x:,.2f}")
-        
-            
+
             # Other Summary Table
             st.write("### Other Payments")
             # Apply discount filter to total_discsount_value table
@@ -383,7 +350,6 @@ def run_app():
 
             # Display the filtered table
             st.dataframe(total_discount_value)
-
 
             # Filter out "Platinum" and "Woolwich Restaurant" packages
             filtered_data_excluding_packages = filtered_data[
@@ -454,8 +420,7 @@ def run_app():
 
             # Display Total Sales Per Location table
             st.dataframe(total_sold_per_location)
-            
-            
+
             # Woolwich Restarurant Sales
             st.write("### 🍴 Woolwich Restaurant Sales")
 
@@ -492,7 +457,6 @@ def run_app():
 
             # Display the table
             st.dataframe(woolwich_sales_summary)
-
 
             # 📥 Downloads Section
             st.write("### 📥 Downloads")
@@ -536,13 +500,10 @@ def run_app():
                     mime='text/csv',
                 )
 
-            
-
         else:
             st.warning("⚠️ No data available for the selected filters.")
     else:
         st.sidebar.warning("🚨 Please upload a file to proceed.")
-
 
 if __name__ == "__main__":
     run_app()
