@@ -5,6 +5,15 @@ import os
 import logging
 import importlib
 
+# Configure logging
+logging.basicConfig(
+    format="%(asctime)s - [%(levelname)s] - %(message)s",
+    level=logging.INFO,
+    handlers=[
+        logging.StreamHandler()  # Ensures logs are visible in the Streamlit terminal
+    ]
+)
+
 # Import modules dynamically to handle errors gracefully
 try:
     import sales_performance
@@ -79,7 +88,7 @@ def reload_data():
         importlib.reload(user_performance_api)
 
         # Trigger a rerun to refresh the app state
-        st.experimental_rerun()
+        st.rerun()
 
     except Exception as e:
         # Handle and log errors gracefully

@@ -53,6 +53,38 @@ def generate_kpis(filtered_data):
     st.metric("📈 Average Revenue per Package", f"£{average_revenue_per_package:,.2f}")
     st.metric("🏆 Top Exec (Revenue)", top_exec)
 
+def generate_sales_table(filtered_data):
+    """Generate a table showing daily sales by executives."""
+    st.write("### 🗓️ Daily Sales by Executives")
+    
+    # Group by date and executive
+    filtered_data['Date'] = filtered_data['CreatedOn'].dt.date
+    daily_sales = filtered_data.groupby(['Date', 'CreatedBy']).agg(
+        Transactions=('Order Id', 'count'),
+        TotalRevenue=('TotalPrice', 'sum'),
+        AvgRevenuePerTransaction=('TotalPrice', 'mean'),
+        PackagesSold=('Package Name', 'count'),
+        TopEvent=('Fixture Name', lambda x: x.value_counts().idxmax() if not x.empty else None)
+    ).reset_index()
+
+    # Rename columns for better readability
+    daily_sales.columns = [
+        "Date",
+        "Exec Name",
+        "Number of Transactions",
+        "Total Revenue",
+        "Average Revenue per Transaction",
+        "Number of Packages Sold",
+        "Top Performing Event"
+    ]
+
+    # Format currency columns
+    daily_sales["Total Revenue"] = daily_sales["Total Revenue"].apply(lambda x: f"£{x:,.2f}")
+    daily_sales["Average Revenue per Transaction"] = daily_sales["Average Revenue per Transaction"].apply(lambda x: f"£{x:,.2f}")
+
+    # Display table
+    st.dataframe(daily_sales)
+
 def generate_heatmap(filtered_data):
     """Generate a heatmap for sales trends."""
     st.write("### 🔥 Sales Trends Heatmap")
@@ -140,6 +172,7 @@ def run_app():
         # Display Filtered Data and Metrics
         if not filtered_data.empty:
             generate_kpis(filtered_data)
+            generate_sales_table(filtered_data)  # Added here
             generate_heatmap(filtered_data)
             generate_revenue_chart(filtered_data)
         else:
