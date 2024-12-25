@@ -2,8 +2,19 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from io import BytesIO
-from tjt_hosp_api import filtered_df_without_seats
-import re
+import importlib
+
+# Dynamically import tjt_hosp_api
+try:
+    tjt_hosp_api = importlib.import_module('tjt_hosp_api')
+    filtered_df_without_seats = getattr(tjt_hosp_api, 'filtered_df_without_seats', None)
+    if filtered_df_without_seats is None:
+        raise ImportError("filtered_df_without_seats is not available in tjt_hosp_api.")
+except ImportError as e:
+    st.error(f"❌ Error importing tjt_hosp_api: {e}")
+    filtered_df_without_seats = None
+
+
 
 def run_app():
     specified_users = ['dcoppin', 'Jedwards', 'jedwards', 'bgardiner', 'BenT', 'jmurphy', 'ayildirim',

@@ -45,38 +45,34 @@ if "dashboard_data" not in st.session_state:
 
 # Function to reload data
 def reload_data():
-    """Reloads data from `tjt_hosp_api` and ensures the latest data is available globally."""
-    logging.info("Reloading data from `tjt_hosp_api`...")
+    import importlib
+    logging.info("🔄 Reloading tjt_hosp_api...")
     try:
-        # Dynamically reload `tjt_hosp_api` to fetch the latest data
-        import tjt_hosp_api
+        # Reload the module dynamically
+        tjt_hosp_api = importlib.import_module('tjt_hosp_api')
         importlib.reload(tjt_hosp_api)
 
-        # Revalidate the reloaded data
-        from tjt_hosp_api import filtered_df_without_seats
-        required_columns = ['Fixture Name', 'Order Id', 'First Name']
-        missing_columns = [
-            col for col in required_columns if col not in filtered_df_without_seats.columns
-        ]
-        if missing_columns:
-            raise ValueError(f"Missing required columns: {missing_columns}")
+        # Validate the reloaded data
+        filtered_df_without_seats = getattr(tjt_hosp_api, 'filtered_df_without_seats', None)
+        if filtered_df_without_seats is None or filtered_df_without_seats.empty:
+            raise ValueError("filtered_df_without_seats is None or empty after reload.")
 
-        # Log success
-        logging.info(f"✅ Data successfully reloaded. Rows: {len(filtered_df_without_seats)}")
+        # Log successful reload
+        logging.info(f"✅ Data reloaded successfully. Rows: {len(filtered_df_without_seats)}")
+        st.success("✅ Data refreshed successfully!")
 
-        # Reload dependent modules to ensure they use the latest data
+        # Reload dependent modules dynamically
         importlib.reload(sales_performance)
         importlib.reload(user_performance_api)
-
-        # Notify the user
-        st.success("✅ Data refreshed successfully!")
 
         # Trigger a rerun to refresh the app state
         st.experimental_rerun()
 
     except Exception as e:
-        logging.error(f"❌ Failed to reload data: {e}")
+        # Handle and log errors gracefully
+        logging.error(f"❌ Failed to reload tjt_hosp_api: {e}")
         st.error(f"❌ Failed to reload data: {e}")
+
 
 
 
