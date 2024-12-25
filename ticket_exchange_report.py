@@ -94,30 +94,31 @@ def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
 
 # Main Streamlit App
 def run_app():
-    st.title("🏟️ AFC Hospitality Ticket Exchange/Transfer Dashboard")
+    st.title("🏟️ AFC Hospitality Ticket Exchange Inventory Tracker")
     
     # Instructions
-    st.markdown(
-        """
-        ### Welcome to the AFC Hospitality Released Inventory Tracker
-        
-        This app helps you analyse and track seat data from hosp:
-        - **TX Sales File**: Contains data about ticket sales on the exchange -- SQL file from Lisa.
-        - **Hospitality Ticket Releases File**: Tickets released by Hospitality file.
-        - **Seat List & Game Category File**: Preloaded with data on predefined seat allocations and game categories.
+    with st.expander("📖 How to Use This App - Ticket Exchange Inventory Tracker"):
+        st.markdown(
+            """
+            ### Welcome to the AFC Hospitality Released Inventory Tracker
+            
+            This app helps you analyse and track seat data from hosp:
+            - **TX Sales File**: Contains data about ticket sales on the exchange -- SQL file from Lisa.
+            - **Hospitality Ticket Releases File**: Tickets released by Hospitality file.
+            - **Seat List & Game Category File**: Preloaded with data on predefined seat allocations and game categories.
 
-        ### How to Use
-        1. **Upload your files**:
-            - **TX Sales File**: Upload the SQL file.
-            - **From Hosp File**: Upload the Hospitality Ticket releases file.
-        2. **View results**:
-            - Matched rows from predefined seats and released tickets.
-            - Metrics, charts, and export options.
-        3. **Use filters** in the sidebar to narrow down results by game or CRC description.
+            ### How to Use
+            1. **Upload your files**:
+                - **TX Sales File**: Upload the SQL file.
+                - **From Hosp File**: Upload the Hospitality Ticket releases file.
+            2. **View results**:
+                - Matched rows from predefined seats and released tickets.
+                - Metrics, charts, and export options.
+            3. **Use filters** in the sidebar to narrow down results by game or CRC description.
 
-        **Note**: Ensure the files are in `.xlsx` format and match the required structure.
-        """
-    )
+            **Note**: Ensure the files are in `.xlsx` format and match the required structure.
+            """
+        )
 
     st.sidebar.title("File Uploads")
     seat_list_game_cat_path = "seat_list_game_cat.xlsx"
