@@ -114,6 +114,26 @@ def generate_trend_line(filtered_data):
     plt.xticks(rotation=45, ha='right')
     st.pyplot(fig)
 
+def generate_heatmap(filtered_data):
+    """Generate a heatmap for sales trends."""
+    st.write("### 🔥 Sales Trends Heatmap")
+    filtered_data['CreatedDate'] = filtered_data['CreatedOn'].dt.date
+    filtered_data['CreatedHour'] = filtered_data['CreatedOn'].dt.hour
+
+    sales_trend = (
+        filtered_data.groupby(['CreatedDate', 'CreatedHour'])
+        ['TotalPrice']
+        .sum()
+        .unstack(fill_value=0)
+    )
+
+    fig, ax = plt.subplots(figsize=(12, 6))
+    sns.heatmap(sales_trend, cmap="YlGnBu", ax=ax)
+    ax.set_title("Sales Trends (Date vs. Hour)")
+    ax.set_xlabel("Hour of Day")
+    ax.set_ylabel("Date")
+    st.pyplot(fig)
+
 def generate_revenue_chart(filtered_data):
     """Generate a bar chart for revenue by fixture."""
     st.write("### 📊 Revenue by Fixture")
@@ -182,7 +202,8 @@ def run_app():
         if not filtered_data.empty:
             generate_kpis(filtered_data)
             generate_sales_table(filtered_data)
-            generate_trend_line(filtered_data)  # Replaced heatmap with trend line
+            generate_trend_line(filtered_data)
+            generate_heatmap(filtered_data)
             generate_revenue_chart(filtered_data)
         else:
             st.warning("⚠️ No data available for the selected filters.")
