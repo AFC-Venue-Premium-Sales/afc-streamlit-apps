@@ -4,15 +4,28 @@ from dotenv import load_dotenv
 import os
 import logging
 import importlib
-import sales_performance
-import user_performance_api
-import ticket_exchange_report  # Import the new module
 
-# Configure logging
-logging.basicConfig(
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    level=logging.INFO,
-)
+# Import modules dynamically to handle errors gracefully
+try:
+    import sales_performance
+    importlib.reload(sales_performance)
+except ImportError as e:
+    logging.error(f"Failed to import 'sales_performance': {e}")
+    sales_performance = None
+
+try:
+    import user_performance_api
+    importlib.reload(user_performance_api)
+except ImportError as e:
+    logging.error(f"Failed to import 'user_performance_api': {e}")
+    user_performance_api = None
+
+try:
+    import ticket_exchange_report
+    importlib.reload(ticket_exchange_report)
+except ImportError as e:
+    logging.error(f"Failed to import 'ticket_exchange_report': {e}")
+    ticket_exchange_report = None
 
 # Load environment variables
 load_dotenv()
