@@ -369,10 +369,6 @@ def run_app():
             st.dataframe(total_sold_per_match)
 
             
-            # Display Chart
-            cum_chart = generate_event_level_men_cumulative_sales_chart
-            st.pyplot(cum_chart)
-
             # Apply discount filter to total_discount_value table
             total_discount_value = filtered_data_without_excluded_keywords.groupby(
                 ['Order Id', 'Country Code', 'First Name', 'Surname', 'Fixture Name', 'GLCode', 'CreatedOn']
