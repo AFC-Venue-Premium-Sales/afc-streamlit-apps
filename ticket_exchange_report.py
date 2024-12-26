@@ -55,13 +55,15 @@ def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
 
     matched_data = []
     release_data = []
+    missing_data = []
 
     for _, row in tx_sales_data.iterrows():
         # Normalize key fields in tx_sales_data
         row_game_name = row["game_name"].strip().lower()
-        row_game_date = row["game_date"]
+        row_game_date = pd.to_datetime(row["game_date"])
         row_price_band = row["price_band"].strip().lower() if "price_band" in row else None
 
+        # Match against Seat List
         matching_seat = seat_list[
             (seat_list["block"] == row["block"]) &
             (seat_list["row"] == row["row"]) &
@@ -69,6 +71,7 @@ def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
         ]
 
         if not matching_seat.empty:
+            # If a matching seat is found, continue to match with Game Category
             row["crc_desc"] = matching_seat["crc_desc"].values[0]
             row["price_band"] = matching_seat["price_band"].values[0]
 
@@ -76,18 +79,28 @@ def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
             seat_price_band = matching_seat["price_band"].values[0].strip().lower()
             matching_game = game_category[
                 (game_category["game_name"].str.strip().str.lower() == row_game_name) &
-                (game_category["game_date"] == row_game_date) &
+                (pd.to_datetime(game_category["game_date"]) == row_game_date) &
                 (game_category["price_band"].str.strip().str.lower() == seat_price_band)
             ]
 
             if not matching_game.empty:
+                # Successful match in Game Category
                 row["category"] = matching_game["category"].values[0]
                 row["seat_value"] = matching_game["seat_value"].values[0]
                 row["value_generated"] = row["ticket_sold_price"] - matching_game["seat_value"].values[0]
+                matched_data.append(row)
             else:
-                logging.warning(f"No match found for game: {row_game_name}, date: {row_game_date}, price_band: {seat_price_band}")
-            matched_data.append(row)
-
+                # Log why the match failed
+                row["seat_value"] = None
+                row["value_generated"] = None
+                row["missing_reason"] = f"No match in Game Category for game: {row_game_name}, date: {row_game_date}, price_band: {seat_price_band}"
+                missing_data.append(row)
+        else:
+            # Log mismatch in Seat List
+            row["seat_value"] = None
+            row["value_generated"] = None
+            row["missing_reason"] = f"No match in Seat List for block: {row['block']}, row: {row['row']}, seat: {row['seat']}"
+            missing_data.append(row)
 
     for _, row in from_hosp_combined.iterrows():
         sales_match = tx_sales_data[
@@ -102,8 +115,10 @@ def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
 
     matched_df = pd.DataFrame(matched_data).reset_index(drop=True)
     release_df = pd.DataFrame(release_data).pipe(lambda df: df.loc[:, ~df.columns.duplicated()])
+    missing_df = pd.DataFrame(missing_data).reset_index(drop=True)
 
-    return tx_sales_data, matched_df, release_df
+    return tx_sales_data, matched_df, release_df, missing_df
+
 
 # Main Streamlit App
 def run_app():
@@ -180,7 +195,7 @@ def run_app():
         release_df = release_df[release_df["crc_desc"].isin(crc_filter)]
 
     # TX Sales Data
-    st.markdown("### TX Sales Data")
+    st.markdown("### SQL TX Sales Data")
     st.write(f"**Number of Rows in TX Sales Data:** {len(tx_sales_data)}")
     st.dataframe(tx_sales_data)
     st.download_button(
@@ -191,7 +206,7 @@ def run_app():
     )
 
     # Matched Data from Pre-Assigned Seats
-    st.markdown("### Matched Data From Pre-Assigned Club Level Seats")
+    st.markdown("### Matching Data From Pre-Assigned Club Level Seats")
     st.write(f"**Number of Matched Rows:** {len(matched_df)}")
     st.dataframe(matched_df)
     st.download_button(
@@ -238,4 +253,3 @@ def run_app():
 
 if __name__ == "__main__":
     run_app()
-

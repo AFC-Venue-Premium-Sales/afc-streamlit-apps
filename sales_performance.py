@@ -515,7 +515,7 @@ def run_app():
                 generate_event_level_women_cumulative_sales_chart(filtered_data)
             except Exception as e:
                 st.error(f"Failed to generate the women's cumulative chart: {e}")
-                
+
             # Generate Concert Cumulative Sales Chart
             st.subheader("Concerts")
             try:
