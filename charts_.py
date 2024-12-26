@@ -11,21 +11,22 @@ import os
 def load_budget_targets():
     """
     Load the budget targets data from the Excel file.
-    Ensure the file exists in the repository under the specified 'data' folder.
+    Ensure the file exists in the repository under the specified directory.
     """
     # Define the file path
-    file_path = os.path.join(os.path.dirname(__file__), 'data', 'budget_target_2425.xlsx')
+    file_path = os.path.join(os.path.dirname(__file__), 'budget_target_2425.xlsx')
     
-    # Attempt to load the file
     try:
         budget_df = pd.read_excel(file_path)
-        # Ensure column names are stripped of whitespace
-        budget_df.columns = budget_df.columns.str.strip()
+        budget_df.columns = budget_df.columns.str.strip()  # Strip column names of whitespace
         return budget_df
     except FileNotFoundError:
-        raise FileNotFoundError(f"Budget file not found at {file_path}. Ensure it is located in the 'data' folder.")
+        st.error(f"❌ Budget file not found at {file_path}. Ensure it is correctly placed.")
+        raise
     except Exception as e:
-        raise ValueError(f"An error occurred while loading the budget file: {e}")
+        st.error(f"❌ An error occurred while loading the budget file: {e}")
+        raise
+
 
 
 

@@ -47,16 +47,14 @@ def run_app():
     budget_df = pd.DataFrame(budget_data)
 
     st.title('💷 MBM Sales 💷')
-
-    st.markdown("""
-    ### ℹ️ About
-    This app provides sales metrics from TJT's data. 
-    You can filter results by date, user, fixture, payment status, and paid status for tailored insights. 
-    """)
     
      # Instructions Section
     with st.expander("📖 How to Use This App - Sales Performance"):
+        
         st.markdown("""
+        ### ℹ️ About
+        This app provides sales metrics from TJT's data. 
+        You can filter results by date, user, fixture, payment status, and paid status for tailored insights
         **Step-by-Step Guide:**
         1. **Filter Data**:
            - Use the sidebar to select a **date range** and **time range** for the data.
