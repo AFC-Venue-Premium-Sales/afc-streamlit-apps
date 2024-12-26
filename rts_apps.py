@@ -88,7 +88,7 @@ def reload_data():
         importlib.reload(user_performance_api)
 
         # Trigger a rerun to refresh the app state
-        st.rerun()
+        st.re_run()
 
     except Exception as e:
         # Handle and log errors gracefully
@@ -180,9 +180,9 @@ else:
 
     # Handle module choice dynamically
     app_registry = {
-        "📊 MBM_Sales": sales_performance.run_app,
-        "📈 Exec_ales": user_performance_api.run_app,
-        "📄 Ticket_Exchange": ticket_exchange_report.run_app
+        "📊 Sales Performance": sales_performance.run_app,
+        "📈 User Performance": user_performance_api.run_app,
+        "📄 Ticket Exchange Report": ticket_exchange_report.run_app
     }
 
     app_function = app_registry.get(app_choice)

@@ -57,24 +57,37 @@ def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
     release_data = []
 
     for _, row in tx_sales_data.iterrows():
+        # Normalize key fields in tx_sales_data
+        row_game_name = row["game_name"].strip().lower()
+        row_game_date = row["game_date"]
+        row_price_band = row["price_band"].strip().lower() if "price_band" in row else None
+
         matching_seat = seat_list[
             (seat_list["block"] == row["block"]) &
             (seat_list["row"] == row["row"]) &
             (seat_list["seat"] == row["seat"])
         ]
+
         if not matching_seat.empty:
             row["crc_desc"] = matching_seat["crc_desc"].values[0]
             row["price_band"] = matching_seat["price_band"].values[0]
+
+            # Normalize price_band for matching
+            seat_price_band = matching_seat["price_band"].values[0].strip().lower()
             matching_game = game_category[
-                (game_category["game_name"] == row["game_name"]) &
-                (game_category["game_date"] == row["game_date"]) &
-                (game_category["price_band"] == matching_seat["price_band"].values[0])
+                (game_category["game_name"].str.strip().str.lower() == row_game_name) &
+                (game_category["game_date"] == row_game_date) &
+                (game_category["price_band"].str.strip().str.lower() == seat_price_band)
             ]
+
             if not matching_game.empty:
                 row["category"] = matching_game["category"].values[0]
                 row["seat_value"] = matching_game["seat_value"].values[0]
                 row["value_generated"] = row["ticket_sold_price"] - matching_game["seat_value"].values[0]
-                matched_data.append(row)
+            else:
+                logging.warning(f"No match found for game: {row_game_name}, date: {row_game_date}, price_band: {seat_price_band}")
+            matched_data.append(row)
+
 
     for _, row in from_hosp_combined.iterrows():
         sales_match = tx_sales_data[
