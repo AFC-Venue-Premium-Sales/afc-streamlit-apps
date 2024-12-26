@@ -4,6 +4,7 @@ from datetime import datetime
 from io import BytesIO
 import importlib
 import re
+from charts_ import generate_event_level_men_cumulative_sales_chart
 # Dynamically import tjt_hosp_api
 try:
     tjt_hosp_api = importlib.import_module('tjt_hosp_api')
@@ -357,6 +358,10 @@ def run_app():
 
             # Display the final table
             st.dataframe(total_sold_per_match)
+            
+            # Display Chart
+            cum_chart = generate_event_level_men_cumulative_sales_chart
+            st.pyplot(cum_chart)
 
             # Apply discount filter to total_discount_value table
             total_discount_value = filtered_data_without_excluded_keywords.groupby(
@@ -487,6 +492,13 @@ def run_app():
 
             # Display the table
             st.dataframe(woolwich_sales_summary)
+            
+            # Generate the cumulative sales chart
+            st.header("Cumulative Sales as Percentage of Budget")
+            try:
+                generate_event_level_men_cumulative_sales_chart(filtered_data)
+            except Exception as e:
+                st.error(f"Failed to generate the cumulative chart: {e}")
 
             # 📥 Downloads Section
             st.write("### 📥 Downloads")
