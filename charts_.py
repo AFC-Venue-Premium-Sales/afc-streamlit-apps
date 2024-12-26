@@ -159,15 +159,21 @@ def generate_event_level_men_cumulative_sales_chart(filtered_data):
             color=annotation_color,
         )
 
-    # Set x-axis limits
-    min_date = grouped_data['PaymentTime'].min().date()
-    max_date = grouped_data['PaymentTime'].max().date()
-    ax.set_xlim([min_date, max_date])
+    # Adjust x-axis tick frequency dynamically
+    date_range = grouped_data['PaymentTime'].dt.date.nunique()
 
-    # Format x-axis to show dates
-    ax.xaxis.set_major_locator(mdates.DayLocator(interval=10))
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-    fig.autofmt_xdate()
+    if date_range <= 5:
+        ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))  # Show every date
+    elif date_range <= 10:
+        ax.xaxis.set_major_locator(mdates.DayLocator(interval=2))  # Show every 2nd date
+    else:
+        ax.xaxis.set_major_locator(mdates.DayLocator(interval=3))  # Show every 3rd date or more
+
+    # Format x-axis labels with shorter date format
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%b'))
+
+    # Rotate labels for readability
+    fig.autofmt_xdate(rotation=45, ha='right')  # Rotate labels and align to the right
 
     # Set y-axis to show values as percentages
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{int(x)}%'))
@@ -188,11 +194,11 @@ def generate_event_level_men_cumulative_sales_chart(filtered_data):
     ax.set_xlabel("Date", fontsize=14, color='white')
     ax.set_ylabel("Revenue (% of Budget Target)", fontsize=14, color='white')
     ax.axhline(y=100, color='red', linestyle='--', linewidth=1, label='Budget Target (100%)')
-    plt.xticks(rotation=45)
     plt.tight_layout()
 
     # Display the plot in Streamlit
     st.pyplot(fig)
+
 
 
 
@@ -303,18 +309,27 @@ def generate_event_level_women_cumulative_sales_chart(filtered_data):
             color=annotation_color
         )
 
+    # Adjust x-axis tick frequency dynamically
+    date_range = grouped_data['PaymentTime'].dt.date.nunique()
+
+    if date_range <= 5:
+        ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))  # Show every date
+    elif date_range <= 10:
+        ax.xaxis.set_major_locator(mdates.DayLocator(interval=2))  # Show every 2nd date
+    else:
+        ax.xaxis.set_major_locator(mdates.DayLocator(interval=3))  # Show every 3rd date or more
+
+    # Format x-axis labels with shorter date format
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%b'))
+
+    # Rotate labels for readability
+    fig.autofmt_xdate(rotation=45, ha='right')  # Rotate labels and align to the right
+
     ax.set_title("AFC Women's Cumulative Revenue 24/25", fontsize=12, color='white')
     ax.set_xlabel("Date", fontsize=12, color='white')
     ax.set_ylabel("Revenue (% of Budget Target)", fontsize=12, color='white')
     ax.axhline(y=100, color='red', linestyle='--', linewidth=1)
 
-    # Format the plot
-    min_date = grouped_data['PaymentTime'].min().date()
-    max_date = grouped_data['PaymentTime'].max().date()
-    ax.set_xlim([min_date, max_date])
-    ax.xaxis.set_major_locator(mdates.DayLocator(interval=10))
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-    fig.autofmt_xdate()
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{int(x)}%'))
 
     handles = [

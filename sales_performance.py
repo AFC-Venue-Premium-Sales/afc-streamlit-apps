@@ -55,12 +55,13 @@ def run_app():
         ### ℹ️ About
         This app provides sales metrics from TJT's data. 
         You can filter results by date, user, fixture, payment status, and paid status for tailored insights
+        
         **Step-by-Step Guide:**
         1. **Filter Data**:
            - Use the sidebar to select a **date range** and **time range** for the data.
            - Filter data by **executives**, **events**, or **competitions**.
         2. **View Key Metrics**:
-           - See total revenue, packages sold, and top executive performance at a glance.
+           - See total revenue, packages sold, and top executive performance at a glance including cumulative sales towards budget.
         3. **Refresh Data**:
            - Click the **Refresh Data** button in the sidebar to load the latest updates.
         4. **Export**:

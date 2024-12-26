@@ -180,9 +180,9 @@ else:
 
     # Handle module choice dynamically
     app_registry = {
-        "📊 Sales Performance": sales_performance.run_app,
-        "📈 User Performance": user_performance_api.run_app,
-        "📄 Ticket Exchange Report": ticket_exchange_report.run_app
+        "📊 MBM_Sales": sales_performance.run_app,
+        "📈 Exec_ales": user_performance_api.run_app,
+        "📄 Ticket_Exchange": ticket_exchange_report.run_app
     }
 
     app_function = app_registry.get(app_choice)
