@@ -4,6 +4,8 @@ from datetime import datetime
 from io import BytesIO
 import importlib
 import re
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 from charts_ import generate_event_level_men_cumulative_sales_chart, generate_event_level_women_cumulative_sales_chart
 # Dynamically import tjt_hosp_api
 try:
