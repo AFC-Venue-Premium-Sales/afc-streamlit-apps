@@ -4,7 +4,7 @@ from datetime import datetime
 from io import BytesIO
 import importlib
 import re
-from charts_ import generate_event_level_men_cumulative_sales_chart
+from charts_ import generate_event_level_men_cumulative_sales_chart, generate_event_level_women_cumulative_sales_chart
 # Dynamically import tjt_hosp_api
 try:
     tjt_hosp_api = importlib.import_module('tjt_hosp_api')
@@ -493,12 +493,23 @@ def run_app():
             # Display the table
             st.dataframe(woolwich_sales_summary)
             
+            
             # Generate the cumulative sales chart
             st.header("Cumulative Sales as Percentage of Budget")
+
+            # Generate Men's Cumulative Sales Chart
+            st.subheader("Men's Competitions")
             try:
                 generate_event_level_men_cumulative_sales_chart(filtered_data)
             except Exception as e:
-                st.error(f"Failed to generate the cumulative chart: {e}")
+                st.error(f"Failed to generate the men's cumulative chart: {e}")
+
+            # Generate Women's Cumulative Sales Chart
+            st.subheader("Women's Competitions")
+            try:
+                generate_event_level_women_cumulative_sales_chart(filtered_data)
+            except Exception as e:
+                st.error(f"Failed to generate the women's cumulative chart: {e}")
 
             # 📥 Downloads Section
             st.write("### 📥 Downloads")
