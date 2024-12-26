@@ -285,6 +285,7 @@ def run_app():
                 filtered_data_excluding_packages.groupby("Fixture Name")
                 .agg(
                     DaysToFixture=("Days to Fixture", "min"),  # Days to Fixture
+                    KickOffEventStart=("KickOffEventStart", "first"),  # Kickoff Event Start
                     RTS_Sales=("TotalPrice", "sum"),  # RTS Sales (TotalPrice)
                     Budget=("Budget", "first")  # Budget
                 )
@@ -351,13 +352,20 @@ def run_app():
                 lambda x: f"£{x:,.0f}" if pd.notnull(x) else "None"
             )
 
+            # Convert KickOffEventStart to datetime for sorting
+            total_sold_per_match['KickOffEventStart'] = pd.to_datetime(total_sold_per_match['KickOffEventStart'], errors='coerce')
+
+            # Sort by KickOffEventStart (latest fixtures first)
+            total_sold_per_match = total_sold_per_match.sort_values(by="KickOffEventStart", ascending=False)
+
             # Reorder columns
             total_sold_per_match = total_sold_per_match[
-                ['Fixture Name', 'DaysToFixture', 'CoversSold', 'RTS_Sales', 'OtherSales', 'Avg Spend', 'Budget Target', 'BudgetPercentage']
+                ['Fixture Name', 'KickOffEventStart', 'DaysToFixture', 'CoversSold', 'RTS_Sales', 'OtherSales', 'Avg Spend', 'Budget Target', 'BudgetPercentage']
             ]
 
             # Display the final table
             st.dataframe(total_sold_per_match)
+
             
             # Display Chart
             cum_chart = generate_event_level_men_cumulative_sales_chart

@@ -11,14 +11,22 @@ import os
 def load_budget_targets():
     """
     Load the budget targets data from the Excel file.
-    Ensure the file exists in the repository under the 'data' folder.
+    Ensure the file exists in the repository under the specified 'data' folder.
     """
-    budget_file_path = os.path.join(os.path.dirname(__file__), 'data', 'budget_target_2425.xlsx')
+    # Define the file path
+    file_path = os.path.join(os.path.dirname(__file__), 'data', 'budget_target_2425.xlsx')
+    
+    # Attempt to load the file
     try:
-        budget_df = pd.read_excel(budget_file_path)
+        budget_df = pd.read_excel(file_path)
+        # Ensure column names are stripped of whitespace
+        budget_df.columns = budget_df.columns.str.strip()
         return budget_df
     except FileNotFoundError:
-        raise FileNotFoundError(f"Budget file not found at {budget_file_path}. Ensure it is in the 'data' folder.")
+        raise FileNotFoundError(f"Budget file not found at {file_path}. Ensure it is located in the 'data' folder.")
+    except Exception as e:
+        raise ValueError(f"An error occurred while loading the budget file: {e}")
+
 
 
 def generate_event_level_men_cumulative_sales_chart(filtered_data):
