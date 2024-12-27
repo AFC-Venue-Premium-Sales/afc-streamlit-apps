@@ -12,7 +12,7 @@ try:
         raise ImportError("filtered_df_without_seats is not available in tjt_hosp_api.")
 except ImportError as e:
     st.error(f"Error importing tjt_hosp_api: {e}")
-    filtered_df_without_seats = pd.DataFrame(columns=["CreatedBy", "Price", "PaymentTime", "ExecType", "KickOffEventStart", "Fixture Name"])
+    filtered_df_without_seats = pd.DataFrame(columns=["CreatedBy", "Price", "CreatedOn", "ExecType", "KickOffEventStart", "Fixture Name"])
 
 # Targets data
 targets_data = pd.DataFrame({
@@ -49,11 +49,18 @@ budget_df = load_budget_targets()
 
 # Calculate monthly progress
 def calculate_monthly_progress(data, start_date, end_date):
-    data["PaymentTime"] = pd.to_datetime(data["PaymentTime"], errors="coerce")
+    data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], errors="coerce")
     filtered_data = data[
-        (data["PaymentTime"] >= pd.to_datetime(start_date)) &
-        (data["PaymentTime"] <= pd.to_datetime(end_date))
+        (data["CreatedOn"] >= pd.to_datetime(start_date)) &
+        (data["CreatedOn"] <= pd.to_datetime(end_date))
     ]
+
+    current_month = start_date.strftime("%B")
+    current_year = start_date.year
+
+    # Check if the month/year combination exists in targets
+    if (current_month, current_year) not in targets_data.index:
+        return None  # Return None if no targets found
 
     progress = (
         filtered_data.groupby("CreatedBy")["Price"]
@@ -61,12 +68,10 @@ def calculate_monthly_progress(data, start_date, end_date):
         .reindex(targets_data.columns, fill_value=0)
     )
 
-    current_month = start_date.strftime("%B")
-    current_year = start_date.year
     monthly_targets = targets_data.loc[(current_month, current_year)]
 
     progress_data = pd.DataFrame({
-        "Member": progress.index,
+        "Premium Executive": progress.index,  # Rename column
         "Current Revenue": progress.values,
         "Target": monthly_targets.values,
         "% Sold": (progress / monthly_targets * 100).round(2),
@@ -101,14 +106,18 @@ def run_dashboard():
     # Monthly progress
     st.markdown("<h3 style='color:#b22222;'>Monthly Progress</h3>", unsafe_allow_html=True)
     monthly_progress = calculate_monthly_progress(filtered_df_without_seats, start_date, end_date)
-    st.dataframe(
-        monthly_progress.style.format({
-            "Current Revenue": "£{:,.0f}",
-            "Target": "£{:,.0f}",
-            "% Sold": "{:.2f}%"
-        }).background_gradient(subset=["% Sold"], cmap="Reds"),
-        use_container_width=True
-    )
+
+    if monthly_progress is None:
+        st.warning("Targets are not available for the selected dates.")
+    else:
+        st.dataframe(
+            monthly_progress.style.format({
+                "Current Revenue": "£{:,.0f}",
+                "Target": "£{:,.0f}",
+                "% Sold": "{:.2f}%"
+            }).background_gradient(subset=["% Sold"], cmap="Reds"),
+            use_container_width=True
+        )
 
     # Next fixture countdown
     st.markdown("<h3 style='color:#b22222;'>Next Fixture Countdown</h3>", unsafe_allow_html=True)
