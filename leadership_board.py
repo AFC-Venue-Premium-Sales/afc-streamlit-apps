@@ -49,7 +49,6 @@ budget_df = load_budget_targets()
 
 # Calculate monthly progress
 def calculate_monthly_progress(data, start_date, end_date):
-    # Parse CreatedOn column with dayfirst=True to avoid ambiguity
     data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], errors="coerce", dayfirst=True)
     filtered_data = data[
         (data["CreatedOn"] >= pd.to_datetime(start_date)) &
@@ -79,6 +78,21 @@ def calculate_monthly_progress(data, start_date, end_date):
         "% Sold": (progress / monthly_targets * 100).round(2),
     }).reset_index(drop=True)
 
+    # Format columns
+    progress_data["Current Revenue"] = progress_data["Current Revenue"].apply(lambda x: f"£{x:,.0f}")
+    progress_data["Target"] = progress_data["Target"].apply(lambda x: f"£{x:,.0f}")
+
+    # Add conditional colors to % Sold
+    def style_percent(value):
+        if value >= 80:
+            return f"<span style='color: green;'>{value:.2f}%</span>"
+        elif 50 <= value < 80:
+            return f"<span style='color: orange;'>{value:.2f}%</span>"
+        else:
+            return f"<span style='color: red;'>{value:.2f}%</span>"
+
+    progress_data["% Sold"] = progress_data["% Sold"].apply(style_percent)
+
     return progress_data.sort_values(by="% Sold", ascending=False), sales_made
 
 # Next fixture information
@@ -105,9 +119,6 @@ def run_dashboard():
     start_date = st.sidebar.date_input("Start Date", value=datetime.now().replace(day=1))
     end_date = st.sidebar.date_input("End Date", value=datetime.now())
 
-    st.sidebar.markdown("### Options")
-    anonymize = st.sidebar.checkbox("Anonymize Revenue and Target")
-
     # Next Fixture in Sidebar
     fixture_name, fixture_date, budget_target = get_next_fixture(filtered_df_without_seats, budget_df)
     if fixture_name:
@@ -115,20 +126,9 @@ def run_dashboard():
         fixture_revenue = filtered_df_without_seats[
             (filtered_df_without_seats["KickOffEventStart"] == fixture_date)
         ]["Price"].sum()
-        st.sidebar.markdown(
-            f"""
-            <div style="color: #b22222; font-size: 24px; font-weight: bold;">
-                Next Fixture: <span style="color: gold;">{fixture_name}</span>
-            </div>
-            <div style="color: #b22222; font-size: 20px;">
-                Days to Fixture: <span style="color: gold;">{days_to_fixture} days</span>
-            </div>
-            <div style="color: #b22222; font-size: 20px;">
-                Budget Target Achieved: <span style="color: gold;">{(fixture_revenue / budget_target) * 100:.2f}%</span>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+        st.sidebar.markdown(f"**Next Fixture:** {fixture_name}", unsafe_allow_html=True)
+        st.sidebar.markdown(f"**Days to Fixture:** {days_to_fixture} days", unsafe_allow_html=True)
+        st.sidebar.markdown(f"**Budget Target Achieved:** {round((fixture_revenue / budget_target) * 100, 2)}%", unsafe_allow_html=True)
     else:
         st.sidebar.markdown("**No upcoming fixtures found.**")
 
@@ -139,14 +139,6 @@ def run_dashboard():
     if monthly_progress is None:
         st.warning("Targets are not available for the selected dates.")
     else:
-        # Highlight names with sales
-        monthly_progress["Premium Executive"] = monthly_progress["Premium Executive"].apply(
-            lambda x: f"<b style='color:#b22222;'>{x}</b>" if x in sales_made else x
-        )
-        if anonymize:
-            monthly_progress["Current Revenue"] = "Hidden"
-            monthly_progress["Target"] = "Hidden"
-
         st.markdown(monthly_progress.to_html(escape=False, index=False), unsafe_allow_html=True)
 
 if __name__ == "__main__":
