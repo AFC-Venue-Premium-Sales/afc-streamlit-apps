@@ -77,7 +77,7 @@ def calculate_monthly_progress(data, start_date, end_date):
         "Current Revenue": progress.values,
         "Target": monthly_targets.values,
         "% Sold (Numeric)": (progress / monthly_targets * 100).round(2),
-        "Today's Date": datetime.now().strftime("%d/%m/%Y")  # Add today's date
+        "Today's Date": datetime.now().strftime("%d/%m/%Y")
     }).reset_index(drop=True)
 
     # Format columns for display
@@ -94,8 +94,6 @@ def calculate_monthly_progress(data, start_date, end_date):
             return f"<span style='color: red;'>{value:.2f}%</span>"
 
     progress_data["% Sold"] = progress_data["% Sold (Numeric)"].apply(style_percent)
-
-    # Sort by the numeric % Sold column
     progress_data = progress_data.sort_values(by="% Sold (Numeric)", ascending=False)
 
     return progress_data.drop(columns=["% Sold (Numeric)"]), sales_made
@@ -117,10 +115,9 @@ def get_next_fixture(data, budget_df):
 
 # Auto-refresh functionality
 def auto_refresh(interval_seconds: int = 120):
-    # Trigger a refresh by setting query parameters
     st.experimental_set_query_params(refresh=str(int(time.time())))
-    current_time = datetime.now().strftime('%H:%M:%S')  # Current time for refresh timestamp
-    return current_time
+    time.sleep(interval_seconds)  # Simulate periodic updates
+    return datetime.now().strftime('%H:%M:%S')
 
 # Main dashboard
 def run_dashboard():
@@ -131,15 +128,6 @@ def run_dashboard():
     st.sidebar.markdown("### Filter Options")
     start_date = st.sidebar.date_input("Start Date", value=datetime.now().replace(day=1))
     end_date = st.sidebar.date_input("End Date", value=datetime.now())
-
-    # Expander for instructions
-    with st.sidebar.expander("How Date Filters and Targets Work"):
-        st.write("""
-        - The **date filter** allows you to view sales progress for a specific time period.
-        - Each month has predefined sales targets for every Premium Executive.
-        - Selecting a range of dates aggregates the total revenue generated during that period.
-        - The leaderboard updates in real-time based on the filtered dates.
-        """)
 
     # Auto-refresh
     refresh_time = auto_refresh(120)
@@ -158,7 +146,7 @@ def run_dashboard():
             color: #155724;
             text-align: center;
         ">
-            <strong>Data Refreshed:</strong> {refresh_time}
+            <strong>Latest Data Update:</strong> {refresh_time}
         </div>
         """,
         unsafe_allow_html=True
@@ -183,14 +171,10 @@ def run_dashboard():
                 margin-bottom: 20px;
                 text-align: center;
             ">
-                <h4 style="color: #0047AB; font-size: 18px; margin-bottom: 10px;">🏟️ Next Fixture</h4>
-                <p style="font-size: 16px; margin: 5px 0; font-weight: bold;">{fixture_name}</p>
-                
-                <h4 style="color: #0047AB; font-size: 18px; margin-top: 10px;">⏳ Days to Fixture</h4>
-                <p style="font-size: 16px; margin: 5px 0; font-weight: bold;">{days_to_fixture} days</p>
-                
-                <h4 style="color: #0047AB; font-size: 18px; margin-top: 10px;">🎯 Budget Target Achieved</h4>
-                <p style="font-size: 16px; color: green; margin: 5px 0; font-weight: bold;">{budget_achieved}%</p>
+                <h4 style="color: #0047AB; font-size: 18px;">🏟️ Next Fixture</h4>
+                <p style="font-size: 16px; font-weight: bold;">{fixture_name}</p>
+                <p>⏳ <strong>{days_to_fixture} days</strong></p>
+                <p>🎯 Budget Target Achieved: <strong>{budget_achieved}%</strong></p>
             </div>
             """,
             unsafe_allow_html=True
