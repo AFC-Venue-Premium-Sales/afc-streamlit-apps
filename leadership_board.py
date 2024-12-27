@@ -112,12 +112,22 @@ def get_next_fixture(data, budget_df):
 
 # Main dashboard
 def run_dashboard():
+    st.set_page_config(page_title="Hospitality Leadership Board", layout="wide")
     st.title("Arsenal Hospitality Leadership Board")
 
     # Sidebar
     st.sidebar.markdown("### Filter Options")
     start_date = st.sidebar.date_input("Start Date", value=datetime.now().replace(day=1))
     end_date = st.sidebar.date_input("End Date", value=datetime.now())
+
+    # Expander for instructions
+    with st.sidebar.expander("How Date Filters and Targets Work"):
+        st.write("""
+        - The **date filter** allows you to view sales progress for a specific time period.
+        - Each month has predefined sales targets for every Premium Executive.
+        - Selecting a range of dates aggregates the total revenue generated during that period.
+        - The leaderboard updates in real-time based on the filtered dates.
+        """)
 
     # Next Fixture in Sidebar
     fixture_name, fixture_date, budget_target = get_next_fixture(filtered_df_without_seats, budget_df)
