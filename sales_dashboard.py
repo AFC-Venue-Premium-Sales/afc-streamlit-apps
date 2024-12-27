@@ -2,8 +2,8 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import datetime
-from dateutil.relativedelta import relativedelta
 import importlib
+from streamlit_autorefresh import st_autorefresh
 
 # Import live data from `tjt_hosp_api`
 try:
@@ -57,8 +57,10 @@ def calculate_metrics(filtered_data, targets, team_members, working_days_so_far,
 
     return pd.DataFrame(results)
 
+
 # Main App
 def run_app():
+    st_autorefresh(interval=120000)  # Refresh every 2 minutes
     st.title("🏟️ AFC Sales Dashboard")
 
     if filtered_df_without_seats is None:
@@ -68,10 +70,16 @@ def run_app():
     today = datetime.now()
     current_month = today.strftime("%B")
     current_year = today.year
+
+    # Handle December to January transition
+    if today.month == 12:
+        next_month_start = datetime(today.year + 1, 1, 1)
+    else:
+        next_month_start = datetime(today.year, today.month + 1, 1)
+
     start_of_month = datetime(today.year, today.month, 1)
-    next_month_start = start_of_month + relativedelta(months=1)
     working_days_so_far = len(pd.date_range(start=start_of_month, end=today, freq="B"))
-    remaining_working_days = len(pd.date_range(start=today, end=next_month_start, freq="B"))
+    remaining_working_days = len(pd.date_range(start=today, end=next_month_start - pd.Timedelta(days=1), freq="B"))
 
     # Load targets for the current month
     try:
@@ -82,7 +90,11 @@ def run_app():
 
     # Sidebar Filters
     st.sidebar.header("Filters")
-    selected_users = st.sidebar.multiselect("Select Users", options=filtered_df_without_seats["CreatedBy"].unique())
+    specified_users = [
+        "bgardiner", "dcoppin", "jedwards", "MillieS", "dmontague",
+        "MeganS", "BethNW", "HayleyA", "jmurphy", "BenT", "ayildirim"
+    ]
+    selected_users = st.sidebar.multiselect("Select Users", options=specified_users, default=specified_users)
     selected_date_range = st.sidebar.date_input("Date Range", value=(start_of_month, today))
 
     # Apply filters
@@ -91,8 +103,8 @@ def run_app():
         filtered_data = filtered_data[filtered_data["CreatedBy"].isin(selected_users)]
     if selected_date_range:
         filtered_data = filtered_data[
-            (pd.to_datetime(filtered_data["PaymentTime"]) >= pd.to_datetime(selected_date_range[0])) &
-            (pd.to_datetime(filtered_data["PaymentTime"]) <= pd.to_datetime(selected_date_range[1]))
+            (pd.to_datetime(filtered_data["PaymentTime"], errors='coerce', format='ISO8601') >= pd.to_datetime(selected_date_range[0])) &
+            (pd.to_datetime(filtered_data["PaymentTime"], errors='coerce', format='ISO8601') <= pd.to_datetime(selected_date_range[1]))
         ]
 
     # Team Members
