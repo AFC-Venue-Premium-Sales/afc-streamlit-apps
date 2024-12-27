@@ -40,11 +40,11 @@ def load_budget_targets():
         budget_df.columns = budget_df.columns.str.strip()
         return budget_df
     except FileNotFoundError:
-        st.error(f"❌ Budget file not found at {file_path}. Ensure it is correctly placed.")
-        raise
+        st.error(f"Budget file not found at {file_path}. Ensure it is correctly placed.")
+        return pd.DataFrame()
     except Exception as e:
-        st.error(f"❌ An error occurred while loading the budget file: {e}")
-        raise
+        st.error(f"An error occurred while loading the budget file: {e}")
+        return pd.DataFrame()
 
 # Helper Functions
 def calculate_metrics(filtered_data, targets, team_members, working_days_so_far, remaining_working_days):
@@ -72,32 +72,32 @@ def calculate_metrics(filtered_data, targets, team_members, working_days_so_far,
     return pd.DataFrame(results)
 
 def display_sidebar_summary(filtered_data, budget_df):
-    st.sidebar.header("\ud83d\uddca Summary for Today")
+    st.sidebar.header("📊 Summary for Today")
     today = datetime.now().date()
     filtered_data["PaymentTime"] = pd.to_datetime(filtered_data["PaymentTime"], format="%d-%m-%Y %H:%M", errors="coerce")
     today_data = filtered_data[filtered_data["PaymentTime"].dt.date == today]
 
     if today_data.empty:
         st.sidebar.warning("No sales data available for today.")
-        st.sidebar.metric("\ud83d\udcb7 Total Sales Today", "£0.00")
-        st.sidebar.metric("\ud83c\udfc6 Most Sold Game", "N/A")
-        st.sidebar.metric("\ud83d\udce6 Most Sold Package", "N/A")
+        st.sidebar.metric("Total Sales Today", "£0.00")
+        st.sidebar.metric("Most Sold Game", "N/A")
+        st.sidebar.metric("Most Sold Package", "N/A")
     else:
         total_sales_today = today_data["Price"].sum()
-        st.sidebar.metric("\ud83d\udcb7 Total Sales Today", f"£{total_sales_today:,.2f}")
+        st.sidebar.metric("Total Sales Today", f"£{total_sales_today:,.2f}")
 
         top_game = today_data.groupby("Fixture Name")["Price"].sum().idxmax()
-        st.sidebar.metric("\ud83c\udfc6 Most Sold Game", top_game)
+        st.sidebar.metric("Most Sold Game", top_game)
 
         top_package = today_data.groupby("Package Name")["Price"].sum().idxmax()
-        st.sidebar.metric("\ud83d\udce6 Most Sold Package", top_package)
+        st.sidebar.metric("Most Sold Package", top_package)
 
     filtered_data["KickOffEventStart"] = pd.to_datetime(filtered_data["KickOffEventStart"], errors="coerce")
     next_fixtures = filtered_data[filtered_data["KickOffEventStart"] > datetime.now()].sort_values("KickOffEventStart")
 
     if next_fixtures.empty:
-        st.sidebar.metric("\u23ed\ufe0f Next Fixture", "N/A")
-        st.sidebar.metric("\ud83c\udfaf Budget Target", "N/A")
+        st.sidebar.metric("Next Fixture", "N/A")
+        st.sidebar.metric("Budget Target", "N/A")
     else:
         next_fixture = next_fixtures.iloc[0]
         next_fixture_name = next_fixture["Fixture Name"]
@@ -105,23 +105,20 @@ def display_sidebar_summary(filtered_data, budget_df):
         next_budget_target = budget_target_row["Budget Target"].values[0] if not budget_target_row.empty else 0
         days_to_fixture = (next_fixture["KickOffEventStart"].date() - today).days
 
-        st.sidebar.metric("\u23ed\ufe0f Next Fixture", next_fixture_name)
-        st.sidebar.metric("\ud83c\udfaf Budget Target", f"£{next_budget_target:,.2f}")
-        st.sidebar.metric("\ud83d\udcc5 Days to Fixture", f"{days_to_fixture} days")
+        st.sidebar.metric("Next Fixture", next_fixture_name)
+        st.sidebar.metric("Budget Target", f"£{next_budget_target:,.2f}")
+        st.sidebar.metric("Days to Fixture", f"{days_to_fixture} days")
 
 # Main App
 def run_app():
-    st.title("\ud83c\udfdf\ufe0f AFC Sales Dashboard")
+    st.title("AFC Sales Dashboard")
 
-    with st.expander("\ud83d\udd16 About This Dashboard"):
-        st.write("""This dashboard provides real-time updates on sales and services performance for our team, helping track progress towards targets.""")
-        
-        st.write("""**How to Use:**
-        - Use the filters at the bottom to select specific users, fixtures, or date ranges.
-        - View detailed metrics and performance insights for both sales and services teams.""")
+    with st.expander("ℹ️ About This Dashboard"):
+        st.write("This dashboard provides real-time updates on sales performance.")
+        st.write("**How to Use:** View metrics and performance insights.")
 
     if filtered_df_without_seats is None:
-        st.error("❌ No data available to display. Please check the API.")
+        st.error("No data available to display.")
         return
 
     budget_df = load_budget_targets()
