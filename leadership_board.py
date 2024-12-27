@@ -116,9 +116,9 @@ def get_next_fixture(data, budget_df):
     return fixture_name, fixture_date, budget_target
 
 # Auto-refresh functionality
-def auto_refresh(interval_seconds=120):
-    """Automatically refresh the dashboard every interval_seconds."""
-    st.experimental_set_query_params(refresh=str(int(time.time())))
+def auto_refresh():
+    """Automatically refresh the dashboard."""
+    st_autorefresh(interval=120 * 1000, key="refresh_key")  # Refresh every 2 minutes
     current_time = datetime.now().strftime('%H:%M:%S')  # Current time for refresh timestamp
     return current_time
 
@@ -134,7 +134,7 @@ def run_dashboard():
     end_date = st.sidebar.date_input("End Date", value=datetime.now())
 
     # Auto-refresh
-    refresh_time = auto_refresh()  # Uses default interval of 120 seconds
+    refresh_time = auto_refresh()  # Auto-refreshes every 2 minutes
 
     # Display refresh message in the sidebar
     st.sidebar.markdown(
