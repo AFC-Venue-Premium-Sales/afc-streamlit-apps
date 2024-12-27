@@ -60,13 +60,15 @@ def calculate_monthly_progress(data, start_date, end_date):
     current_year = start_date.year
 
     if (current_month, current_year) not in targets_data.index:
-        return None
+        return None, []
 
     progress = (
         filtered_data.groupby("CreatedBy")["Price"]
         .sum()
         .reindex(targets_data.columns, fill_value=0)
     )
+
+    sales_made = filtered_data["CreatedBy"].unique()
 
     monthly_targets = targets_data.loc[(current_month, current_year)]
 
@@ -75,58 +77,28 @@ def calculate_monthly_progress(data, start_date, end_date):
         "Current Revenue": progress.values,
         "Target": monthly_targets.values,
         "% Sold (Numeric)": (progress / monthly_targets * 100).round(2),
-        "Today's Date": datetime.now().strftime("%d/%m/%Y")
+        "Today's Date": datetime.now().strftime("%d/%m/%Y")  # Add today's date
     }).reset_index(drop=True)
 
-    return progress_data
+    # Format columns for display
+    progress_data["Current Revenue"] = progress_data["Current Revenue"].apply(lambda x: f"£{x:,.0f}")
+    progress_data["Target"] = progress_data["Target"].apply(lambda x: f"£{x:,.0f}")
 
-# Render Monthly Progress Table
-def render_monthly_progress_table(progress_data):
-    table_html = """
-    <style>
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-            font-size: 16px;
-            text-align: left;
-        }
-        th, td {
-            padding: 12px;
-            border: 1px solid #ddd;
-        }
-        th {
-            background-color: #f4f4f4;
-            font-weight: bold;
-        }
-        .green { color: green; }
-        .orange { color: orange; }
-        .red { color: red; }
-    </style>
-    <table>
-        <tr>
-            <th>Premium Executive</th>
-            <th>Current Revenue</th>
-            <th>Target</th>
-            <th>% Sold</th>
-        </tr>
-    """
-    for _, row in progress_data.iterrows():
-        percent_class = (
-            "green" if float(row["% Sold (Numeric)"]) >= 80
-            else "orange" if float(row["% Sold (Numeric)"]) >= 50
-            else "red"
-        )
-        table_html += f"""
-        <tr>
-            <td>{row['Premium Executive']}</td>
-            <td>£{row['Current Revenue']:,.0f}</td>
-            <td>£{row['Target']:,.0f}</td>
-            <td class="{percent_class}">{row['% Sold (Numeric)']:.2f}%</td>
-        </tr>
-        """
-    table_html += "</table>"
-    return table_html
+    # Add conditional colors to % Sold
+    def style_percent(value):
+        if value >= 80:
+            return f"<span style='color: green;'>{value:.2f}%</span>"
+        elif 50 <= value < 80:
+            return f"<span style='color: orange;'>{value:.2f}%</span>"
+        else:
+            return f"<span style='color: red;'>{value:.2f}%</span>"
+
+    progress_data["% Sold"] = progress_data["% Sold (Numeric)"].apply(style_percent)
+
+    # Sort by the numeric % Sold column
+    progress_data = progress_data.sort_values(by="% Sold (Numeric)", ascending=False)
+
+    return progress_data.drop(columns=["% Sold (Numeric)"]), sales_made
 
 # Next fixture information
 def get_next_fixture(data, budget_df):
@@ -160,8 +132,9 @@ def run_dashboard():
     end_date = st.sidebar.date_input("End Date", value=datetime.now())
 
     # Auto-refresh
-    refresh_time = auto_refresh()
+    refresh_time = auto_refresh()  # Auto-refreshes every 2 minutes
 
+    # Display refresh message in the sidebar
     st.sidebar.markdown(
         f"""
         <div style="
@@ -181,10 +154,15 @@ def run_dashboard():
         unsafe_allow_html=True
     )
 
-    # Next Fixture
+    # Next Fixture in Sidebar
     fixture_name, fixture_date, budget_target = get_next_fixture(filtered_df_without_seats, budget_df)
     if fixture_name:
         days_to_fixture = (fixture_date - datetime.now()).days
+        fixture_revenue = filtered_df_without_seats[
+            (filtered_df_without_seats["KickOffEventStart"] == fixture_date)
+        ]["Price"].sum()
+        budget_achieved = round((fixture_revenue / budget_target) * 100, 2)
+
         st.sidebar.markdown(
             f"""
             <div style="
@@ -195,9 +173,10 @@ def run_dashboard():
                 margin-bottom: 20px;
                 text-align: center;
             ">
-                <h4 style="color: #0047AB;">🏟️ Next Fixture</h4>
-                <p><strong>{fixture_name}</strong></p>
+                <h4 style="color: #0047AB; font-size: 18px;">🏟️ Next Fixture</h4>
+                <p style="font-size: 16px; font-weight: bold;">{fixture_name}</p>
                 <p>⏳ <strong>{days_to_fixture} days</strong></p>
+                <p>🎯 <strong>Budget Target Achieved<strong>: <strong>{budget_achieved}%</strong></p>
             </div>
             """,
             unsafe_allow_html=True
@@ -207,12 +186,12 @@ def run_dashboard():
 
     # Monthly Progress
     st.markdown("<h3 style='color:#b22222;'>Monthly Progress</h3>", unsafe_allow_html=True)
-    monthly_progress = calculate_monthly_progress(filtered_df_without_seats, start_date, end_date)
+    monthly_progress, sales_made = calculate_monthly_progress(filtered_df_without_seats, start_date, end_date)
 
-    if monthly_progress is None or monthly_progress.empty:
+    if monthly_progress is None:
         st.warning("Targets are not available for the selected dates.")
     else:
-        st.markdown(render_monthly_progress_table(monthly_progress), unsafe_allow_html=True)
+        st.markdown(monthly_progress.to_html(escape=False, index=False), unsafe_allow_html=True)
 
 if __name__ == "__main__":
     run_dashboard()
