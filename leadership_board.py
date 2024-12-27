@@ -58,9 +58,8 @@ def calculate_monthly_progress(data, start_date, end_date):
     current_month = start_date.strftime("%B")
     current_year = start_date.year
 
-    # Check if the month/year combination exists in targets
     if (current_month, current_year) not in targets_data.index:
-        return None  # Return None if no targets found
+        return None, []
 
     progress = (
         filtered_data.groupby("CreatedBy")["Price"]
@@ -71,13 +70,14 @@ def calculate_monthly_progress(data, start_date, end_date):
     monthly_targets = targets_data.loc[(current_month, current_year)]
 
     progress_data = pd.DataFrame({
-        "Premium Executive": progress.index,  # Rename column
+        "Premium Executive": progress.index,
         "Current Revenue": progress.values,
         "Target": monthly_targets.values,
         "% Sold": (progress / monthly_targets * 100).round(2),
     }).reset_index(drop=True)
 
-    return progress_data.sort_values(by="% Sold", ascending=False)
+    sales_made = filtered_data["CreatedBy"].unique().tolist()
+    return progress_data.sort_values(by="% Sold", ascending=False), sales_made
 
 # Next fixture information
 def get_next_fixture(data, budget_df):
@@ -98,47 +98,48 @@ def get_next_fixture(data, budget_df):
 def run_dashboard():
     st.title("Arsenal Hospitality Leadership Board")
 
-    # Sidebar: Date range filter
-    st.sidebar.markdown("### Filter by Date")
+    # Sidebar
+    st.sidebar.markdown("### Filter Options")
     start_date = st.sidebar.date_input("Start Date", value=datetime.now().replace(day=1))
     end_date = st.sidebar.date_input("End Date", value=datetime.now())
+    anonymize = st.sidebar.checkbox("Anonymize Revenue and Target")
 
-    # Refresh button
-    if st.sidebar.button("Refresh Now"):
-        st.rerun()
-
-    # Monthly progress
-    progress_placeholder = st.empty()
-    progress_placeholder.markdown("<h3 style='color:#b22222;'>Monthly Progress</h3>", unsafe_allow_html=True)
-    monthly_progress = calculate_monthly_progress(filtered_df_without_seats, start_date, end_date)
-
-    if monthly_progress is None:
-        progress_placeholder.warning("Targets are not available for the selected dates.")
-    else:
-        progress_placeholder.dataframe(
-            monthly_progress.style.format({
-                "Current Revenue": "£{:,.0f}",
-                "Target": "£{:,.0f}",
-                "% Sold": "{:.2f}%"
-            }).background_gradient(subset=["% Sold"], cmap="Reds"),
-            use_container_width=True
-        )
-
-    # Next fixture countdown
-    countdown_placeholder = st.empty()
-    countdown_placeholder.markdown("<h3 style='color:#b22222;'>Next Fixture Countdown</h3>", unsafe_allow_html=True)
+    # Next Fixture in Sidebar
     fixture_name, fixture_date, budget_target = get_next_fixture(filtered_df_without_seats, budget_df)
     if fixture_name:
         days_to_fixture = (fixture_date - datetime.now()).days
         fixture_revenue = filtered_df_without_seats[
             (filtered_df_without_seats["KickOffEventStart"] == fixture_date)
         ]["Price"].sum()
-
-        countdown_placeholder.metric("Fixture Name", fixture_name)
-        countdown_placeholder.metric("Days to Fixture", f"{days_to_fixture} days")
-        countdown_placeholder.metric("Budget Target Achieved", f"{(fixture_revenue / budget_target) * 100:.2f}%")
+        st.sidebar.markdown(f"**Next Fixture:** {fixture_name}")
+        st.sidebar.markdown(f"**Days to Fixture:** {days_to_fixture} days")
+        st.sidebar.markdown(f"**Budget Target Achieved:** {(fixture_revenue / budget_target) * 100:.2f}%")
     else:
-        countdown_placeholder.markdown("No upcoming fixtures found.")
+        st.sidebar.markdown("**No upcoming fixtures found.**")
+
+    # Monthly Progress
+    st.markdown("<h3 style='color:#b22222;'>Monthly Progress</h3>", unsafe_allow_html=True)
+    monthly_progress, sales_made = calculate_monthly_progress(filtered_df_without_seats, start_date, end_date)
+
+    if monthly_progress is None:
+        st.warning("Targets are not available for the selected dates.")
+    else:
+        # Highlight names with sales
+        monthly_progress["Premium Executive"] = monthly_progress["Premium Executive"].apply(
+            lambda x: f"**{x}**" if x in sales_made else x
+        )
+        if anonymize:
+            monthly_progress["Current Revenue"] = "Hidden"
+            monthly_progress["Target"] = "Hidden"
+
+        st.dataframe(
+            monthly_progress.style.format({
+                "Current Revenue": "£{:,.0f}" if not anonymize else "{}",
+                "Target": "£{:,.0f}" if not anonymize else "{}",
+                "% Sold": "{:.2f}%"
+            }).background_gradient(subset=["% Sold"], cmap="Reds"),
+            use_container_width=True
+        )
 
 if __name__ == "__main__":
     run_dashboard()
