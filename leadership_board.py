@@ -40,10 +40,10 @@ def load_budget_targets():
         return budget_df
     except FileNotFoundError:
         st.error(f"Budget file not found at {file_path}. Ensure it is correctly placed.")
-        raise
+        return pd.DataFrame()
     except Exception as e:
         st.error(f"An error occurred while loading the budget file: {e}")
-        raise
+        return pd.DataFrame()
 
 budget_df = load_budget_targets()
 
@@ -75,7 +75,8 @@ def calculate_monthly_progress(data, start_date, end_date):
         "Premium Executive": progress.index,
         "Current Revenue": progress.values,
         "Target": monthly_targets.values,
-        "% Sold (Numeric)": (progress / monthly_targets * 100).round(2),  # Keep a numeric column for sorting
+        "% Sold (Numeric)": (progress / monthly_targets * 100).round(2),
+        "Today's Date": datetime.now().strftime("%d/%m/%Y")  # Add today's date
     }).reset_index(drop=True)
 
     # Format columns for display
