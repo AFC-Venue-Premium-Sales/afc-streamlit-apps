@@ -139,20 +139,29 @@ def run_dashboard():
         fixture_revenue = filtered_df_without_seats[
             (filtered_df_without_seats["KickOffEventStart"] == fixture_date)
         ]["Price"].sum()
-        st.sidebar.markdown(
+                st.sidebar.markdown(
             f"""
-            <div style="font-size: 16px; font-weight: bold;">
-                🏟️ <span style="color: blue;">Next Fixture:</span> {fixture_name}
-            </div>
-            <div style="font-size: 16px;">
-                ⏳ <span style="color: blue;">Days to Fixture:</span> {days_to_fixture} days
-            </div>
-            <div style="font-size: 16px;">
-                🎯 <span style="color: blue;">Budget Target Achieved:</span> {round((fixture_revenue / budget_target) * 100, 2)}%
+            <div style="
+                background-color: #f7f7f7;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                padding: 15px;
+                margin-bottom: 20px;
+                font-family: Arial, sans-serif;
+            ">
+                <h4 style="color: #0047AB; font-size: 18px; margin-bottom: 10px;">🏟️ Next Fixture</h4>
+                <p style="font-size: 16px; margin: 5px 0; font-weight: bold;">{fixture_name}</p>
+                
+                <h4 style="color: #0047AB; font-size: 18px; margin-top: 15px;">⏳ Days to Fixture</h4>
+                <p style="font-size: 16px; margin: 5px 0; font-weight: bold;">{days_to_fixture} days</p>
+                
+                <h4 style="color: #0047AB; font-size: 18px; margin-top: 15px;">🎯 Budget Target Achieved</h4>
+                <p style="font-size: 16px; color: green; margin: 5px 0; font-weight: bold;">{round((fixture_revenue / budget_target) * 100, 2)}%</p>
             </div>
             """,
             unsafe_allow_html=True
         )
+
     else:
         st.sidebar.markdown("**No upcoming fixtures found.**")
 
