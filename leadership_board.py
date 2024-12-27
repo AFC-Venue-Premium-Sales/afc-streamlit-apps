@@ -75,10 +75,10 @@ def calculate_monthly_progress(data, start_date, end_date):
         "Premium Executive": progress.index,
         "Current Revenue": progress.values,
         "Target": monthly_targets.values,
-        "% Sold": (progress / monthly_targets * 100).round(2),
+        "% Sold (Numeric)": (progress / monthly_targets * 100).round(2),  # Keep a numeric column for sorting
     }).reset_index(drop=True)
 
-    # Format columns
+    # Format columns for display
     progress_data["Current Revenue"] = progress_data["Current Revenue"].apply(lambda x: f"£{x:,.0f}")
     progress_data["Target"] = progress_data["Target"].apply(lambda x: f"£{x:,.0f}")
 
@@ -91,9 +91,12 @@ def calculate_monthly_progress(data, start_date, end_date):
         else:
             return f"<span style='color: red;'>{value:.2f}%</span>"
 
-    progress_data["% Sold"] = progress_data["% Sold"].apply(style_percent)
+    progress_data["% Sold"] = progress_data["% Sold (Numeric)"].apply(style_percent)
 
-    return progress_data.sort_values(by="% Sold", ascending=False), sales_made
+    # Sort by the numeric % Sold column
+    progress_data = progress_data.sort_values(by="% Sold (Numeric)", ascending=False)
+
+    return progress_data.drop(columns=["% Sold (Numeric)"]), sales_made
 
 # Next fixture information
 def get_next_fixture(data, budget_df):
