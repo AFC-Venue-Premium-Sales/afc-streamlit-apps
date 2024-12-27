@@ -103,6 +103,11 @@ def run_dashboard():
     start_date = st.sidebar.date_input("Start Date", value=datetime.now().replace(day=1))
     end_date = st.sidebar.date_input("End Date", value=datetime.now())
 
+    # Refresh automatically every 60 seconds
+    st.sidebar.markdown("### Refresh")
+    st.sidebar.button("Refresh Now")
+    st.experimental_set_query_params(refresh_time=60)
+
     # Monthly progress
     st.markdown("<h3 style='color:#b22222;'>Monthly Progress</h3>", unsafe_allow_html=True)
     monthly_progress = calculate_monthly_progress(filtered_df_without_seats, start_date, end_date)
