@@ -6,15 +6,20 @@ import os
 import importlib
 from streamlit_autorefresh import st_autorefresh
 
-# Import live data
-try:
-    tjt_hosp_api = importlib.import_module("tjt_hosp_api")
-    filtered_df_without_seats = getattr(tjt_hosp_api, "filtered_df_without_seats", None)
-    if filtered_df_without_seats is None:
-        raise ImportError("filtered_df_without_seats is not available in tjt_hosp_api.")
-except ImportError as e:
-    st.error(f"Error importing tjt_hosp_api: {e}")
-    filtered_df_without_seats = pd.DataFrame(columns=["CreatedBy", "Price", "CreatedOn", "ExecType", "KickOffEventStart", "Fixture Name"])
+# Import live data and reload the module
+def load_live_data():
+    try:
+        tjt_hosp_api = importlib.reload(importlib.import_module("tjt_hosp_api"))
+        filtered_df_without_seats = getattr(tjt_hosp_api, "filtered_df_without_seats", None)
+        if filtered_df_without_seats is None:
+            raise ImportError("filtered_df_without_seats is not available in tjt_hosp_api.")
+        return filtered_df_without_seats
+    except ImportError as e:
+        st.error(f"Error reloading tjt_hosp_api: {e}")
+        return pd.DataFrame(columns=["CreatedBy", "Price", "CreatedOn", "ExecType", "KickOffEventStart", "Fixture Name"])
+
+# Load data
+filtered_df_without_seats = load_live_data()
 
 # Targets data
 targets_data = pd.DataFrame({
@@ -78,7 +83,7 @@ def calculate_monthly_progress(data, start_date, end_date):
         "Current Revenue": progress.values,
         "Target": monthly_targets.values,
         "% Sold (Numeric)": (progress / monthly_targets * 100).round(2),
-        "Today's Date": datetime.now().strftime("%d/%m/%Y")  # Add today's date
+        "Today's Date": datetime.now().strftime("%d/%m/%Y")
     }).reset_index(drop=True)
 
     # Format columns for display
@@ -116,11 +121,21 @@ def get_next_fixture(data, budget_df):
 
     return fixture_name, fixture_date, budget_target
 
-# Auto-refresh functionality
+# Auto-refresh functionality with logging
 def auto_refresh():
+    refresh_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')  # Get current timestamp
+    
+    if "refresh_count" not in st.session_state:
+        st.session_state["refresh_count"] = 0
+
+    st.session_state["refresh_count"] += 1
+    st.session_state["refresh_log"] = st.session_state.get("refresh_log", [])
+    st.session_state["refresh_log"].append(f"Auto-refresh triggered at {refresh_time}, Count: {st.session_state['refresh_count']}")
+    
     st_autorefresh(interval=120 * 1000, key="auto_refresh")  # Auto-refresh every 2 minutes
-    current_time = datetime.now().strftime('%H:%M:%S')
-    return current_time
+    
+    st.sidebar.text(f"Refresh Count: {st.session_state['refresh_count']}")
+    return refresh_time
 
 # Main dashboard
 def run_dashboard():
@@ -128,7 +143,7 @@ def run_dashboard():
     st.title("Arsenal Hospitality Leadership Board")
 
     # Sidebar
-    st.sidebar.markdown("### Filter Options")
+    st.sidebar.markdown("### Date Range Filter")
     start_date = st.sidebar.date_input("Start Date", value=datetime.now().replace(day=1))
     end_date = st.sidebar.date_input("End Date", value=datetime.now())
 
