@@ -72,33 +72,53 @@ def calculate_metrics(filtered_data, targets, team_members, working_days_so_far,
     return pd.DataFrame(results)
 
 def display_sidebar_summary(filtered_data, budget_df):
+    st.sidebar.header("\ud83d\uddca Summary for Today")
     today = datetime.now().date()
     filtered_data["PaymentTime"] = pd.to_datetime(filtered_data["PaymentTime"], format="%d-%m-%Y %H:%M", errors="coerce")
     today_data = filtered_data[filtered_data["PaymentTime"].dt.date == today]
 
-    st.sidebar.header("📊 Summary for Today")
-    st.sidebar.markdown("---")
-    st.sidebar.metric("💷 Total Sales Today", f"£{today_data['Price'].sum():,.2f}")
-    st.sidebar.metric("🏆 Most Sold Game", today_data.groupby("Fixture Name")["Price"].sum().idxmax() if not today_data.empty else "N/A")
-    st.sidebar.metric("📦 Most Sold Package", today_data.groupby("Package Name")["Price"].sum().idxmax() if not today_data.empty else "N/A")
-    st.sidebar.markdown("---")
-
-    next_fixtures = filtered_data[pd.to_datetime(filtered_data["KickOffEventStart"], errors="coerce") > datetime.now()].sort_values("KickOffEventStart")
-    if not next_fixtures.empty:
-        next_fixture = next_fixtures.iloc[0]
-        days_to_fixture = (pd.to_datetime(next_fixture["KickOffEventStart"]) - datetime.now()).days
-        st.sidebar.metric("⏭️ Next Fixture", next_fixture["Fixture Name"])
-        st.sidebar.metric("🎯 Budget Target", f"£{budget_df.loc[budget_df['Fixture Name'] == next_fixture['Fixture Name'], 'Budget Target'].values[0]:,.2f}" if not budget_df.empty else "N/A")
-        st.sidebar.metric("📅 Days to Fixture", f"{days_to_fixture} days")
+    if today_data.empty:
+        st.sidebar.warning("No sales data available for today.")
+        st.sidebar.metric("\ud83d\udcb7 Total Sales Today", "£0.00")
+        st.sidebar.metric("\ud83c\udfc6 Most Sold Game", "N/A")
+        st.sidebar.metric("\ud83d\udce6 Most Sold Package", "N/A")
     else:
-        st.sidebar.metric("⏭️ Next Fixture", "N/A")
-        st.sidebar.metric("🎯 Budget Target", "N/A")
-        st.sidebar.metric("📅 Days to Fixture", "N/A")
-    st.sidebar.markdown("---")
+        total_sales_today = today_data["Price"].sum()
+        st.sidebar.metric("\ud83d\udcb7 Total Sales Today", f"£{total_sales_today:,.2f}")
+
+        top_game = today_data.groupby("Fixture Name")["Price"].sum().idxmax()
+        st.sidebar.metric("\ud83c\udfc6 Most Sold Game", top_game)
+
+        top_package = today_data.groupby("Package Name")["Price"].sum().idxmax()
+        st.sidebar.metric("\ud83d\udce6 Most Sold Package", top_package)
+
+    filtered_data["KickOffEventStart"] = pd.to_datetime(filtered_data["KickOffEventStart"], errors="coerce")
+    next_fixtures = filtered_data[filtered_data["KickOffEventStart"] > datetime.now()].sort_values("KickOffEventStart")
+
+    if next_fixtures.empty:
+        st.sidebar.metric("\u23ed\ufe0f Next Fixture", "N/A")
+        st.sidebar.metric("\ud83c\udfaf Budget Target", "N/A")
+    else:
+        next_fixture = next_fixtures.iloc[0]
+        next_fixture_name = next_fixture["Fixture Name"]
+        budget_target_row = budget_df[budget_df["Fixture Name"] == next_fixture_name]
+        next_budget_target = budget_target_row["Budget Target"].values[0] if not budget_target_row.empty else 0
+        days_to_fixture = (next_fixture["KickOffEventStart"].date() - today).days
+
+        st.sidebar.metric("\u23ed\ufe0f Next Fixture", next_fixture_name)
+        st.sidebar.metric("\ud83c\udfaf Budget Target", f"£{next_budget_target:,.2f}")
+        st.sidebar.metric("\ud83d\udcc5 Days to Fixture", f"{days_to_fixture} days")
 
 # Main App
 def run_app():
-    st.title("🏟️ AFC Sales Dashboard")
+    st.title("\ud83c\udfdf\ufe0f AFC Sales Dashboard")
+
+    with st.expander("\ud83d\udd16 About This Dashboard"):
+        st.write("""This dashboard provides real-time updates on sales and services performance for our team, helping track progress towards targets.""")
+        
+        st.write("""**How to Use:**
+        - Use the filters at the bottom to select specific users, fixtures, or date ranges.
+        - View detailed metrics and performance insights for both sales and services teams.""")
 
     if filtered_df_without_seats is None:
         st.error("❌ No data available to display. Please check the API.")
@@ -110,6 +130,8 @@ def run_app():
     current_month = today.strftime("%B")
     current_year = today.year
     start_of_month = datetime(today.year, today.month, 1)
+
+    # Handle end of month transition
     if today.month == 12:
         next_month_start = f"{today.year + 1}-01-01"
     else:
@@ -124,25 +146,26 @@ def run_app():
         st.error("No targets found for the current month and year.")
         return
 
-    # Filters
+    # Sidebar Filters
     st.sidebar.header("Filters")
     specified_users = ["bgardiner", "dcoppin", "jedwards", "MillieS", "dmontague", 
                        "MeganS", "BethNW", "HayleyA", "jmurphy", "BenT", "ayildirim"]
-    selected_fixture = st.sidebar.selectbox("Filter by Fixture", options=filtered_df_without_seats["Fixture Name"].unique())
+    selected_fixture = st.sidebar.multiselect("Filter by Fixture", options=filtered_df_without_seats["Fixture Name"].unique(),
+                                              default=filtered_df_without_seats["Fixture Name"].unique())
     selected_date_range = st.sidebar.date_input("Date Range", value=(start_of_month, today))
     selected_users = st.sidebar.multiselect("Select Users", options=specified_users, default=specified_users)
-    
+
     # Apply filters
     filtered_data = filtered_df_without_seats.copy()
     if selected_users:
         filtered_data = filtered_data[filtered_data["CreatedBy"].isin(selected_users)]
+    if selected_fixture:
+        filtered_data = filtered_data[filtered_data["Fixture Name"].isin(selected_fixture)]
     if selected_date_range:
         filtered_data = filtered_data[
             (pd.to_datetime(filtered_data["PaymentTime"], format="%d-%m-%Y %H:%M", errors="coerce") >= pd.to_datetime(selected_date_range[0])) &
             (pd.to_datetime(filtered_data["PaymentTime"], format="%d-%m-%Y %H:%M", errors="coerce") <= pd.to_datetime(selected_date_range[1]))
         ]
-    if selected_fixture:
-        filtered_data = filtered_data[filtered_data["Fixture Name"] == selected_fixture]
 
     # Display Sidebar Summary
     display_sidebar_summary(filtered_data, budget_df)
@@ -151,16 +174,38 @@ def run_app():
     sales_team = ["bgardiner", "dcoppin", "jedwards", "MillieS", "dmontague"]
     services_team = ["MeganS", "BethNW", "HayleyA", "jmurphy", "BenT", "ayildirim"]
 
-    # Metrics
+    # Calculate Metrics
     st.subheader("Sales Team")
     sales_metrics = calculate_metrics(filtered_data, targets, sales_team, working_days_so_far, remaining_working_days)
-    st.dataframe(sales_metrics.style.highlight_between(
-        subset=["Member"], left=min(selected_users), right=max(selected_users), axis=0
-    ))
+    st.dataframe(sales_metrics.style.format({
+        "Current Revenue": "£{:,.2f}",
+        "Target": "£{:,.2f}",
+        "Variance": "£{:,.2f}",
+        "Pace per Day": "£{:,.2f}",
+        "Projected Revenue": "£{:,.2f}",
+        "% Sold": "{:.2f}%",
+    }))
 
     st.subheader("Services Team")
     services_metrics = calculate_metrics(filtered_data, targets, services_team, working_days_so_far, remaining_working_days)
-    st.dataframe(services_metrics)
+    st.dataframe(services_metrics.style.format({
+        "Current Revenue": "£{:,.2f}",
+        "Target": "£{:,.2f}",
+        "Variance": "£{:,.2f}",
+        "Pace per Day": "£{:,.2f}",
+        "Projected Revenue": "£{:,.2f}",
+        "% Sold": "{:.2f}%",
+    }))
+
+    # Visualizations
+    st.subheader("Team Progress")
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.bar(["Sales Team", "Services Team"], [sales_metrics["Current Revenue"].sum(), services_metrics["Current Revenue"].sum()], color=["blue", "green"])
+    ax.axhline(sum(targets.values()), color="red", linestyle="--", label="Target")
+    ax.set_title("Overall Team Progress")
+    ax.set_ylabel("Revenue (£)")
+    ax.legend()
+    st.pyplot(fig)
 
 if __name__ == "__main__":
     run_app()
