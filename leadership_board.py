@@ -142,12 +142,11 @@ def run_dashboard():
         st.sidebar.markdown(
             f"""
             <div style="
-                background-color: #f7f7f7;
+                background-color: #f9f9f9;
                 border: 1px solid #ddd;
                 border-radius: 8px;
                 padding: 15px;
                 margin-bottom: 20px;
-                font-family: Arial, sans-serif;
             ">
                 <h4 style="color: #0047AB; font-size: 18px; margin-bottom: 10px;">🏟️ Next Fixture</h4>
                 <p style="font-size: 16px; margin: 5px 0; font-weight: bold;">{fixture_name}</p>
