@@ -3,7 +3,6 @@ import pandas as pd
 from datetime import datetime, timedelta
 import os
 import importlib
-from st_aggrid import AgGrid, GridOptionsBuilder
 
 # Import live data
 try:
@@ -109,30 +108,25 @@ def run_dashboard():
         st.experimental_rerun()
 
     # Monthly progress
-    st.markdown("<h3 style='color:#b22222;'>Monthly Progress</h3>", unsafe_allow_html=True)
+    progress_placeholder = st.empty()
+    progress_placeholder.markdown("<h3 style='color:#b22222;'>Monthly Progress</h3>", unsafe_allow_html=True)
     monthly_progress = calculate_monthly_progress(filtered_df_without_seats, start_date, end_date)
 
     if monthly_progress is None:
-        st.warning("Targets are not available for the selected dates.")
+        progress_placeholder.warning("Targets are not available for the selected dates.")
     else:
-        # AgGrid Configuration
-        gb = GridOptionsBuilder.from_dataframe(monthly_progress)
-        gb.configure_pagination(paginationAutoPageSize=True)  # Add pagination
-        gb.configure_side_bar()  # Enable sidebar
-        gb.configure_default_column(editable=False, groupable=True)  # Columns config
-        grid_options = gb.build()
-
-        # Render AgGrid
-        AgGrid(
-            monthly_progress,
-            gridOptions=grid_options,
-            height=500,
-            width='100%',
-            theme="material"
+        progress_placeholder.dataframe(
+            monthly_progress.style.format({
+                "Current Revenue": "£{:,.0f}",
+                "Target": "£{:,.0f}",
+                "% Sold": "{:.2f}%"
+            }).background_gradient(subset=["% Sold"], cmap="Reds"),
+            use_container_width=True
         )
 
     # Next fixture countdown
-    st.markdown("<h3 style='color:#b22222;'>Next Fixture Countdown</h3>", unsafe_allow_html=True)
+    countdown_placeholder = st.empty()
+    countdown_placeholder.markdown("<h3 style='color:#b22222;'>Next Fixture Countdown</h3>", unsafe_allow_html=True)
     fixture_name, fixture_date, budget_target = get_next_fixture(filtered_df_without_seats, budget_df)
     if fixture_name:
         days_to_fixture = (fixture_date - datetime.now()).days
@@ -140,11 +134,11 @@ def run_dashboard():
             (filtered_df_without_seats["KickOffEventStart"] == fixture_date)
         ]["Price"].sum()
 
-        st.metric("Fixture Name", fixture_name)
-        st.metric("Days to Fixture", f"{days_to_fixture} days")
-        st.metric("Budget Target Achieved", f"{(fixture_revenue / budget_target) * 100:.2f}%")
+        countdown_placeholder.metric("Fixture Name", fixture_name)
+        countdown_placeholder.metric("Days to Fixture", f"{days_to_fixture} days")
+        countdown_placeholder.metric("Budget Target Achieved", f"{(fixture_revenue / budget_target) * 100:.2f}%")
     else:
-        st.markdown("No upcoming fixtures found.")
+        countdown_placeholder.markdown("No upcoming fixtures found.")
 
 if __name__ == "__main__":
     run_dashboard()
