@@ -157,13 +157,14 @@ def run_app():
                        'MeganS', 'BethNW', 'HayleyA', 'LucyB', 'Conor', 'SavR', 'MillieS', 'dmontague']
 
     st.title('👤AFC Premium Exec Dashboard👤')
-
-    st.markdown("""
-    ### ℹ️ About
-    This application provides detailed Exec Sales Metrics ONLY, derived from RTS data. The data is retrieved from TJT's MBM sales API.
-    """)
     
     with st.expander("📖 How to Use This App - User Performance"):
+        
+        st.markdown("""
+        ### ℹ️ About
+        This application provides detailed Exec Sales Metrics ONLY, derived from RTS data. The data is retrieved from TJT's MBM sales API.
+        """)
+        
         st.markdown("""
         **Step-by-Step Guide:**
         1. **Select User**:

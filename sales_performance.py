@@ -56,6 +56,8 @@ def run_app():
         This app provides sales metrics from TJT's data. 
         You can filter results by date, user, fixture, payment status, and paid status for tailored insights
         
+        **Note:** To access the latest sales updates, please click the 'Refresh Data' button & let it load.
+        
         **Step-by-Step Guide:**
         1. **Filter Data**:
            - Use the sidebar to select a **date range** and **time range** for the data.
@@ -263,7 +265,7 @@ def run_app():
         # Display results
         if not filtered_data.empty:
             st.write("### 💼 Total Accumulated Sales")
-            st.write(f"Total Accumulated Sales (Static) since June 18th : **£{static_total:,.2f}** ")
+            st.write(f"Total Accumulated Sales (Static) since June 18th (stripe confirmed): **£{static_total:,.2f}** ")
 
             st.write("### 💼 Filtered Accumulated Sales")
             st.write(f"Total Accumulated Sales (Filtered): **£{dynamic_total:,.2f}** ")
@@ -279,7 +281,7 @@ def run_app():
 
             # Total Sales Per Fixture Section
             st.write("### ⚽ Total Sales Summary")
-            st.write(f"Accumulated sales with 'Other' payments included: **£{other_sales_total:,.2f}** ")
+            st.write(f"Accumulated sales with 'Other pending' payments included: **£{other_sales_total:,.2f}** ")
 
             # Group the data and calculate required metrics
             total_sold_per_match = (

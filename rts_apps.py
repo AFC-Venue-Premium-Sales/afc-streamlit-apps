@@ -88,7 +88,7 @@ def reload_data():
         importlib.reload(user_performance_api)
 
         # Trigger a rerun to refresh the app state
-        st.re_run()
+        st.rerun()
 
     except Exception as e:
         # Handle and log errors gracefully
@@ -108,7 +108,7 @@ if not st.session_state["authenticated"]:
     # Display Welcome Message
     st.markdown("""
     ### 👋 Welcome to the Venue Hospitality App!
-    **Log in using AFC credentials to access the dashboards.**
+    **Log in to access the dashboards.**
     """)
 
     # Generate the Login URL
