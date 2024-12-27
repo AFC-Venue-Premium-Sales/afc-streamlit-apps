@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-from datetime import datetime, timedelta
+from datetime import datetime
 import importlib
 import os
 
@@ -14,23 +14,6 @@ try:
 except ImportError as e:
     st.error(f"❌ Error importing tjt_hosp_api: {e}")
     filtered_df_without_seats = None
-
-# Helper Function: Load Budget Targets
-def load_budget_targets():
-    """
-    Load the budget targets data from the Excel file.
-    """
-    file_path = os.path.join(os.path.dirname(__file__), 'budget_target_2425.xlsx')
-    try:
-        budget_df = pd.read_excel(file_path)
-        budget_df.columns = budget_df.columns.str.strip()
-        return budget_df
-    except FileNotFoundError:
-        st.error(f"❌ Budget file not found at {file_path}. Ensure it is correctly placed.")
-        raise
-    except Exception as e:
-        st.error(f"❌ An error occurred while loading the budget file: {e}")
-        raise
 
 # Define monthly targets
 monthly_targets = pd.DataFrame({
@@ -48,6 +31,20 @@ monthly_targets = pd.DataFrame({
     "BenT": [35000, 35000, 30000, 25000, 20000, 15000],
     "ayildirim": [19000, 19000, 16500, 14000, 11000, 8500],
 }).set_index(["Month", "Year"])
+
+# Load budget targets
+def load_budget_targets():
+    file_path = os.path.join(os.path.dirname(__file__), 'budget_target_2425.xlsx')
+    try:
+        budget_df = pd.read_excel(file_path)
+        budget_df.columns = budget_df.columns.str.strip()
+        return budget_df
+    except FileNotFoundError:
+        st.error(f"❌ Budget file not found at {file_path}. Ensure it is correctly placed.")
+        raise
+    except Exception as e:
+        st.error(f"❌ An error occurred while loading the budget file: {e}")
+        raise
 
 # Helper Functions
 def calculate_metrics(filtered_data, targets, team_members, working_days_so_far, remaining_working_days):
@@ -74,32 +71,40 @@ def calculate_metrics(filtered_data, targets, team_members, working_days_so_far,
 
     return pd.DataFrame(results)
 
-
 def display_sidebar_summary(filtered_data, budget_df):
     st.sidebar.header("📊 Summary for Today")
     today = datetime.now().date()
-    today_data = filtered_data[pd.to_datetime(filtered_data["PaymentTime"]).dt.date == today]
+    filtered_data["PaymentTime"] = pd.to_datetime(filtered_data["PaymentTime"], format="%d-%m-%Y %H:%M", errors="coerce")
+    today_data = filtered_data[filtered_data["PaymentTime"].dt.date == today]
 
-    # Total sales today
-    total_sales_today = today_data["Price"].sum()
-    st.sidebar.metric("💷 Total Sales Today", f"£{total_sales_today:,.2f}")
+    if today_data.empty:
+        st.sidebar.warning("No sales data available for today.")
+        st.sidebar.metric("💷 Total Sales Today", "£0.00")
+        st.sidebar.metric("🏆 Top Game", "N/A")
+        st.sidebar.metric("📦 Top Package", "N/A")
+    else:
+        total_sales_today = today_data["Price"].sum()
+        st.sidebar.metric("💷 Total Sales Today", f"£{total_sales_today:,.2f}")
 
-    # Game with highest sales
-    top_game = today_data.groupby("Fixture Name")["Price"].sum().idxmax()
-    st.sidebar.metric("🏆 Top Game", top_game)
+        top_game = today_data.groupby("Fixture Name")["Price"].sum().idxmax()
+        st.sidebar.metric("🏆 Top Game", top_game)
 
-    # Package with highest sales
-    top_package = today_data.groupby("Package Name")["Price"].sum().idxmax()
-    st.sidebar.metric("📦 Top Package", top_package)
+        top_package = today_data.groupby("Package Name")["Price"].sum().idxmax()
+        st.sidebar.metric("📦 Top Package", top_package)
 
-    # Next fixture
     filtered_data["KickOffEventStart"] = pd.to_datetime(filtered_data["KickOffEventStart"], errors="coerce")
-    next_fixture = filtered_data[filtered_data["KickOffEventStart"] > datetime.now()].sort_values("KickOffEventStart").iloc[0]
-    next_fixture_name = next_fixture["Fixture Name"]
-    next_budget_target = budget_df[budget_df["Fixture Name"] == next_fixture_name]["Budget Target"].values[0]
-    st.sidebar.metric("⏭️ Next Fixture", next_fixture_name)
-    st.sidebar.metric("🎯 Budget Target", f"£{next_budget_target:,.2f}")
+    next_fixtures = filtered_data[filtered_data["KickOffEventStart"] > datetime.now()].sort_values("KickOffEventStart")
 
+    if next_fixtures.empty:
+        st.sidebar.metric("⏭️ Next Fixture", "N/A")
+        st.sidebar.metric("🎯 Budget Target", "N/A")
+    else:
+        next_fixture = next_fixtures.iloc[0]
+        next_fixture_name = next_fixture["Fixture Name"]
+        budget_target_row = budget_df[budget_df["Fixture Name"] == next_fixture_name]
+        next_budget_target = budget_target_row["Budget Target"].values[0] if not budget_target_row.empty else 0
+        st.sidebar.metric("⏭️ Next Fixture", next_fixture_name)
+        st.sidebar.metric("🎯 Budget Target", f"£{next_budget_target:,.2f}")
 
 # Main App
 def run_app():
@@ -109,7 +114,6 @@ def run_app():
         st.error("❌ No data available to display. Please check the API.")
         return
 
-    # Load budget targets
     budget_df = load_budget_targets()
 
     today = datetime.now()
@@ -117,16 +121,15 @@ def run_app():
     current_year = today.year
     start_of_month = datetime(today.year, today.month, 1)
 
-    # Handle December to January transition
+    # Handle end of month transition
     if today.month == 12:
-        next_month_start = datetime(today.year + 1, 1, 1)
+        next_month_start = f"{today.year + 1}-01-01"
     else:
-        next_month_start = datetime(today.year, today.month + 1, 1)
+        next_month_start = f"{today.year}-{today.month + 1}-01"
 
     working_days_so_far = len(pd.date_range(start=start_of_month, end=today, freq="B"))
-    remaining_working_days = len(pd.date_range(start=today, end=next_month_start - pd.Timedelta(days=1), freq="B"))
+    remaining_working_days = len(pd.date_range(start=today + pd.Timedelta(days=1), end=next_month_start, freq="B"))
 
-    # Load targets for the current month
     try:
         targets = monthly_targets.loc[(current_month, current_year)].to_dict()
     except KeyError:
@@ -135,10 +138,8 @@ def run_app():
 
     # Sidebar Filters
     st.sidebar.header("Filters")
-    specified_users = [
-        "bgardiner", "dcoppin", "jedwards", "MillieS", "dmontague",
-        "MeganS", "BethNW", "HayleyA", "jmurphy", "BenT", "ayildirim"
-    ]
+    specified_users = ["bgardiner", "dcoppin", "jedwards", "MillieS", "dmontague", 
+                       "MeganS", "BethNW", "HayleyA", "jmurphy", "BenT", "ayildirim"]
     selected_users = st.sidebar.multiselect("Select Users", options=specified_users, default=specified_users)
     selected_date_range = st.sidebar.date_input("Date Range", value=(start_of_month, today))
 
@@ -148,8 +149,8 @@ def run_app():
         filtered_data = filtered_data[filtered_data["CreatedBy"].isin(selected_users)]
     if selected_date_range:
         filtered_data = filtered_data[
-            (pd.to_datetime(filtered_data["PaymentTime"], errors='coerce', format='ISO8601') >= pd.to_datetime(selected_date_range[0])) &
-            (pd.to_datetime(filtered_data["PaymentTime"], errors='coerce', format='ISO8601') <= pd.to_datetime(selected_date_range[1]))
+            (pd.to_datetime(filtered_data["PaymentTime"], format="%d-%m-%Y %H:%M", errors="coerce") >= pd.to_datetime(selected_date_range[0])) &
+            (pd.to_datetime(filtered_data["PaymentTime"], format="%d-%m-%Y %H:%M", errors="coerce") <= pd.to_datetime(selected_date_range[1]))
         ]
 
     # Display Sidebar Summary
@@ -191,7 +192,6 @@ def run_app():
     ax.set_ylabel("Revenue (£)")
     ax.legend()
     st.pyplot(fig)
-
 
 if __name__ == "__main__":
     run_app()
