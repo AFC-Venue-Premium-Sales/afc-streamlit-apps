@@ -72,3 +72,4 @@ identity[flask]
 playwright
 python3-saml
 onelogin
+streamlit-aggrid

@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import os
 import importlib
+from st_aggrid import AgGrid, GridOptionsBuilder
 
 # Import live data
 try:
@@ -103,11 +104,6 @@ def run_dashboard():
     start_date = st.sidebar.date_input("Start Date", value=datetime.now().replace(day=1))
     end_date = st.sidebar.date_input("End Date", value=datetime.now())
 
-    # Refresh automatically every 60 seconds
-    st.sidebar.markdown("### Refresh")
-    st.sidebar.button("Refresh Now")
-    st.experimental_set_query_params(refresh_time=60)
-
     # Monthly progress
     st.markdown("<h3 style='color:#b22222;'>Monthly Progress</h3>", unsafe_allow_html=True)
     monthly_progress = calculate_monthly_progress(filtered_df_without_seats, start_date, end_date)
@@ -115,13 +111,20 @@ def run_dashboard():
     if monthly_progress is None:
         st.warning("Targets are not available for the selected dates.")
     else:
-        st.dataframe(
-            monthly_progress.style.format({
-                "Current Revenue": "£{:,.0f}",
-                "Target": "£{:,.0f}",
-                "% Sold": "{:.2f}%"
-            }).background_gradient(subset=["% Sold"], cmap="Reds"),
-            use_container_width=True
+        # AgGrid Configuration
+        gb = GridOptionsBuilder.from_dataframe(monthly_progress)
+        gb.configure_pagination(paginationAutoPageSize=True)  # Add pagination
+        gb.configure_side_bar()  # Enable sidebar
+        gb.configure_default_column(editable=False, groupable=True)  # Columns config
+        grid_options = gb.build()
+
+        # Render AgGrid
+        AgGrid(
+            monthly_progress,
+            gridOptions=grid_options,
+            height=400,
+            width='100%',
+            theme="material"
         )
 
     # Next fixture countdown
