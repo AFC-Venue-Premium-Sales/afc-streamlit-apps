@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import importlib
 
@@ -48,9 +48,12 @@ def load_budget_targets():
 budget_df = load_budget_targets()
 
 # Calculate monthly progress
-def calculate_monthly_progress(data, month, year):
+def calculate_monthly_progress(data, start_date, end_date):
     data["PaymentTime"] = pd.to_datetime(data["PaymentTime"], errors="coerce")
-    filtered_data = data[data["PaymentTime"].dt.month == month]
+    filtered_data = data[
+        (data["PaymentTime"] >= pd.to_datetime(start_date)) &
+        (data["PaymentTime"] <= pd.to_datetime(end_date))
+    ]
 
     progress = (
         filtered_data.groupby("CreatedBy")["Price"]
@@ -58,7 +61,9 @@ def calculate_monthly_progress(data, month, year):
         .reindex(targets_data.columns, fill_value=0)
     )
 
-    monthly_targets = targets_data.loc[(datetime(year, month, 1).strftime("%B"), year)]
+    current_month = start_date.strftime("%B")
+    current_year = start_date.year
+    monthly_targets = targets_data.loc[(current_month, current_year)]
 
     progress_data = pd.DataFrame({
         "Member": progress.index,
@@ -88,40 +93,37 @@ def get_next_fixture(data, budget_df):
 def run_dashboard():
     st.title("Arsenal Hospitality Leadership Board")
 
-    # Create two columns
-    col1, col2 = st.columns(2)
+    # Sidebar: Date range filter
+    st.sidebar.markdown("### Filter by Date")
+    start_date = st.sidebar.date_input("Start Date", value=datetime.now().replace(day=1))
+    end_date = st.sidebar.date_input("End Date", value=datetime.now())
 
-    # Left column: Monthly progress
-    with col1:
-        st.markdown("<h3 style='color:#b22222;'>Monthly Progress</h3>", unsafe_allow_html=True)
+    # Monthly progress
+    st.markdown("<h3 style='color:#b22222;'>Monthly Progress</h3>", unsafe_allow_html=True)
+    monthly_progress = calculate_monthly_progress(filtered_df_without_seats, start_date, end_date)
+    st.dataframe(
+        monthly_progress.style.format({
+            "Current Revenue": "£{:,.0f}",
+            "Target": "£{:,.0f}",
+            "% Sold": "{:.2f}%"
+        }).background_gradient(subset=["% Sold"], cmap="Reds"),
+        use_container_width=True
+    )
 
-        current_month = datetime.now().month
-        current_year = datetime.now().year
-        monthly_progress = calculate_monthly_progress(filtered_df_without_seats, current_month, current_year)
+    # Next fixture countdown
+    st.markdown("<h3 style='color:#b22222;'>Next Fixture Countdown</h3>", unsafe_allow_html=True)
+    fixture_name, fixture_date, budget_target = get_next_fixture(filtered_df_without_seats, budget_df)
+    if fixture_name:
+        days_to_fixture = (fixture_date - datetime.now()).days
+        fixture_revenue = filtered_df_without_seats[
+            (filtered_df_without_seats["KickOffEventStart"] == fixture_date)
+        ]["Price"].sum()
 
-        st.dataframe(
-            monthly_progress.style.format({
-                "Current Revenue": "£{:,.0f}",
-                "Target": "£{:,.0f}",
-                "% Sold": "{:.2f}%"
-            }).background_gradient(subset=["% Sold"], cmap="Reds"),
-            use_container_width=True
-        )
-
-    # Right column: Next fixture countdown
-    with col2:
-        st.markdown("<h3 style='color:#b22222;'>Next Fixture Countdown</h3>", unsafe_allow_html=True)
-
-        fixture_name, fixture_date, budget_target = get_next_fixture(filtered_df_without_seats, budget_df)
-        if fixture_name:
-            days_to_fixture = (fixture_date - datetime.now()).days
-            total_revenue = filtered_df_without_seats["Price"].sum()
-
-            st.metric("Fixture Name", fixture_name)
-            st.metric("Days to Fixture", f"{days_to_fixture} days")
-            st.metric("Budget Target Achieved", f"{(total_revenue / budget_target) * 100:.2f}%")
-        else:
-            st.markdown("No upcoming fixtures found.")
+        st.metric("Fixture Name", fixture_name)
+        st.metric("Days to Fixture", f"{days_to_fixture} days")
+        st.metric("Budget Target Achieved", f"{(fixture_revenue / budget_target) * 100:.2f}%")
+    else:
+        st.markdown("No upcoming fixtures found.")
 
 if __name__ == "__main__":
     run_dashboard()
