@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, timedelta
-import importlib
+from datetime import datetime
 import os
+import importlib
 
-# Import live data from `tjt_hosp_api`
+# Import live data
 try:
     tjt_hosp_api = importlib.import_module("tjt_hosp_api")
     filtered_df_without_seats = getattr(tjt_hosp_api, "filtered_df_without_seats", None)
@@ -12,9 +12,9 @@ try:
         raise ImportError("filtered_df_without_seats is not available in tjt_hosp_api.")
 except ImportError as e:
     st.error(f"Error importing tjt_hosp_api: {e}")
-    filtered_df_without_seats = pd.DataFrame(columns=["CreatedBy", "Price", "PaymentTime", "ExecType", "Fixture Name", "KickOffEventStart"])
+    filtered_df_without_seats = pd.DataFrame(columns=["CreatedBy", "Price", "PaymentTime", "ExecType", "KickOffEventStart", "Fixture Name"])
 
-# Sales and Services Team Targets
+# Targets data
 targets_data = pd.DataFrame({
     "Month": ["December", "January", "February", "March", "April", "May"],
     "Year": [2024, 2025, 2025, 2025, 2025, 2025],
@@ -31,9 +31,9 @@ targets_data = pd.DataFrame({
     "ayildirim": [19000, 19000, 16500, 14000, 11000, 8500],
 }).set_index(["Month", "Year"])
 
-# Load Budget Targets
+# Load budget targets
 def load_budget_targets():
-    file_path = os.path.join(os.path.dirname(__file__), "budget_target_2425.xlsx")
+    file_path = os.path.join(os.path.dirname(__file__), 'budget_target_2425.xlsx')
     try:
         budget_df = pd.read_excel(file_path)
         budget_df.columns = budget_df.columns.str.strip()
@@ -47,32 +47,9 @@ def load_budget_targets():
 
 budget_df = load_budget_targets()
 
-# Add Custom Styling
-def add_custom_css():
-    st.markdown("""
-    <style>
-        body {
-            background-color: #ffffff;
-            background-image: url('https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg');
-            background-size: 100px;
-            background-position: top left;
-            background-repeat: no-repeat;
-        }
-        table.dataframe th {
-            background-color: #b22222 !important;
-            color: white !important;
-            font-size: 18px !important;
-        }
-        table.dataframe td {
-            background-color: #f9f9f9 !important;
-            font-size: 16px !important;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-
-# Calculate Monthly Progress
+# Calculate monthly progress
 def calculate_monthly_progress(data, month, year):
-    data["PaymentTime"] = pd.to_datetime(data["PaymentTime"], errors="coerce").dt.tz_localize(None)
+    data["PaymentTime"] = pd.to_datetime(data["PaymentTime"], errors="coerce")
     filtered_data = data[data["PaymentTime"].dt.month == month]
 
     progress = (
@@ -92,52 +69,36 @@ def calculate_monthly_progress(data, month, year):
 
     return progress_data.sort_values(by="% Sold", ascending=False)
 
-# Next Fixture Information
-def get_next_fixture(filtered_data, budget_data):
-    # Ensure 'KickOffEventStart' is in the filtered data
-    if "KickOffEventStart" not in filtered_data.columns:
-        st.error("Column 'KickOffEventStart' not found in filtered_df_without_seats.")
-        return None, None, None, None
-
-    filtered_data["KickOffEventStart"] = pd.to_datetime(filtered_data["KickOffEventStart"], errors="coerce")
+# Next fixture information
+def get_next_fixture(data, budget_df):
+    data["KickOffEventStart"] = pd.to_datetime(data["KickOffEventStart"], errors="coerce")
     today = datetime.now()
-
-    # Find the next fixture
-    next_fixture = filtered_data[filtered_data["KickOffEventStart"] > today].sort_values("KickOffEventStart").head(1)
+    next_fixture = data[data["KickOffEventStart"] > today].sort_values("KickOffEventStart").head(1)
 
     if next_fixture.empty:
-        return None, None, None, None
+        return None, None, None
 
     fixture_name = next_fixture["Fixture Name"].iloc[0]
     fixture_date = next_fixture["KickOffEventStart"].iloc[0]
+    budget_target = budget_df[budget_df["Fixture Name"] == fixture_name]["Budget Target"].values[0]
 
-    # Match the budget target from budget_df
-    budget_target_row = budget_data[budget_data["Fixture Name"] == fixture_name]
-    budget_target = budget_target_row["Budget Target"].iloc[0] if not budget_target_row.empty else None
+    return fixture_name, fixture_date, budget_target
 
-    # Calculate total revenue so far for the fixture
-    total_revenue = filtered_data[filtered_data["Fixture Name"] == fixture_name]["Price"].sum()
-
-    return fixture_name, fixture_date, budget_target, total_revenue
-
-# Main Dashboard
+# Main dashboard
 def run_dashboard():
-    add_custom_css()  # Add Arsenal-themed styling
     st.title("Arsenal Hospitality Leadership Board")
 
-    # Sidebar toggle
-    view_option = st.sidebar.radio(
-        "Select View",
-        ("Monthly Progress", "Next Fixture Countdown")
-    )
+    # Create two columns
+    col1, col2 = st.columns(2)
 
-    # Monthly Overview
-    if view_option == "Monthly Progress":
+    # Left column: Monthly progress
+    with col1:
+        st.markdown("<h3 style='color:#b22222;'>Monthly Progress</h3>", unsafe_allow_html=True)
+
         current_month = datetime.now().month
         current_year = datetime.now().year
         monthly_progress = calculate_monthly_progress(filtered_df_without_seats, current_month, current_year)
 
-        st.markdown("<h3 style='color:#b22222;'>Monthly Progress</h3>", unsafe_allow_html=True)
         st.dataframe(
             monthly_progress.style.format({
                 "Current Revenue": "£{:,.0f}",
@@ -147,17 +108,18 @@ def run_dashboard():
             use_container_width=True
         )
 
-    # Next Fixture Countdown
-    elif view_option == "Next Fixture Countdown":
-        fixture_name, fixture_date, budget_target, total_revenue = get_next_fixture(filtered_df_without_seats, budget_df)
+    # Right column: Next fixture countdown
+    with col2:
+        st.markdown("<h3 style='color:#b22222;'>Next Fixture Countdown</h3>", unsafe_allow_html=True)
+
+        fixture_name, fixture_date, budget_target = get_next_fixture(filtered_df_without_seats, budget_df)
         if fixture_name:
             days_to_fixture = (fixture_date - datetime.now()).days
-            budget_achieved = (total_revenue / budget_target * 100) if budget_target else 0
+            total_revenue = filtered_df_without_seats["Price"].sum()
 
-            st.markdown("<h3 style='color:#b22222;'>Next Fixture</h3>", unsafe_allow_html=True)
             st.metric("Fixture Name", fixture_name)
             st.metric("Days to Fixture", f"{days_to_fixture} days")
-            st.metric("Budget Target Achieved", f"{budget_achieved:.2f}%")
+            st.metric("Budget Target Achieved", f"{(total_revenue / budget_target) * 100:.2f}%")
         else:
             st.markdown("No upcoming fixtures found.")
 
