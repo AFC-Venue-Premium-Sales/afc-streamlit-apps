@@ -49,7 +49,8 @@ budget_df = load_budget_targets()
 
 # Calculate monthly progress
 def calculate_monthly_progress(data, start_date, end_date):
-    data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], errors="coerce")
+    # Parse CreatedOn column with dayfirst=True to avoid ambiguity
+    data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], errors="coerce", dayfirst=True)
     filtered_data = data[
         (data["CreatedOn"] >= pd.to_datetime(start_date)) &
         (data["CreatedOn"] <= pd.to_datetime(end_date))
@@ -114,9 +115,20 @@ def run_dashboard():
         fixture_revenue = filtered_df_without_seats[
             (filtered_df_without_seats["KickOffEventStart"] == fixture_date)
         ]["Price"].sum()
-        st.sidebar.markdown(f"**Next Fixture:** {fixture_name}")
-        st.sidebar.markdown(f"**Days to Fixture:** {days_to_fixture} days")
-        st.sidebar.markdown(f"**Budget Target Achieved:** {(fixture_revenue / budget_target) * 100:.2f}%")
+        st.sidebar.markdown(
+            f"""
+            <div style="color: #b22222; font-size: 24px; font-weight: bold;">
+                Next Fixture: <span style="color: gold;">{fixture_name}</span>
+            </div>
+            <div style="color: #b22222; font-size: 20px;">
+                Days to Fixture: <span style="color: gold;">{days_to_fixture} days</span>
+            </div>
+            <div style="color: #b22222; font-size: 20px;">
+                Budget Target Achieved: <span style="color: gold;">{(fixture_revenue / budget_target) * 100:.2f}%</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
     else:
         st.sidebar.markdown("**No upcoming fixtures found.**")
 
@@ -129,19 +141,13 @@ def run_dashboard():
     else:
         # Highlight names with sales
         monthly_progress["Premium Executive"] = monthly_progress["Premium Executive"].apply(
-            lambda x: f"**{x}**" if x in sales_made else x
+            lambda x: f"<b style='color:#b22222;'>{x}</b>" if x in sales_made else x
         )
         if anonymize:
             monthly_progress["Current Revenue"] = "Hidden"
             monthly_progress["Target"] = "Hidden"
 
-        st.table(
-            monthly_progress.style.format({
-                "Current Revenue": "£{:,.0f}" if not anonymize else "{}",
-                "Target": "£{:,.0f}" if not anonymize else "{}",
-                "% Sold": "{:.2f}%"
-            }).background_gradient(subset=["% Sold"], cmap="Reds")
-        )
+        st.markdown(monthly_progress.to_html(escape=False, index=False), unsafe_allow_html=True)
 
 if __name__ == "__main__":
     run_dashboard()
