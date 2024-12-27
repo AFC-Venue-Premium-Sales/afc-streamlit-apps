@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 import os
 import importlib
 
@@ -67,6 +67,8 @@ def calculate_monthly_progress(data, start_date, end_date):
         .reindex(targets_data.columns, fill_value=0)
     )
 
+    sales_made = filtered_data["CreatedBy"].unique()
+
     monthly_targets = targets_data.loc[(current_month, current_year)]
 
     progress_data = pd.DataFrame({
@@ -76,7 +78,6 @@ def calculate_monthly_progress(data, start_date, end_date):
         "% Sold": (progress / monthly_targets * 100).round(2),
     }).reset_index(drop=True)
 
-    sales_made = filtered_data["CreatedBy"].unique().tolist()
     return progress_data.sort_values(by="% Sold", ascending=False), sales_made
 
 # Next fixture information
@@ -102,6 +103,8 @@ def run_dashboard():
     st.sidebar.markdown("### Filter Options")
     start_date = st.sidebar.date_input("Start Date", value=datetime.now().replace(day=1))
     end_date = st.sidebar.date_input("End Date", value=datetime.now())
+
+    st.sidebar.markdown("### Options")
     anonymize = st.sidebar.checkbox("Anonymize Revenue and Target")
 
     # Next Fixture in Sidebar
@@ -132,13 +135,12 @@ def run_dashboard():
             monthly_progress["Current Revenue"] = "Hidden"
             monthly_progress["Target"] = "Hidden"
 
-        st.dataframe(
+        st.table(
             monthly_progress.style.format({
                 "Current Revenue": "£{:,.0f}" if not anonymize else "{}",
                 "Target": "£{:,.0f}" if not anonymize else "{}",
                 "% Sold": "{:.2f}%"
-            }).background_gradient(subset=["% Sold"], cmap="Reds"),
-            use_container_width=True
+            }).background_gradient(subset=["% Sold"], cmap="Reds")
         )
 
 if __name__ == "__main__":
