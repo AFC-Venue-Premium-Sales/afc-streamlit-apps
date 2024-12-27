@@ -105,7 +105,7 @@ def run_dashboard():
 
     # Refresh button
     if st.sidebar.button("Refresh Now"):
-        st.experimental_rerun()
+        st.rerun()
 
     # Monthly progress
     progress_placeholder = st.empty()
