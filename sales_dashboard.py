@@ -12,7 +12,7 @@ try:
     if filtered_df_without_seats is None:
         raise ImportError("filtered_df_without_seats is not available in tjt_hosp_api.")
 except ImportError as e:
-    st.error(f"❌ Error importing tjt_hosp_api: {e}")
+    st.error(f"Error importing tjt_hosp_api: {e}")
     filtered_df_without_seats = None
 
 # Define monthly targets
@@ -41,10 +41,10 @@ def load_budget_targets():
         return budget_df
     except FileNotFoundError:
         st.error(f"Budget file not found at {file_path}. Ensure it is correctly placed.")
-        return pd.DataFrame()
+        raise
     except Exception as e:
         st.error(f"An error occurred while loading the budget file: {e}")
-        return pd.DataFrame()
+        raise
 
 # Helper Functions
 def calculate_metrics(filtered_data, targets, team_members, working_days_so_far, remaining_working_days):
@@ -72,7 +72,7 @@ def calculate_metrics(filtered_data, targets, team_members, working_days_so_far,
     return pd.DataFrame(results)
 
 def display_sidebar_summary(filtered_data, budget_df):
-    st.sidebar.header("📊 Summary for Today")
+    st.sidebar.header("Summary for Today")
     today = datetime.now().date()
     filtered_data["PaymentTime"] = pd.to_datetime(filtered_data["PaymentTime"], format="%d-%m-%Y %H:%M", errors="coerce")
     today_data = filtered_data[filtered_data["PaymentTime"].dt.date == today]
@@ -91,6 +91,10 @@ def display_sidebar_summary(filtered_data, budget_df):
 
         top_package = today_data.groupby("Package Name")["Price"].sum().idxmax()
         st.sidebar.metric("Most Sold Package", top_package)
+
+        top_user = today_data.groupby("CreatedBy")["Price"].sum().idxmax()
+        top_user_sales = today_data.groupby("CreatedBy")["Price"].sum().max()
+        st.sidebar.metric("Top User", f"{top_user} (£{top_user_sales:,.2f})")
 
     filtered_data["KickOffEventStart"] = pd.to_datetime(filtered_data["KickOffEventStart"], errors="coerce")
     next_fixtures = filtered_data[filtered_data["KickOffEventStart"] > datetime.now()].sort_values("KickOffEventStart")
@@ -113,12 +117,23 @@ def display_sidebar_summary(filtered_data, budget_df):
 def run_app():
     st.title("AFC Sales Dashboard")
 
-    with st.expander("ℹ️ About This Dashboard"):
-        st.write("This dashboard provides real-time updates on sales performance.")
-        st.write("**How to Use:** View metrics and performance insights.")
+    with st.expander("About This Dashboard"):
+        st.write("""
+        This dashboard provides real-time updates on sales and services performance for the AFC Hospitality team. It helps track progress towards monthly and daily targets, providing valuable insights into sales trends and team performance.
+        """)
+        st.write("""
+        **How to Use This Dashboard:**
+        - **Filters**: Use the filters to adjust the data displayed:
+          - **Date Range (Monthly)**: Displays data for the selected date range, typically spanning a month or multiple months. This range updates all metrics, tables, and charts.
+          - **Date Range (Daily)**: Allows you to focus on sales for a specific day or range of days within the selected month. Useful for tracking daily performance.
+          - **Select Users**: Highlight data for specific users or team members.
+        - **Summary for Today**: Displays key metrics like total sales, top-selling games and packages, and the next fixture information.
+        - **Tables**: Shows detailed performance metrics for the Sales and Services teams.
+        - **Team Progress Chart**: A visual representation of revenue achieved versus targets for both teams.
+        """)
 
     if filtered_df_without_seats is None:
-        st.error("No data available to display.")
+        st.error("No data available to display. Please check the API.")
         return
 
     budget_df = load_budget_targets()
@@ -143,35 +158,38 @@ def run_app():
         st.error("No targets found for the current month and year.")
         return
 
+    # Sidebar Summary
+    daily_filtered_data = filtered_df_without_seats.copy()
+    display_sidebar_summary(daily_filtered_data, budget_df)
+
     # Sidebar Filters
     st.sidebar.header("Filters")
     specified_users = ["bgardiner", "dcoppin", "jedwards", "MillieS", "dmontague", 
                        "MeganS", "BethNW", "HayleyA", "jmurphy", "BenT", "ayildirim"]
-    selected_fixture = st.sidebar.multiselect("Filter by Fixture", options=filtered_df_without_seats["Fixture Name"].unique(),
-                                              default=filtered_df_without_seats["Fixture Name"].unique())
-    selected_date_range = st.sidebar.date_input("Date Range", value=(start_of_month, today))
+    selected_date_range_monthly = st.sidebar.date_input("Date Range (Monthly)", value=(start_of_month, today))
+    selected_date_range_daily = st.sidebar.date_input("Date Range (Daily)", value=(today, today))
     selected_users = st.sidebar.multiselect("Select Users", options=specified_users, default=specified_users)
 
-    # Apply filters
+    # Apply Filters
     filtered_data = filtered_df_without_seats.copy()
     if selected_users:
         filtered_data = filtered_data[filtered_data["CreatedBy"].isin(selected_users)]
-    if selected_fixture:
-        filtered_data = filtered_data[filtered_data["Fixture Name"].isin(selected_fixture)]
-    if selected_date_range:
+    if selected_date_range_monthly:
         filtered_data = filtered_data[
-            (pd.to_datetime(filtered_data["PaymentTime"], format="%d-%m-%Y %H:%M", errors="coerce") >= pd.to_datetime(selected_date_range[0])) &
-            (pd.to_datetime(filtered_data["PaymentTime"], format="%d-%m-%Y %H:%M", errors="coerce") <= pd.to_datetime(selected_date_range[1]))
+            (pd.to_datetime(filtered_data["PaymentTime"], format="%d-%m-%Y %H:%M", errors="coerce") >= pd.to_datetime(selected_date_range_monthly[0])) &
+            (pd.to_datetime(filtered_data["PaymentTime"], format="%d-%m-%Y %H:%M", errors="coerce") <= pd.to_datetime(selected_date_range_monthly[1]))
         ]
-
-    # Display Sidebar Summary
-    display_sidebar_summary(filtered_data, budget_df)
+    if isinstance(selected_date_range_daily, tuple):
+        daily_filtered_data = filtered_data[
+            (pd.to_datetime(filtered_data["PaymentTime"], format="%d-%m-%Y %H:%M", errors="coerce") >= pd.to_datetime(selected_date_range_daily[0])) &
+            (pd.to_datetime(filtered_data["PaymentTime"], format="%d-%m-%Y %H:%M", errors="coerce") <= pd.to_datetime(selected_date_range_daily[1]))
+        ]
 
     # Team Members
     sales_team = ["bgardiner", "dcoppin", "jedwards", "MillieS", "dmontague"]
     services_team = ["MeganS", "BethNW", "HayleyA", "jmurphy", "BenT", "ayildirim"]
 
-    # Calculate Metrics
+    # Metrics Calculation
     st.subheader("Sales Team")
     sales_metrics = calculate_metrics(filtered_data, targets, sales_team, working_days_so_far, remaining_working_days)
     st.dataframe(sales_metrics.style.format({
