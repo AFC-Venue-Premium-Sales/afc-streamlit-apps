@@ -4,6 +4,7 @@ import pandas as pd
 from datetime import datetime
 import os
 import importlib
+from streamlit_autorefresh import st_autorefresh
 
 # Import live data
 try:
@@ -117,7 +118,7 @@ def get_next_fixture(data, budget_df):
 
 # Auto-refresh functionality
 def auto_refresh():
-    st.experimental_set_query_params(refresh=str(int(time.time())))
+    st_autorefresh(interval=120 * 1000, key="auto_refresh")  # Auto-refresh every 2 minutes
     current_time = datetime.now().strftime('%H:%M:%S')
     return current_time
 
@@ -176,7 +177,7 @@ def run_dashboard():
                 <h4 style="color: #0047AB; font-size: 18px;">🏟️ Next Fixture</h4>
                 <p style="font-size: 16px; font-weight: bold;">{fixture_name}</p>
                 <p>⏳ <strong>{days_to_fixture} days</strong></p>
-                <p>🎯 <strong>Budget Target Achieved<strong>: <strong>{budget_achieved}%</strong></p>
+                <p>🎯 <strong>Budget Target Achieved</strong>: <strong>{budget_achieved}%</strong></p>
             </div>
             """,
             unsafe_allow_html=True
