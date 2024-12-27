@@ -139,7 +139,7 @@ def run_dashboard():
         fixture_revenue = filtered_df_without_seats[
             (filtered_df_without_seats["KickOffEventStart"] == fixture_date)
         ]["Price"].sum()
-                st.sidebar.markdown(
+        st.sidebar.markdown(
             f"""
             <div style="
                 background-color: #f7f7f7;
