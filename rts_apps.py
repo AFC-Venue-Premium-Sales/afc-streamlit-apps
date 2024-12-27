@@ -5,6 +5,7 @@ import os
 import logging
 import importlib
 
+
 # Configure logging
 logging.basicConfig(
     format="%(asctime)s - [%(levelname)s] - %(message)s",
@@ -35,6 +36,13 @@ try:
 except ImportError as e:
     logging.error(f"Failed to import 'ticket_exchange_report': {e}")
     ticket_exchange_report = None
+    
+try:
+    import sales_dashboard  # Assuming your dashboard is in a file named `sales_dashboard.py`
+    importlib.reload(sales_dashboard)
+except ImportError as e:
+    logging.error(f"Failed to import 'sales_dashboard': {e}")
+    sales_dashboard = None
 
 # Load environment variables
 load_dotenv()
@@ -168,7 +176,7 @@ else:
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio(
         "Choose Module",
-        ["📊 Sales Performance", "📈 User Performance", "📄 Ticket Exchange Report"],
+        ["📊 Sales Performance", "📈 User Performance", "📄 Ticket Exchange Report", "📊 Live Sales Dashboard"],
         format_func=lambda x: x.split(" ")[1],
     )
 
@@ -178,11 +186,12 @@ else:
         reload_data()  # Call the reload function
         # st.rerun()  # Trigger a full app rerun after reload
 
-    # Handle module choice dynamically
+    # Update app_registry with the new dashboard
     app_registry = {
         "📊 Sales Performance": sales_performance.run_app,
         "📈 User Performance": user_performance_api.run_app,
-        "📄 Ticket Exchange Report": ticket_exchange_report.run_app
+        "📄 Ticket Exchange Report": ticket_exchange_report.run_app,
+        "📊 Live Sales Dashboard": sales_dashboard.run_app,  # Add your new dashboard here
     }
 
     app_function = app_registry.get(app_choice)
