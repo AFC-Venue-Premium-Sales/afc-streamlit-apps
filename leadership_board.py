@@ -126,9 +126,20 @@ def run_dashboard():
         fixture_revenue = filtered_df_without_seats[
             (filtered_df_without_seats["KickOffEventStart"] == fixture_date)
         ]["Price"].sum()
-        st.sidebar.markdown(f"**Next Fixture:** {fixture_name}", unsafe_allow_html=True)
-        st.sidebar.markdown(f"**Days to Fixture:** {days_to_fixture} days", unsafe_allow_html=True)
-        st.sidebar.markdown(f"**Budget Target Achieved:** {round((fixture_revenue / budget_target) * 100, 2)}%", unsafe_allow_html=True)
+        st.sidebar.markdown(
+            f"""
+            <div style="font-size: 16px; font-weight: bold;">
+                🏟️ <span style="color: blue;">Next Fixture:</span> {fixture_name}
+            </div>
+            <div style="font-size: 16px;">
+                ⏳ <span style="color: blue;">Days to Fixture:</span> {days_to_fixture} days
+            </div>
+            <div style="font-size: 16px;">
+                🎯 <span style="color: blue;">Budget Target Achieved:</span> {round((fixture_revenue / budget_target) * 100, 2)}%
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
     else:
         st.sidebar.markdown("**No upcoming fixtures found.**")
 
