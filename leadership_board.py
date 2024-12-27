@@ -148,13 +148,15 @@ def run_dashboard():
     st.sidebar.markdown(
         f"""
         <div style="
-            background-color: #f0f0f0;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
             border-radius: 5px;
             padding: 10px;
             margin-top: 20px;
             font-family: Arial, sans-serif;
             font-size: 14px;
-            color: #333;
+            color: #155724;
+            text-align: center;
         ">
             <strong>Data Refreshed:</strong> {refresh_time}
         </div>
@@ -169,6 +171,8 @@ def run_dashboard():
         fixture_revenue = filtered_df_without_seats[
             (filtered_df_without_seats["KickOffEventStart"] == fixture_date)
         ]["Price"].sum()
+        budget_achieved = round((fixture_revenue / budget_target) * 100, 2)
+
         st.sidebar.markdown(
             f"""
             <div style="
@@ -177,6 +181,7 @@ def run_dashboard():
                 border-radius: 8px;
                 padding: 15px;
                 margin-bottom: 20px;
+                text-align: center;
             ">
                 <h4 style="color: #0047AB; font-size: 18px; margin-bottom: 10px;">🏟️ Next Fixture</h4>
                 <p style="font-size: 16px; margin: 5px 0; font-weight: bold;">{fixture_name}</p>
@@ -185,7 +190,7 @@ def run_dashboard():
                 <p style="font-size: 16px; margin: 5px 0; font-weight: bold;">{days_to_fixture} days</p>
                 
                 <h4 style="color: #0047AB; font-size: 18px; margin-top: 10px;">🎯 Budget Target Achieved</h4>
-                <p style="font-size: 16px; color: green; margin: 5px 0; font-weight: bold;">{round((fixture_revenue / budget_target) * 100, 2)}%</p>
+                <p style="font-size: 16px; color: green; margin: 5px 0; font-weight: bold;">{budget_achieved}%</p>
             </div>
             """,
             unsafe_allow_html=True
