@@ -21,7 +21,9 @@ def adjust_block(block):
 # Data preprocessing
 def preprocess_data(df):
     """Preprocess the input data: strip spaces, clean duplicates, normalize casing."""
-    df = df.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+    for col in df.select_dtypes(include=["object"]).columns:
+        df[col] = df[col].map(lambda x: x.strip() if isinstance(x, str) else x)
+
     df.drop_duplicates(inplace=True)
     return df
 
@@ -38,9 +40,11 @@ def load_seat_list_and_game_category(path):
     return preprocess_data(seat_list), preprocess_data(game_category)
 
 # Process TX Sales and From Hosp files
+@st.cache_data
 def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
     """Process TX Sales and From Hosp files."""
-    tx_sales_data = pd.read_excel(tx_sales_file, sheet_name="TX Sales Data")
+    cols_to_load = ["block", "row", "seat", "game_name", "game_date", "price_band", "ticket_sold_price"]
+    tx_sales_data = pd.read_excel(tx_sales_file, sheet_name="TX Sales Data", usecols=cols_to_load)
     tx_sales_data.columns = tx_sales_data.columns.str.strip().str.replace(" ", "_").str.lower()
     tx_sales_data["block"] = tx_sales_data["block"].apply(adjust_block)
     tx_sales_data["ticket_sold_price"] = pd.to_numeric(tx_sales_data["ticket_sold_price"], errors="coerce")
@@ -53,55 +57,24 @@ def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
     from_hosp_combined = from_hosp_combined[from_hosp_combined["crc_desc"].notnull()]
     from_hosp_combined = preprocess_data(from_hosp_combined)
 
-    matched_data = []
+    # Vectorized merging for faster matching
+    tx_sales_data = tx_sales_data.merge(seat_list, how="left", on=["block", "row", "seat"])
+    tx_sales_data = tx_sales_data.merge(
+        game_category,
+        how="left",
+        left_on=["game_name", "game_date", "price_band"],
+        right_on=["game_name", "game_date", "price_band"]
+    )
+
+    # Calculate value generated
+    tx_sales_data["value_generated"] = tx_sales_data["ticket_sold_price"] - tx_sales_data["seat_value"]
+
+    # Separate matched and unmatched rows
+    matched_df = tx_sales_data.dropna(subset=["seat_value"]).reset_index(drop=True)
+    missing_df = tx_sales_data[tx_sales_data["seat_value"].isna()].reset_index(drop=True)
+
+    # Process From Hosp data for matching
     release_data = []
-    missing_data = []
-
-    for _, row in tx_sales_data.iterrows():
-        # Normalize key fields in tx_sales_data
-        row_game_name = row["game_name"].strip().lower()
-        row_game_date = pd.to_datetime(row["game_date"])
-        row_price_band = row["price_band"].strip().lower() if "price_band" in row else None
-
-        # Match against Seat List
-        matching_seat = seat_list[
-            (seat_list["block"] == row["block"]) &
-            (seat_list["row"] == row["row"]) &
-            (seat_list["seat"] == row["seat"])
-        ]
-
-        if not matching_seat.empty:
-            # If a matching seat is found, continue to match with Game Category
-            row["crc_desc"] = matching_seat["crc_desc"].values[0]
-            row["price_band"] = matching_seat["price_band"].values[0]
-
-            # Normalize price_band for matching
-            seat_price_band = matching_seat["price_band"].values[0].strip().lower()
-            matching_game = game_category[
-                (game_category["game_name"].str.strip().str.lower() == row_game_name) &
-                (pd.to_datetime(game_category["game_date"]) == row_game_date) &
-                (game_category["price_band"].str.strip().str.lower() == seat_price_band)
-            ]
-
-            if not matching_game.empty:
-                # Successful match in Game Category
-                row["category"] = matching_game["category"].values[0]
-                row["seat_value"] = matching_game["seat_value"].values[0]
-                row["value_generated"] = row["ticket_sold_price"] - matching_game["seat_value"].values[0]
-                matched_data.append(row)
-            else:
-                # Log why the match failed
-                row["seat_value"] = None
-                row["value_generated"] = None
-                row["missing_reason"] = f"No match in Game Category for game: {row_game_name}, date: {row_game_date}, price_band: {seat_price_band}"
-                missing_data.append(row)
-        else:
-            # Log mismatch in Seat List
-            row["seat_value"] = None
-            row["value_generated"] = None
-            row["missing_reason"] = f"No match in Seat List for block: {row['block']}, row: {row['row']}, seat: {row['seat']}"
-            missing_data.append(row)
-
     for _, row in from_hosp_combined.iterrows():
         sales_match = tx_sales_data[
             (tx_sales_data["game_name"] == row["game_name"]) &
@@ -113,41 +86,15 @@ def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
         row["ticket_sold_price"] = sales_match["ticket_sold_price"].values[0] if not sales_match.empty else None
         release_data.append(row.to_dict())
 
-    matched_df = pd.DataFrame(matched_data).reset_index(drop=True)
     release_df = pd.DataFrame(release_data).pipe(lambda df: df.loc[:, ~df.columns.duplicated()])
-    missing_df = pd.DataFrame(missing_data).reset_index(drop=True)
 
+    print("Returning values from process_files: tx_sales_data, matched_df, release_df, missing_df")
     return tx_sales_data, matched_df, release_df, missing_df
-
 
 # Main Streamlit App
 def run_app():
     st.title("🏟️ AFC Hospitality Ticket Exchange Inventory Tracker")
     
-    # Instructions
-    with st.expander("📖 How to Use This App - Ticket Exchange Inventory Tracker"):
-        st.markdown(
-            """
-            ### Welcome to the AFC Hospitality Released Inventory Tracker
-            
-            This app helps you analyse and track seat data from hosp:
-            - **TX Sales File**: Contains data about ticket sales on the exchange -- SQL file from Lisa.
-            - **Hospitality Ticket Releases File**: Tickets released by Hospitality file.
-            - **Seat List & Game Category File**: Preloaded with data on predefined seat allocations and game categories.
-
-            ### How to Use
-            1. **Upload your files**:
-                - **TX Sales File**: Upload the SQL file.
-                - **From Hosp File**: Upload the Hospitality Ticket releases file.
-            2. **View results**:
-                - Matched rows from predefined seats and released tickets.
-                - Metrics, charts, and export options.
-            3. **Use filters** in the sidebar to narrow down results by game or CRC description.
-
-            **Note**: Ensure the files are in `.xlsx` format and match the required structure.
-            """
-        )
-
     st.sidebar.title("File Uploads")
     seat_list_game_cat_path = "seat_list_game_cat.xlsx"
     tx_sales_file = st.sidebar.file_uploader("Upload TX Sales File", type=["xlsx"])
@@ -162,94 +109,25 @@ def run_app():
         return
 
     with st.spinner("Processing files..."):
-        tx_sales_data, matched_df, release_df = process_files(tx_sales_file, from_hosp_file, seat_list, game_category)
+        print("Unpacking values from process_files...")
+        tx_sales_data, matched_df, release_df, missing_df = process_files(tx_sales_file, from_hosp_file, seat_list, game_category)
 
     # Metrics
     st.sidebar.markdown("### Metrics")
     total_matched = len(matched_df)
-    avg_value_generated = matched_df["value_generated"].mean() if not matched_df.empty else 0
-    total_value_generated = matched_df["value_generated"].sum() if not matched_df.empty else 0
-    matched_on_tx = release_df[release_df["found_on_tx_file"] == "Y"]
-    total_on_tx = len(matched_on_tx)
-    total_tx_value = matched_on_tx["ticket_sold_price"].sum() if not matched_on_tx.empty else 0
+    total_missing = len(missing_df)
 
     st.sidebar.metric("Total Matched Rows", total_matched)
-    st.sidebar.metric("Avg Value Generated", f"£{avg_value_generated:.2f}")
-    st.sidebar.metric("Total Value Generated", f"£{total_value_generated:.2f}")
-    st.sidebar.metric("Total Rows Found on TX", total_on_tx)
-    st.sidebar.metric("Total Value Generated (TX)", f"£{total_tx_value:.2f}")
+    st.sidebar.metric("Total Missing Rows", total_missing)
 
-    # Filters
-    st.sidebar.markdown("### Filters")
-    all_games = pd.concat([tx_sales_data["game_name"], release_df["game_name"]]).drop_duplicates()
-    game_filter = st.sidebar.multiselect("Filter by Game Name", all_games)
-    crc_filter = st.sidebar.multiselect("Filter by CRC Description", release_df["crc_desc"].unique())
+    # Display DataFrames
+    st.markdown("### Matched Data")
+    st.dataframe(matched_df.head(100))  # Display the first 100 rows for performance
+    st.download_button("Download Matched Data", matched_df.to_csv(index=False), "matched_data.csv")
 
-    # Apply Filters
-    if game_filter:
-        tx_sales_data = tx_sales_data[tx_sales_data["game_name"].isin(game_filter)]
-        matched_df = matched_df[matched_df["game_name"].isin(game_filter)]
-        release_df = release_df[release_df["game_name"].isin(game_filter)]
-    if crc_filter:
-        matched_df = matched_df[matched_df["crc_desc"].isin(crc_filter)]
-        release_df = release_df[release_df["crc_desc"].isin(crc_filter)]
-
-    # TX Sales Data
-    st.markdown("### SQL TX Sales Data")
-    st.write(f"**Number of Rows in TX Sales Data:** {len(tx_sales_data)}")
-    st.dataframe(tx_sales_data)
-    st.download_button(
-        label="📥 Download TX Sales Data",
-        data=tx_sales_data.to_csv(index=False),
-        file_name="tx_sales_data.csv",
-        mime="text/csv",
-    )
-
-    # Matched Data from Pre-Assigned Seats
-    st.markdown("### Matching Data From Pre-Assigned Club Level Seats")
-    st.write(f"**Number of Matched Rows:** {len(matched_df)}")
-    st.dataframe(matched_df)
-    st.download_button(
-        label="📥 Download Matched Data From Pre-Assigned Club Level Seats",
-        data=matched_df.to_csv(index=False),
-        file_name="matched_data_club_level.csv",
-        mime="text/csv",
-    )
-
-    # Chart for Pre-Assigned Seats
-    st.markdown("### Value Generated by Category (Pre-Assigned Seats)")
-    if matched_df.empty:
-        st.write("No data available to generate this chart.")
-    else:
-        fig, ax = plt.subplots()
-        matched_df.groupby("category")["value_generated"].sum().plot(kind="bar", ax=ax)
-        ax.set_title("Value Generated by Category")
-        ax.set_xlabel("Category")
-        ax.set_ylabel("Total Value Generated")
-        st.pyplot(fig)
-
-    # Matched Data from Hospitality Releases
-    st.markdown("### Matched Data from Hospitality Ticket Releases")
-    st.write(f"**Number of Matched Rows:** {len(matched_on_tx)}")
-    st.dataframe(release_df)
-    st.download_button(
-        label="📥 Download Matched Data from Hospitality Ticket Releases",
-        data=release_df.to_csv(index=False),
-        file_name="matched_data_hosp_releases.csv",
-        mime="text/csv",
-    )
-
-    # Chart for Hospitality Ticket Releases
-    st.markdown("### Tickets Found on TX by Game")
-    if matched_on_tx.empty:
-        st.write("Sorry, no matching data found on Ticket Exchange from Hospitality Released Tickets.")
-    else:
-        fig, ax = plt.subplots()
-        matched_on_tx.groupby("game_name")["ticket_sold_price"].sum().plot(kind="bar", ax=ax)
-        ax.set_title("Tickets Found on TX by Game")
-        ax.set_xlabel("Game")
-        ax.set_ylabel("Total Tickets Sold Price")
-        st.pyplot(fig)
+    st.markdown("### Missing Data")
+    st.dataframe(missing_df.head(100))  # Display the first 100 rows for performance
+    st.download_button("Download Missing Data", missing_df.to_csv(index=False), "missing_data.csv")
 
 if __name__ == "__main__":
     run_app()
