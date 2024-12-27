@@ -77,7 +77,7 @@ def calculate_monthly_progress(data, start_date, end_date):
         "Current Revenue": progress.values,
         "Target": monthly_targets.values,
         "% Sold (Numeric)": (progress / monthly_targets * 100).round(2),
-        "Today's Date": datetime.now().strftime("%d/%m/%Y")
+        "Today's Date": datetime.now().strftime("%d/%m/%Y")  # Add today's date
     }).reset_index(drop=True)
 
     # Format columns for display
@@ -94,6 +94,8 @@ def calculate_monthly_progress(data, start_date, end_date):
             return f"<span style='color: red;'>{value:.2f}%</span>"
 
     progress_data["% Sold"] = progress_data["% Sold (Numeric)"].apply(style_percent)
+
+    # Sort by the numeric % Sold column
     progress_data = progress_data.sort_values(by="% Sold (Numeric)", ascending=False)
 
     return progress_data.drop(columns=["% Sold (Numeric)"]), sales_made
@@ -114,10 +116,12 @@ def get_next_fixture(data, budget_df):
     return fixture_name, fixture_date, budget_target
 
 # Auto-refresh functionality
-def auto_refresh(interval_seconds: int = 120):
+def auto_refresh(interval_seconds=120):
+    """Automatically refresh the dashboard every interval_seconds."""
     st.experimental_set_query_params(refresh=str(int(time.time())))
-    time.sleep(interval_seconds)  # Simulate periodic updates
-    return datetime.now().strftime('%H:%M:%S')
+    current_time = datetime.now().strftime('%H:%M:%S')  # Current time for refresh timestamp
+    return current_time
+
 
 # Main dashboard
 def run_dashboard():
@@ -130,7 +134,7 @@ def run_dashboard():
     end_date = st.sidebar.date_input("End Date", value=datetime.now())
 
     # Auto-refresh
-    refresh_time = auto_refresh(120)
+    refresh_time = auto_refresh()  # Uses default interval of 120 seconds
 
     # Display refresh message in the sidebar
     st.sidebar.markdown(
