@@ -126,7 +126,11 @@ def calculate_monthly_progress(data, start_date, end_date):
     # Drop numeric % Sold column
     progress_data = progress_data.drop(columns=["% Sold (Numeric)"])
 
-    return progress_data
+    # Extract unique sales made for the second return value
+    sales_made = filtered_data["CreatedBy"].unique()
+
+    return progress_data, sales_made
+
 
 
 
