@@ -16,7 +16,7 @@ def load_live_data():
         return filtered_df_without_seats
     except ImportError as e:
         st.error(f"Error reloading tjt_hosp_api: {e}")
-        return pd.DataFrame(columns=["CreatedBy", "Price", "CreatedOn", "SaleLocation", "KickOffEventStart", "Fixture Name", "Package Name", "TotalPrice"])
+        return pd.DataFrame(columns=["CreatedBy", "Price", "CreatedOn", "SaleLocation", "KickOffEventStart", "Fixture Name", "Package Name", "TotalPrice", "Seats"])
 
 # Load data
 filtered_df_without_seats = load_live_data()
@@ -105,7 +105,7 @@ def calculate_monthly_progress(data, start_date, end_date):
         "Premium Executive": progress.index,
         "Current Revenue": progress.values,
         "Target": monthly_targets.values,
-        "% Sold (Numeric)": (progress / monthly_targets * 100).round(2),
+        "% Sold (Numeric)": (progress / monthly_targets * 100).round(0),
     }).reset_index(drop=True)
 
     # Format columns for display
@@ -115,11 +115,11 @@ def calculate_monthly_progress(data, start_date, end_date):
     # Add conditional colors to % Sold
     def style_percent(value):
         if value >= 80:
-            return f"<span style='color: green;'>{value:.2f}%</span>"
+            return f"<span style='color: green;'>{value:.0f}%</span>"
         elif 50 <= value < 80:
-            return f"<span style='color: orange;'>{value:.2f}%</span>"
+            return f"<span style='color: orange;'>{value:.0f}%</span>"
         else:
-            return f"<span style='color: red;'>{value:.2f}%</span>"
+            return f"<span style='color: red;'>{value:.0f}%</span>"
 
     progress_data["% Sold"] = progress_data["% Sold (Numeric)"].apply(style_percent)
 
@@ -154,9 +154,10 @@ def get_latest_sale(data):
             "fixture": latest_sale["Fixture Name"].iloc[0],
             "package": latest_sale["Package Name"].iloc[0],
             "price": latest_sale["TotalPrice"].iloc[0],
+            "seats": latest_sale["Seats"].iloc[0],
             "created_by": latest_sale["CreatedBy"].iloc[0] if source.lower() == "moto sale team" else None,
             "source": source,
-            "date": latest_sale["CreatedOn"].iloc[0].strftime("%d %b %Y"),
+            "date": latest_sale["CreatedOn"].iloc[0].strftime("%d %b %Y %H:%M:%S"),
         }
         return sale_details
     return None
@@ -251,7 +252,7 @@ def run_dashboard():
                 <h4 style="color: #0047AB; font-size: 18px;">📊 Premium Monthly Progress</h4>
                 <p><strong>Total Revenue: £{total_revenue:,.0f} ({start_date.strftime("%B")})</strong></p>
                 <p><strong>Total Target: £{total_target:,.0f}</strong></p>
-                <p>🌟 <strong>Progress Achieved: {progress_percentage:.2f}%</strong></p>
+                <p>🌟 <strong>Progress Achieved: {progress_percentage:.0f}%</strong></p>
             </div>
             """,
             unsafe_allow_html=True
@@ -303,7 +304,7 @@ def run_dashboard():
             st.markdown(
                 f"""
                 <div style="
-                    background-color: #f0f9ff;
+                    background-color: ##fff0f0;
                     border: 1px solid #cfe2ff;
                     border-radius: 8px;
                     padding: 15px;
@@ -313,9 +314,9 @@ def run_dashboard():
                     color: #084298;
                     text-align: center;
                 ">
-                    <strong>Latest Sale:</strong> Website sale for <strong>{latest_sale["package"]}</strong> 
-                    in <strong>{latest_sale["fixture"]}</strong> totaling <strong>£{latest_sale["price"]:,.2f}</strong> 
-                    on <strong>{latest_sale["date"]}</strong>.
+                    <strong>Latest Sale:</strong> Via Website - <strong>{latest_sale["seats"]} Seats Sold</strong> 
+                    x <strong>{latest_sale["package"]}</strong> for <strong>{latest_sale["fixture"]}</strong> 
+                    @ <strong>£{latest_sale["price"]:,.2f}</strong> on <strong>{latest_sale["date"]}</strong>.
                 </div>
                 """,
                 unsafe_allow_html=True
@@ -336,7 +337,8 @@ def run_dashboard():
                 ">
                     <strong>Latest Sale:</strong> Moto sale made by <strong>{latest_sale["created_by"]}</strong> 
                     for <strong>{latest_sale["package"]}</strong> in <strong>{latest_sale["fixture"]}</strong> 
-                    totaling <strong>£{latest_sale["price"]:,.2f}</strong> on <strong>{latest_sale["date"]}</strong>.
+                    totaling <strong>£{latest_sale["price"]:,.2f}</strong> with <strong>{latest_sale["seats"]}</strong> seats 
+                    on <strong>{latest_sale["date"]}</strong>.
                 </div>
                 """,
                 unsafe_allow_html=True
