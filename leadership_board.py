@@ -111,7 +111,7 @@ def calculate_monthly_progress(data, start_date, end_date):
     # Format columns for display
     progress_data["Current Revenue"] = progress_data["Current Revenue"].apply(lambda x: f"£{x:,.0f}")
     progress_data["Target"] = progress_data["Target"].apply(lambda x: f"£{x:,.0f}")
-    progress_data["Variance"] = progress_data["Variance"].apply(lambda x: f"({x:,.0f})" if x < 0 else f"{x:,.0f}")
+    progress_data["Variance"] = progress_data["Variance"].apply(lambda x: f"({abs(x):,.0f})" if x < 0 else f"{x:,.0f}")
 
     # Add conditional box colors to % Sold
     def style_box_color(value):
@@ -127,30 +127,18 @@ def calculate_monthly_progress(data, start_date, end_date):
     # Drop numeric % Sold column
     progress_data = progress_data.drop(columns=["% Sold (Numeric)"])
 
-    # Sort by % Sold
-    progress_data = progress_data.sort_values(by="% Sold", key=lambda col: col.str.extract(r"([0-9]+)").astype(int), ascending=False)
+    # Sort by % Sold (extract numeric value from the styled HTML)
+    progress_data = progress_data.sort_values(
+        by="% Sold",
+        key=lambda col: col.str.extract(r"([0-9]+)").astype(int).fillna(0),
+        ascending=False,
+    )
 
     # Extract unique sales made for the second return value
     sales_made = filtered_data["CreatedBy"].unique()
 
     return progress_data, sales_made
 
-
-
-# Next fixture information
-def get_next_fixture(data, budget_df):
-    data["KickOffEventStart"] = pd.to_datetime(data["KickOffEventStart"], errors="coerce")
-    today = datetime.now()
-    next_fixture = data[data["KickOffEventStart"] > today].sort_values("KickOffEventStart").head(1)
-
-    if next_fixture.empty:
-        return None, None, None
-
-    fixture_name = next_fixture["Fixture Name"].iloc[0]
-    fixture_date = next_fixture["KickOffEventStart"].iloc[0]
-    budget_target = budget_df[budget_df["Fixture Name"] == fixture_name]["Budget Target"].values[0]
-
-    return fixture_name, fixture_date, budget_target
 
 
 def generate_scrolling_messages(data, budget_df):
