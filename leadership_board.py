@@ -101,16 +101,47 @@ def calculate_monthly_progress(data, start_date, end_date):
 
     monthly_targets = targets_data.loc[(current_month, current_year)]
 
+    # Additional metrics
+    num_transactions = (
+        filtered_data.groupby("CreatedBy")["Price"]
+        .count()
+        .reindex(targets_data.columns, fill_value=0)
+    )
+    avg_revenue_per_transaction = (progress / num_transactions).fillna(0)
+
+    top_package = (
+        filtered_data.groupby(["CreatedBy", "Package Name"])["Price"]
+        .sum()
+        .reset_index()
+        .sort_values(by=["CreatedBy", "Price"], ascending=[True, False])
+        .groupby("CreatedBy").first()["Package Name"]
+        .reindex(targets_data.columns, fill_value="None")
+    )
+
+    variance_from_target = (monthly_targets - progress).fillna(0)
+
+    total_sales = progress.sum()
+    revenue_percent_of_total = (progress / total_sales * 100).fillna(0)
+
+    # Build progress data
     progress_data = pd.DataFrame({
         "Premium Executive": progress.index,
         "Current Revenue": progress.values,
         "Target": monthly_targets.values,
+        "Variance": variance_from_target.values,
         "% Sold (Numeric)": (progress / monthly_targets * 100).round(0),
+        "Transactions": num_transactions.values,
+        "Avg Revenue/Transaction": avg_revenue_per_transaction.values,
+        "Top-Selling Package": top_package.values,
+        "Revenue % of Total": revenue_percent_of_total.round(1).values,
     }).reset_index(drop=True)
 
     # Format columns for display
-    progress_data["Current Revenue"] = progress_data["Current Revenue"].apply(lambda x: f"\u00a3{x:,.0f}")
-    progress_data["Target"] = progress_data["Target"].apply(lambda x: f"\u00a3{x:,.0f}")
+    progress_data["Current Revenue"] = progress_data["Current Revenue"].apply(lambda x: f"£{x:,.0f}")
+    progress_data["Target"] = progress_data["Target"].apply(lambda x: f"£{x:,.0f}")
+    progress_data["Variance"] = progress_data["Variance"].apply(lambda x: f"£{x:,.0f}")
+    progress_data["Avg Revenue/Transaction"] = progress_data["Avg Revenue/Transaction"].apply(lambda x: f"£{x:,.0f}")
+    progress_data["Revenue % of Total"] = progress_data["Revenue % of Total"].apply(lambda x: f"{x:.1f}%")
 
     # Add conditional colors to % Sold
     def style_percent(value):
@@ -127,6 +158,7 @@ def calculate_monthly_progress(data, start_date, end_date):
     progress_data = progress_data.sort_values(by="% Sold (Numeric)", ascending=False)
 
     return progress_data.drop(columns=["% Sold (Numeric)"]), sales_made
+
 
 # Next fixture information
 def get_next_fixture(data, budget_df):
@@ -152,9 +184,8 @@ def generate_scrolling_messages(data, budget_df):
     if not latest_sale.empty:
         source = latest_sale["SaleLocation"].iloc[0]
         latest_sale_message = (
-            f"Latest Sale: Via {source} - {int(latest_sale['Seats'].iloc[0])} Seats Sold x {latest_sale['Package Name'].iloc[0]} "
-            f"for {latest_sale['Fixture Name'].iloc[0]} @ \u00a3{latest_sale['TotalPrice'].iloc[0]:,.2f} "
-            f"on {latest_sale['CreatedOn'].iloc[0].strftime('%d %b %Y %H:%M:%S')}"
+            f"{int(latest_sale['Seats'].iloc[0])} seat(s) x {latest_sale['Package Name'].iloc[0]} "
+            f"for {latest_sale['Fixture Name'].iloc[0]} sold via {source} @ £{latest_sale['TotalPrice'].iloc[0]:,.2f}"
         )
     else:
         latest_sale_message = "No recent sales to display."
@@ -166,13 +197,35 @@ def generate_scrolling_messages(data, budget_df):
         fixture_revenue = data[data["KickOffEventStart"] == fixture_date]["Price"].sum()
         remaining_budget = budget_target - fixture_revenue
         next_fixture_message = (
-            f"Next Fixture: {fixture_name} in {days_to_fixture} days. Remaining Budget: \u00a3{remaining_budget:,.2f}."
+            f"Next Fixture: {fixture_name} in {days_to_fixture} days. Remaining Budget: £{remaining_budget:,.2f}."
         )
     else:
         next_fixture_message = "No upcoming fixtures to display."
 
-    # Combine messages
-    return f"{latest_sale_message} | {next_fixture_message}"
+    # Top Fixture of the Day
+    today_sales = data[data["CreatedOn"].dt.date == datetime.now().date()]
+    if not today_sales.empty:
+        top_fixture = (
+            today_sales.groupby("Fixture Name")["Price"].sum().idxmax()
+        )
+        top_fixture_revenue = today_sales.groupby("Fixture Name")["Price"].sum().max()
+        top_fixture_message = f"Top Fixture Today: {top_fixture} with £{top_fixture_revenue:,.2f} generated."
+    else:
+        top_fixture_message = "No sales recorded today."
+
+    # Top Premium Executive of the Day
+    if not today_sales.empty:
+        top_executive = (
+            today_sales.groupby("CreatedBy")["Price"].sum().idxmax()
+        )
+        top_executive_revenue = today_sales.groupby("CreatedBy")["Price"].sum().max()
+        top_executive_message = f"Top Seller Today: {top_executive} with £{top_executive_revenue:,.2f} generated."
+    else:
+        top_executive_message = "No Premium Executive sales recorded today."
+
+    # Combine all messages
+    return f"{latest_sale_message} | {next_fixture_message} | {top_fixture_message} | {top_executive_message}"
+
 
 # Get the latest sale made
 def get_latest_sale(data):
@@ -236,10 +289,11 @@ def run_dashboard():
         f"""
         <div style="
             background-color: #fff0f0;
-            border: 1px solid #c3e6cb;
+            border: 1px solid #E41B17;
             border-radius: 5px;
             padding: 10px;
             margin-top: 20px;
+            margin-bottom: 20px;
             font-family: Arial, sans-serif;
             font-size: 14px;
             color: #155724;
@@ -251,15 +305,13 @@ def run_dashboard():
         unsafe_allow_html=True
     )
     
-
-
     # Total Sales Section
     total_sales = calculate_total_sales(filtered_df_without_seats)
     st.sidebar.markdown(
         f"""
         <div style="
             background-color: #fff0f0;
-            border: 1px solid #ffd699;
+            border: 1px solid #E41B17;
             border-radius: 8px;
             padding: 15px;
             margin-bottom: 20px;
@@ -284,7 +336,7 @@ def run_dashboard():
             f"""
             <div style="
                 background-color: #fff0f0;
-                border: 1px solid #b3d8ff;
+                border: 1px solid #E41B17;
                 border-radius: 8px;
                 padding: 15px;
                 margin-bottom: 20px;
@@ -312,7 +364,7 @@ def run_dashboard():
             f"""
             <div style="
                 background-color: #fff0f0;
-                border: 1px solid #ddd;
+                border: 1px solid #E41B17;
                 border-radius: 8px;
                 padding: 15px;
                 margin-bottom: 20px;
@@ -333,7 +385,7 @@ def run_dashboard():
     monthly_progress, sales_made = calculate_monthly_progress(filtered_df_without_seats, start_date, end_date)
 
     if monthly_progress is not None:
-        st.markdown("<h3 style='color:#b22222; text-align:center;'>Monthly Progress Leaderboard</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color:#b22222; text-align:center;'>Monthly Target Leaderboard</h3>", unsafe_allow_html=True)
         st.markdown(
             f"""
             <div style="
@@ -358,16 +410,20 @@ def run_dashboard():
     st.markdown(
         f"""
         <div style="
-            background-color: #fff0f0;
-            border: 1px solid #cfe2ff;
-            border-radius: 8px;
-            padding: 10px;
-            margin-top: 20px;
-            font-family: Arial, sans-serif;
-            font-size: 14px;
-            color: #084298;
+            overflow: hidden;
+            white-space: nowrap;
+            width: 100%;
+            background-color: #E57373; /* Lighter Arsenal Red */
+            color: white;
+            padding: 10px 15px;
+            border-radius: 15px;
+            font-family: 'Roboto', Arial, sans-serif;
+            font-size: 18px;
+            font-weight: 600;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+            letter-spacing: 0.5px;
         ">
-            <marquee behavior="scroll" direction="left" scrollamount="4">
+            <marquee behavior="scroll" direction="left" scrollamount="3">
                 {scrolling_message}
             </marquee>
         </div>
