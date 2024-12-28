@@ -109,8 +109,8 @@ def calculate_monthly_progress(data, start_date, end_date):
     }).reset_index(drop=True)
 
     # Format columns for display
-    progress_data["Current Revenue"] = progress_data["Current Revenue"].apply(lambda x: f"£{x:,.0f}")
-    progress_data["Target"] = progress_data["Target"].apply(lambda x: f"£{x:,.0f}")
+    progress_data["Current Revenue"] = progress_data["Current Revenue"].apply(lambda x: f"\u00a3{x:,.0f}")
+    progress_data["Target"] = progress_data["Target"].apply(lambda x: f"\u00a3{x:,.0f}")
 
     # Add conditional colors to % Sold
     def style_percent(value):
@@ -142,6 +142,37 @@ def get_next_fixture(data, budget_df):
     budget_target = budget_df[budget_df["Fixture Name"] == fixture_name]["Budget Target"].values[0]
 
     return fixture_name, fixture_date, budget_target
+
+
+def generate_scrolling_messages(data, budget_df):
+    # Latest Sale
+    data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], errors="coerce", dayfirst=True)
+    latest_sale = data.sort_values(by="CreatedOn", ascending=False).head(1)
+
+    if not latest_sale.empty:
+        source = latest_sale["SaleLocation"].iloc[0]
+        latest_sale_message = (
+            f"Latest Sale: Via {source} - {int(latest_sale['Seats'].iloc[0])} Seats Sold x {latest_sale['Package Name'].iloc[0]} "
+            f"for {latest_sale['Fixture Name'].iloc[0]} @ \u00a3{latest_sale['TotalPrice'].iloc[0]:,.2f} "
+            f"on {latest_sale['CreatedOn'].iloc[0].strftime('%d %b %Y %H:%M:%S')}"
+        )
+    else:
+        latest_sale_message = "No recent sales to display."
+
+    # Next Fixture
+    fixture_name, fixture_date, budget_target = get_next_fixture(data, budget_df)
+    if fixture_name:
+        days_to_fixture = (fixture_date - datetime.now()).days
+        fixture_revenue = data[data["KickOffEventStart"] == fixture_date]["Price"].sum()
+        remaining_budget = budget_target - fixture_revenue
+        next_fixture_message = (
+            f"Next Fixture: {fixture_name} in {days_to_fixture} days. Remaining Budget: \u00a3{remaining_budget:,.2f}."
+        )
+    else:
+        next_fixture_message = "No upcoming fixtures to display."
+
+    # Combine messages
+    return f"{latest_sale_message} | {next_fixture_message}"
 
 # Get the latest sale made
 def get_latest_sale(data):
@@ -181,7 +212,15 @@ def auto_refresh():
 # Main dashboard
 def run_dashboard():
     st.set_page_config(page_title="Hospitality Leadership Board", layout="wide")
-    st.title("💎 Arsenal Premium Sales")
+    st.markdown(
+    """
+    <div style="text-align: center; margin-top: 20px;">
+        <h1 style="color: #2c3e50;">💎 Arsenal Premium Sales 💎</h1>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
 
     # Sidebar
     st.sidebar.markdown("### Date Range Filter")
@@ -196,7 +235,7 @@ def run_dashboard():
     st.sidebar.markdown(
         f"""
         <div style="
-            background-color: #d4edda;
+            background-color: #fff0f0;
             border: 1px solid #c3e6cb;
             border-radius: 5px;
             padding: 10px;
@@ -211,21 +250,23 @@ def run_dashboard():
         """,
         unsafe_allow_html=True
     )
+    
+
 
     # Total Sales Section
     total_sales = calculate_total_sales(filtered_df_without_seats)
     st.sidebar.markdown(
         f"""
         <div style="
-            background-color: #fff4e6;
+            background-color: #fff0f0;
             border: 1px solid #ffd699;
             border-radius: 8px;
             padding: 15px;
             margin-bottom: 20px;
             text-align: center;
         ">
-            <h4 style="color: #cc6600; font-size: 18px;">🛒 Total Sales</h4>
-            <p><strong>Overall Sales Since Go Live: £{total_sales:,.0f}</strong></p>
+            <h4 style="color: #0047AB; font-size: 18px;">🛒 Total Sales</h4>
+            <p><strong>Overall Sales Since Go Live: \u00a3{total_sales:,.0f}</strong></p>
         </div>
         """,
         unsafe_allow_html=True
@@ -242,7 +283,7 @@ def run_dashboard():
         st.sidebar.markdown(
             f"""
             <div style="
-                background-color: #e9f5ff;
+                background-color: #fff0f0;
                 border: 1px solid #b3d8ff;
                 border-radius: 8px;
                 padding: 15px;
@@ -250,8 +291,8 @@ def run_dashboard():
                 text-align: center;
             ">
                 <h4 style="color: #0047AB; font-size: 18px;">📊 Premium Monthly Progress</h4>
-                <p><strong>Total Revenue: £{total_revenue:,.0f} ({start_date.strftime("%B")})</strong></p>
-                <p><strong>Total Target: £{total_target:,.0f}</strong></p>
+                <p><strong>Total Revenue: \u00a3{total_revenue:,.0f} ({start_date.strftime("%B")})</strong></p>
+                <p><strong>Total Target: \u00a3{total_target:,.0f}</strong></p>
                 <p>🌟 <strong>Progress Achieved: {progress_percentage:.0f}%</strong></p>
             </div>
             """,
@@ -270,7 +311,7 @@ def run_dashboard():
         st.sidebar.markdown(
             f"""
             <div style="
-                background-color: #f9f9f9;
+                background-color: #fff0f0;
                 border: 1px solid #ddd;
                 border-radius: 8px;
                 padding: 15px;
@@ -292,59 +333,97 @@ def run_dashboard():
     monthly_progress, sales_made = calculate_monthly_progress(filtered_df_without_seats, start_date, end_date)
 
     if monthly_progress is not None:
-        st.markdown("<h3 style='color:#b22222;'>Monthly Progress Leaderboard</h3>", unsafe_allow_html=True)
-        st.markdown(monthly_progress.to_html(escape=False, index=False), unsafe_allow_html=True)
+        st.markdown("<h3 style='color:#b22222; text-align:center;'>Monthly Progress Leaderboard</h3>", unsafe_allow_html=True)
+        st.markdown(
+            f"""
+            <div style="
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                margin-top: 20px;
+                margin-bottom: 20px;
+            ">
+                {monthly_progress.to_html(escape=False, index=False)}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
     else:
         st.warning("Monthly Progress data not available for the selected date range.")
 
-    # Latest Sale Information
-    latest_sale = get_latest_sale(filtered_df_without_seats)
-    if latest_sale:
-        if latest_sale["source"].lower() == "hospitality website":
-            st.markdown(
-                f"""
-                <div style="
-                    background-color: ##fff0f0;
-                    border: 1px solid #cfe2ff;
-                    border-radius: 8px;
-                    padding: 15px;
-                    margin-top: 20px;
-                    font-family: Arial, sans-serif;
-                    font-size: 16px;
-                    color: #084298;
-                    text-align: center;
-                ">
-                    <strong>Latest Sale:</strong> Via Website - <strong>{latest_sale["seats"]} Seats Sold</strong> 
-                    x <strong>{latest_sale["package"]}</strong> for <strong>{latest_sale["fixture"]}</strong> 
-                    @ <strong>£{latest_sale["price"]:,.2f}</strong> on <strong>{latest_sale["date"]}</strong>.
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-        else:
-            st.markdown(
-                f"""
-                <div style="
-                    background-color: #f0f9ff;
-                    border: 1px solid #cfe2ff;
-                    border-radius: 8px;
-                    padding: 15px;
-                    margin-top: 20px;
-                    font-family: Arial, sans-serif;
-                    font-size: 16px;
-                    color: #084298;
-                    text-align: center;
-                ">
-                    <strong>Latest Sale:</strong> Moto sale made by <strong>{latest_sale["created_by"]}</strong> 
-                    for <strong>{latest_sale["package"]}</strong> in <strong>{latest_sale["fixture"]}</strong> 
-                    totaling <strong>£{latest_sale["price"]:,.2f}</strong> with <strong>{latest_sale["seats"]}</strong> seats 
-                    on <strong>{latest_sale["date"]}</strong>.
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-    else:
-        st.warning("No new sales recorded.")
+
+# Scrolling message section
+    scrolling_message = generate_scrolling_messages(filtered_df_without_seats, budget_df)
+
+    st.markdown(
+        f"""
+        <div style="
+            background-color: #fff0f0;
+            border: 1px solid #cfe2ff;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 20px;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            color: #084298;
+        ">
+            <marquee behavior="scroll" direction="left" scrollamount="4">
+                {scrolling_message}
+            </marquee>
+        </div>
+        """,
+        unsafe_allow_html=True
+
+    )
+
+# # Latest Sale Information
+#     latest_sale = get_latest_sale(filtered_df_without_seats)
+#     if latest_sale:
+#         if latest_sale["source"].lower() == "hospitality website":
+#             st.markdown(
+#                 f"""
+#                 <div style="
+#                     background-color: #fff0f0;
+#                     border: 1px solid #cfe2ff;
+#                     border-radius: 8px;
+#                     padding: 15px;
+#                     margin-top: 20px;
+#                     font-family: Arial, sans-serif;
+#                     font-size: 16px;
+#                     color: #084298;
+#                     text-align: center;
+#                 ">
+#                     <strong>Latest Sale:</strong> Via Website - <strong>{latest_sale["seats"]} Seats Sold</strong> 
+#                     x <strong>{latest_sale["package"]}</strong> for <strong>{latest_sale["fixture"]}</strong> 
+#                     @ <strong>£{latest_sale["price"]:,.2f}</strong> on <strong>{latest_sale["date"]}</strong>.
+#                 </div>
+#                 """,
+#                 unsafe_allow_html=True
+#             )
+#         else:
+#             st.markdown(
+#                 f"""
+#                 <div style="
+#                     background-color: #fff0f0;
+#                     border: 1px solid #cfe2ff;
+#                     border-radius: 8px;
+#                     padding: 15px;
+#                     margin-top: 20px;
+#                     font-family: Arial, sans-serif;
+#                     font-size: 16px;
+#                     color: #084298;
+#                     text-align: center;
+#                 ">
+#                     <strong>Latest Sale:</strong> Moto sale made by <strong>{latest_sale["created_by"]}</strong> 
+#                     for <strong>{latest_sale["package"]}</strong> in <strong>{latest_sale["fixture"]}</strong> 
+#                     totaling <strong>£{latest_sale["price"]:,.2f}</strong> with <strong>{latest_sale["seats"]}</strong> seats 
+#                     on <strong>{latest_sale["date"]}</strong>.
+#                 </div>
+#                 """,
+#                 unsafe_allow_html=True
+#             )
+#     else:
+#         st.warning("No new sales recorded.")
 
 if __name__ == "__main__":
     run_dashboard()
