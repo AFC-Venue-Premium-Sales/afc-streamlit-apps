@@ -78,7 +78,6 @@ def calculate_total_sales(data):
     return total_sales
 
 # Calculate monthly progress
-# Calculate monthly progress
 def calculate_monthly_progress(data, start_date, end_date):
     data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], errors="coerce", dayfirst=True)
     filtered_data = data[
@@ -191,6 +190,24 @@ def generate_scrolling_messages(data, budget_df):
     # Combine all messages
     return f"{latest_sale_message} | {next_fixture_message} | {top_fixture_message} | {top_executive_message}"
 
+
+def get_next_fixture(data, budget_df):
+    data["KickOffEventStart"] = pd.to_datetime(data["KickOffEventStart"], errors="coerce")
+    today = datetime.now()
+    next_fixture = data[data["KickOffEventStart"] > today].sort_values("KickOffEventStart").head(1)
+
+    if next_fixture.empty:
+        return None, None, None
+
+    fixture_name = next_fixture["Fixture Name"].iloc[0]
+    fixture_date = next_fixture["KickOffEventStart"].iloc[0]
+    budget_target = budget_df.loc[budget_df["Fixture Name"] == fixture_name, "Budget Target"].values
+
+    return (
+        fixture_name,
+        fixture_date,
+        budget_target[0] if len(budget_target) > 0 else 0,
+    )
 
 # Get the latest sale made
 def get_latest_sale(data):
