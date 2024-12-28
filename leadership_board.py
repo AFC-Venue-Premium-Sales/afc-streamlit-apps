@@ -97,67 +97,37 @@ def calculate_monthly_progress(data, start_date, end_date):
         .reindex(targets_data.columns, fill_value=0)
     )
 
-    sales_made = filtered_data["CreatedBy"].unique()
-
     monthly_targets = targets_data.loc[(current_month, current_year)]
 
-    # Additional metrics
-    num_transactions = (
-        filtered_data.groupby("CreatedBy")["Price"]
-        .count()
-        .reindex(targets_data.columns, fill_value=0)
-    )
-    avg_revenue_per_transaction = (progress / num_transactions).fillna(0)
-
-    top_package = (
-        filtered_data.groupby(["CreatedBy", "Package Name"])["Price"]
-        .sum()
-        .reset_index()
-        .sort_values(by=["CreatedBy", "Price"], ascending=[True, False])
-        .groupby("CreatedBy").first()["Package Name"]
-        .reindex(targets_data.columns, fill_value="None")
-    )
-
-    variance_from_target = (monthly_targets - progress).fillna(0)
-
-    total_sales = progress.sum()
-    revenue_percent_of_total = (progress / total_sales * 100).fillna(0)
-
-    # Build progress data
     progress_data = pd.DataFrame({
         "Premium Executive": progress.index,
         "Current Revenue": progress.values,
         "Target": monthly_targets.values,
-        "Variance": variance_from_target.values,
+        "Variance": (progress - monthly_targets).values,
         "% Sold (Numeric)": (progress / monthly_targets * 100).round(0),
-        "Transactions": num_transactions.values,
-        "Avg Revenue/Transaction": avg_revenue_per_transaction.values,
-        "Top-Selling Package": top_package.values,
-        "Revenue % of Total": revenue_percent_of_total.round(1).values,
     }).reset_index(drop=True)
 
     # Format columns for display
     progress_data["Current Revenue"] = progress_data["Current Revenue"].apply(lambda x: f"£{x:,.0f}")
     progress_data["Target"] = progress_data["Target"].apply(lambda x: f"£{x:,.0f}")
-    progress_data["Variance"] = progress_data["Variance"].apply(lambda x: f"£{x:,.0f}")
-    progress_data["Avg Revenue/Transaction"] = progress_data["Avg Revenue/Transaction"].apply(lambda x: f"£{x:,.0f}")
-    progress_data["Revenue % of Total"] = progress_data["Revenue % of Total"].apply(lambda x: f"{x:.1f}%")
+    progress_data["Variance"] = progress_data["Variance"].apply(lambda x: f"<span style='color: red;'>£{x:,.0f}</span>")
 
-    # Add conditional colors to % Sold
-    def style_percent(value):
+    # Add conditional box colors to % Sold
+    def style_box_color(value):
         if value >= 80:
-            return f"<span style='color: green;'>{value:.0f}%</span>"
+            return f"<div style='background-color: green; color: white; padding: 5px;'>{value:.0f}%</div>"
         elif 50 <= value < 80:
-            return f"<span style='color: orange;'>{value:.0f}%</span>"
+            return f"<div style='background-color: orange; color: white; padding: 5px;'>{value:.0f}%</div>"
         else:
-            return f"<span style='color: red;'>{value:.0f}%</span>"
+            return f"<div style='background-color: red; color: white; padding: 5px;'>{value:.0f}%</div>"
 
-    progress_data["% Sold"] = progress_data["% Sold (Numeric)"].apply(style_percent)
+    progress_data["% Sold"] = progress_data["% Sold (Numeric)"].apply(style_box_color)
 
-    # Sort by the numeric % Sold column
-    progress_data = progress_data.sort_values(by="% Sold (Numeric)", ascending=False)
+    # Drop numeric % Sold column
+    progress_data = progress_data.drop(columns=["% Sold (Numeric)"])
 
-    return progress_data.drop(columns=["% Sold (Numeric)"]), sales_made
+    return progress_data
+
 
 
 # Next fixture information
@@ -288,15 +258,19 @@ def run_dashboard():
     st.sidebar.markdown(
         f"""
         <div style="
-            background-color: #fff0f0;
-            border: 1px solid #E41B17;
-            border-radius: 5px;
-            padding: 10px;
-            margin-top: 20px;
-            margin-bottom: 20px;
-            font-family: Arial, sans-serif;
-            font-size: 14px;
-            color: #155724;
+            overflow: hidden;
+            white-space: nowrap;
+            width: 100%;
+            background-color: #FFC1C1; /* Soft pastel red */
+            border: 2px solid #E41B17; /* Arsenal red for the border */
+            border-radius: 15px; /* Rounded corners */
+            padding: 15px; /* Adjust padding for better spacing */
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 20px; /* Larger font for better readability */
+            font-weight: bold;
+            color: #FFFFFF; /* White text for contrast */
+            text-shadow: 1px 1px 2px #000000; /* Subtle shadow for readability */
+            letter-spacing: 1px;
             text-align: center;
         ">
             <strong>Latest Data Update:</strong> {refresh_time}
