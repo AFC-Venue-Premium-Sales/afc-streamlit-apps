@@ -393,15 +393,16 @@ def run_dashboard():
             overflow: hidden;
             white-space: nowrap;
             width: 100%;
-            background-color: #fff0f0; /* Soft pastel red background */
-            color: #8B0000; /* Dark red font color */
+            background-color: #fff0f0;
+            color: #E41B17; /* Arsenal red for font color */
             padding: 10px 15px;
-            border-radius: 15px; /* Rounded corners */
+            border-radius: 15px;
             font-family: 'Roboto', Arial, sans-serif;
-            font-size: 18px; /* Font size */
-            font-weight: 600; /* Font weight */
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5); /* Subtle shadow for contrast */
+            font-size: 18px;
+            font-weight: 600;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
             letter-spacing: 0.5px;
+
         ">
             <marquee behavior="scroll" direction="left" scrollamount="3">
                 {scrolling_message}
