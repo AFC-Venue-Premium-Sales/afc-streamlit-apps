@@ -188,6 +188,46 @@ def run_dashboard():
         unsafe_allow_html=True
     )
 
+    # Total Sales Section
+    total_sales = calculate_total_sales(filtered_df_without_seats)
+    st.sidebar.markdown(
+        f"""
+        <div style="
+            background-color: #fff4e6;
+            border: 1px solid #ffd699;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        ">
+            <h4 style="color: #cc6600; font-size: 18px;">🛒 Total Sales</h4>
+            <p><strong>Overall Sales Since Go Live: £{total_sales:,.0f}</strong></p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # Premium Monthly Progress
+    total_revenue, total_target, progress_percentage = calculate_overall_progress(filtered_df_without_seats, start_date, end_date)
+    st.sidebar.markdown(
+        f"""
+        <div style="
+            background-color: #e9f5ff;
+            border: 1px solid #b3d8ff;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        ">
+            <h4 style="color: #0047AB; font-size: 18px;">📊 Premium Monthly Progress</h4>
+            <p><strong>Total Revenue: £{total_revenue:,.0f} ({start_date.strftime("%B")})</strong></p>
+            <p><strong>Total Target: £{total_target:,.0f}</strong></p>
+            <p>🌟 <strong>Progress Achieved: {progress_percentage:.2f}%</strong></p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
     # Next Fixture in Sidebar
     fixture_name, fixture_date, budget_target = get_next_fixture(filtered_df_without_seats, budget_df)
     if fixture_name:
@@ -217,46 +257,6 @@ def run_dashboard():
         )
     else:
         st.sidebar.markdown("**No upcoming fixtures found.**")
-
-    # Overall Progress
-    total_revenue, total_target, progress_percentage = calculate_overall_progress(filtered_df_without_seats, start_date, end_date)
-    st.sidebar.markdown(
-        f"""
-        <div style="
-            background-color: #e9f5ff;
-            border: 1px solid #b3d8ff;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
-            text-align: center;
-        ">
-            <h4 style="color: #0047AB; font-size: 18px;">📊 Premium Monthly Progress</h4>
-            <p><strong>Total Revenue: £{total_revenue:,.0f} ({start_date.strftime("%B")})</strong></p>
-            <p><strong>Total Target: £{total_target:,.0f}</strong></p>
-            <p>🌟 <strong>Progress Achieved: {progress_percentage:.2f}%</strong></p>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    # Total Sales Section
-    total_sales = calculate_total_sales(filtered_df_without_seats)
-    st.sidebar.markdown(
-        f"""
-        <div style="
-            background-color: #fff4e6;
-            border: 1px solid #ffd699;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
-            text-align: center;
-        ">
-            <h4 style="color: #cc6600; font-size: 18px;">🛒 Total Sales</h4>
-            <p><strong>Overall Sales Since Go Live: £{total_sales:,.0f}</strong></p>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
 
     # Monthly Progress Table
     monthly_progress, sales_made = calculate_monthly_progress(filtered_df_without_seats, start_date, end_date)
