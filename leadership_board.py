@@ -267,23 +267,24 @@ def run_dashboard():
 
     # Display refresh message in the sidebar
     st.sidebar.markdown(
-    f"""
-    <div style="
-        background-color: #d4edda; /* Soft green */
-        border: 1px solid #c3e6cb; /* Light green border */
-        border-radius: 8px; /* Soft curved edges */
-        padding: 10px;
-        font-family: Arial, sans-serif;
-        font-size: 14px;
-        color: #155724; /* Dark green text for contrast */
-        margin-bottom: 20px; /* Ensures spacing below this widget */
-        text-align: center;
-    ">
-        <strong>Latest Data Update:</strong> {refresh_time}
-    </div>
-    """,
-    unsafe_allow_html=True
+        f"""
+        <div style="
+            background-color: #d4edda; /* Soft green */
+            border: 1px solid #c3e6cb; /* Light green border */
+            border-radius: 8px; /* Rounded corners */
+            padding: 10px;
+            margin-bottom: 20px; /* Add spacing below the widget */
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            color: #155724; /* Dark green text */
+            text-align: center;
+        ">
+            <strong>Latest Data Update:</strong> {refresh_time}
+        </div>
+        """,
+        unsafe_allow_html=True
 )
+
 
     
     # Total Sales Section
@@ -394,24 +395,27 @@ def run_dashboard():
             overflow: hidden;
             white-space: nowrap;
             width: 100%;
-            background-color: #E57373; /* Lighter Arsenal Red */
-            color: white;
-            padding: 10px 15px;
-            border-radius: 15px;
-            font-family: 'Roboto', Arial, sans-serif;
-            font-size: 18px;
-            font-weight: 600;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
-            letter-spacing: 0.5px;
+            background-color: #fff0f0; /* Soft pastel pink background */
+            color: #E41B17; /* Arsenal red font color */
+            padding: 20px 30px; /* Increased padding for better spacing */
+            border-radius: 15px; /* Soft curved edges like sidebar widgets */
+            font-family: 'Roboto', Arial, sans-serif; /* Sans-serif font */
+            font-size: 24px; /* Larger font size */
+            font-weight: bold; /* Bold text */
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1); /* Subtle text shadow for contrast */
+            letter-spacing: 1px; /* Slight letter spacing for readability */
+            text-align: center; /* Center align text */
+            border: 1px solid #E41B17; /* Arsenal red border */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Subtle shadow for elevation */
         ">
-            <marquee behavior="scroll" direction="left" scrollamount="3">
+            <marquee behavior="scroll" direction="left" scrollamount="4">
                 {scrolling_message}
             </marquee>
         </div>
         """,
         unsafe_allow_html=True
-
     )
+
 
 # # Latest Sale Information
 #     latest_sale = get_latest_sale(filtered_df_without_seats)
