@@ -16,7 +16,7 @@ def load_live_data():
         return filtered_df_without_seats
     except ImportError as e:
         st.error(f"Error reloading tjt_hosp_api: {e}")
-        return pd.DataFrame(columns=["CreatedBy", "Price", "CreatedOn", "ExecType", "KickOffEventStart", "Fixture Name", "TotalPrice"])
+        return pd.DataFrame(columns=["CreatedBy", "Price", "CreatedOn", "SaleLocation", "KickOffEventStart", "Fixture Name", "Package Name", "TotalPrice"])
 
 # Load data
 filtered_df_without_seats = load_live_data()
@@ -66,9 +66,11 @@ def calculate_overall_progress(data, start_date, end_date):
     try:
         total_target = targets_data.loc[(start_date.strftime("%B"), start_date.year)].sum()
         progress_percentage = (total_revenue / total_target) * 100 if total_target > 0 else 0
-        return total_revenue, total_target, progress_percentage
     except KeyError:
-        return None, None, None
+        total_target = 0
+        progress_percentage = 0
+
+    return total_revenue, total_target, progress_percentage
 
 # Calculate total sales (including website)
 def calculate_total_sales(data):
@@ -107,8 +109,8 @@ def calculate_monthly_progress(data, start_date, end_date):
     }).reset_index(drop=True)
 
     # Format columns for display
-    progress_data["Current Revenue"] = progress_data["Current Revenue"].apply(lambda x: f"\u00a3{x:,.0f}")
-    progress_data["Target"] = progress_data["Target"].apply(lambda x: f"\u00a3{x:,.0f}")
+    progress_data["Current Revenue"] = progress_data["Current Revenue"].apply(lambda x: f"£{x:,.0f}")
+    progress_data["Target"] = progress_data["Target"].apply(lambda x: f"£{x:,.0f}")
 
     # Add conditional colors to % Sold
     def style_percent(value):
@@ -140,6 +142,24 @@ def get_next_fixture(data, budget_df):
     budget_target = budget_df[budget_df["Fixture Name"] == fixture_name]["Budget Target"].values[0]
 
     return fixture_name, fixture_date, budget_target
+
+# Get the latest sale made
+def get_latest_sale(data):
+    data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], errors="coerce", dayfirst=True)
+    latest_sale = data.sort_values(by="CreatedOn", ascending=False).head(1)
+
+    if not latest_sale.empty:
+        source = latest_sale["SaleLocation"].iloc[0]
+        sale_details = {
+            "fixture": latest_sale["Fixture Name"].iloc[0],
+            "package": latest_sale["Package Name"].iloc[0],
+            "price": latest_sale["TotalPrice"].iloc[0],
+            "created_by": latest_sale["CreatedBy"].iloc[0] if source.lower() == "moto sale team" else None,
+            "source": source,
+            "date": latest_sale["CreatedOn"].iloc[0].strftime("%d %b %Y"),
+        }
+        return sale_details
+    return None
 
 # Auto-refresh functionality with logging
 def auto_refresh():
@@ -210,24 +230,11 @@ def run_dashboard():
         unsafe_allow_html=True
     )
 
-    # Overall Progress
+    # Premium Monthly Progress
     total_revenue, total_target, progress_percentage = calculate_overall_progress(filtered_df_without_seats, start_date, end_date)
-
-    if total_revenue is None:
+    if total_target == 0:
         st.sidebar.markdown(
-            """
-            <div style="
-                background-color: #f8d7da;
-                border: 1px solid #f5c6cb;
-                border-radius: 8px;
-                padding: 15px;
-                margin-bottom: 20px;
-                text-align: center;
-            ">
-                <h4 style="color: #721c24; font-size: 18px;">⚠️ Out of Range</h4>
-                <p><strong>The selected date range does not fall within target periods.</strong></p>
-            </div>
-            """,
+            "<div style='color: red; font-weight: bold;'>Selected date range is out of bounds for available targets.</div>",
             unsafe_allow_html=True
         )
     else:
@@ -288,6 +295,54 @@ def run_dashboard():
         st.markdown(monthly_progress.to_html(escape=False, index=False), unsafe_allow_html=True)
     else:
         st.warning("Monthly Progress data not available for the selected date range.")
+
+    # Latest Sale Information
+    latest_sale = get_latest_sale(filtered_df_without_seats)
+    if latest_sale:
+        if latest_sale["source"].lower() == "hospitality website":
+            st.markdown(
+                f"""
+                <div style="
+                    background-color: #f0f9ff;
+                    border: 1px solid #cfe2ff;
+                    border-radius: 8px;
+                    padding: 15px;
+                    margin-top: 20px;
+                    font-family: Arial, sans-serif;
+                    font-size: 16px;
+                    color: #084298;
+                    text-align: center;
+                ">
+                    <strong>Latest Sale:</strong> Website sale for <strong>{latest_sale["package"]}</strong> 
+                    in <strong>{latest_sale["fixture"]}</strong> totaling <strong>£{latest_sale["price"]:,.2f}</strong> 
+                    on <strong>{latest_sale["date"]}</strong>.
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+        else:
+            st.markdown(
+                f"""
+                <div style="
+                    background-color: #f0f9ff;
+                    border: 1px solid #cfe2ff;
+                    border-radius: 8px;
+                    padding: 15px;
+                    margin-top: 20px;
+                    font-family: Arial, sans-serif;
+                    font-size: 16px;
+                    color: #084298;
+                    text-align: center;
+                ">
+                    <strong>Latest Sale:</strong> Moto sale made by <strong>{latest_sale["created_by"]}</strong> 
+                    for <strong>{latest_sale["package"]}</strong> in <strong>{latest_sale["fixture"]}</strong> 
+                    totaling <strong>£{latest_sale["price"]:,.2f}</strong> on <strong>{latest_sale["date"]}</strong>.
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+    else:
+        st.warning("No new sales recorded.")
 
 if __name__ == "__main__":
     run_dashboard()
