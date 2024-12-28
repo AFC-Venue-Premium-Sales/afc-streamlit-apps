@@ -112,6 +112,9 @@ def calculate_monthly_progress(data, start_date, end_date):
     progress_data["Target"] = progress_data["Target"].apply(lambda x: f"£{x:,.0f}")
     progress_data["Variance"] = progress_data["Variance"].apply(lambda x: f"({abs(x):,.0f})" if x < 0 else f"{x:,.0f}")
 
+    # Sort by % Sold (numeric) before styling
+    progress_data = progress_data.sort_values(by="% Sold (Numeric)", ascending=False)
+
     # Add conditional box colors to % Sold
     def style_box_color(value):
         if value >= 80:
@@ -121,25 +124,17 @@ def calculate_monthly_progress(data, start_date, end_date):
         else:
             return f"<div style='background-color: red; color: white; padding: 5px;'>{value:.0f}%</div>"
 
+    # Apply styling to the sorted data
     progress_data["% Sold"] = progress_data["% Sold (Numeric)"].apply(style_box_color)
 
-    # Drop numeric % Sold column
+    # Drop numeric % Sold column after sorting and styling
     progress_data = progress_data.drop(columns=["% Sold (Numeric)"])
-
-    # Safely sort by % Sold
-    try:
-        progress_data = progress_data.sort_values(
-            by="% Sold",
-            key=lambda col: col.str.extract(r"([0-9]+)").astype(int).fillna(0),
-            ascending=False,
-        )
-    except Exception as e:
-        st.warning(f"Error sorting data: {e}")
 
     # Extract unique sales made for the second return value
     sales_made = filtered_data["CreatedBy"].unique()
 
     return progress_data, sales_made
+
 
 
 
@@ -274,11 +269,10 @@ def run_dashboard():
     st.sidebar.markdown(
         f"""
         <div style="
-            background-color: #FFC1C1; /* Soft pastel red */
-            border: 2px solid #E41B17; /* Arsenal red for the border */
-            border-radius: 10px; /* Soft curved edges */
+            background-color: #d4edda; /* Soft green */
+            border: 1px solid #c3e6cb; /* Light green border */
+            border-radius: 8px; /* Soft curved edges */
             padding: 10px;
-            margin-top: 20px;
             margin-bottom: 20px;
             font-family: Arial, sans-serif;
             font-size: 14px;
@@ -399,14 +393,14 @@ def run_dashboard():
             overflow: hidden;
             white-space: nowrap;
             width: 100%;
-            background-color: #fff0f0;
-            color: white;
+            background-color: #fff0f0; /* Soft pastel red background */
+            color: #8B0000; /* Dark red font color */
             padding: 10px 15px;
-            border-radius: 15px;
+            border-radius: 15px; /* Rounded corners */
             font-family: 'Roboto', Arial, sans-serif;
-            font-size: 18px;
-            font-weight: 600;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+            font-size: 18px; /* Font size */
+            font-weight: 600; /* Font weight */
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5); /* Subtle shadow for contrast */
             letter-spacing: 0.5px;
         ">
             <marquee behavior="scroll" direction="left" scrollamount="3">
