@@ -126,17 +126,21 @@ def calculate_monthly_progress(data, start_date, end_date):
     # Drop numeric % Sold column
     progress_data = progress_data.drop(columns=["% Sold (Numeric)"])
 
-    # Sort by % Sold (extract numeric value from the styled HTML)
-    progress_data = progress_data.sort_values(
-        by="% Sold",
-        key=lambda col: col.str.extract(r"([0-9]+)").astype(int).fillna(0),
-        ascending=False,
-    )
+    # Safely sort by % Sold
+    try:
+        progress_data = progress_data.sort_values(
+            by="% Sold",
+            key=lambda col: col.str.extract(r"([0-9]+)").astype(int).fillna(0),
+            ascending=False,
+        )
+    except Exception as e:
+        st.warning(f"Error sorting data: {e}")
 
     # Extract unique sales made for the second return value
     sales_made = filtered_data["CreatedBy"].unique()
 
     return progress_data, sales_made
+
 
 
 
