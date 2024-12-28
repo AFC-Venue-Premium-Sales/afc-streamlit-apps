@@ -78,6 +78,7 @@ def calculate_total_sales(data):
     return total_sales
 
 # Calculate monthly progress
+# Calculate monthly progress
 def calculate_monthly_progress(data, start_date, end_date):
     data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], errors="coerce", dayfirst=True)
     filtered_data = data[
@@ -110,7 +111,7 @@ def calculate_monthly_progress(data, start_date, end_date):
     # Format columns for display
     progress_data["Current Revenue"] = progress_data["Current Revenue"].apply(lambda x: f"£{x:,.0f}")
     progress_data["Target"] = progress_data["Target"].apply(lambda x: f"£{x:,.0f}")
-    progress_data["Variance"] = progress_data["Variance"].apply(lambda x: f"<span style='color: red;'>£{x:,.0f}</span>")
+    progress_data["Variance"] = progress_data["Variance"].apply(lambda x: f"({x:,.0f})" if x < 0 else f"{x:,.0f}")
 
     # Add conditional box colors to % Sold
     def style_box_color(value):
@@ -126,11 +127,13 @@ def calculate_monthly_progress(data, start_date, end_date):
     # Drop numeric % Sold column
     progress_data = progress_data.drop(columns=["% Sold (Numeric)"])
 
+    # Sort by % Sold
+    progress_data = progress_data.sort_values(by="% Sold", key=lambda col: col.str.extract(r"([0-9]+)").astype(int), ascending=False)
+
     # Extract unique sales made for the second return value
     sales_made = filtered_data["CreatedBy"].unique()
 
     return progress_data, sales_made
-
 
 
 
@@ -262,19 +265,15 @@ def run_dashboard():
     st.sidebar.markdown(
         f"""
         <div style="
-            overflow: hidden;
-            white-space: nowrap;
-            width: 100%;
             background-color: #FFC1C1; /* Soft pastel red */
             border: 2px solid #E41B17; /* Arsenal red for the border */
-            border-radius: 15px; /* Rounded corners */
-            padding: 15px; /* Adjust padding for better spacing */
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 20px; /* Larger font for better readability */
-            font-weight: bold;
-            color: #FFFFFF; /* White text for contrast */
-            text-shadow: 1px 1px 2px #000000; /* Subtle shadow for readability */
-            letter-spacing: 1px;
+            border-radius: 10px; /* Soft curved edges */
+            padding: 10px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            color: #155724; /* Dark green text for contrast */
             text-align: center;
         ">
             <strong>Latest Data Update:</strong> {refresh_time}
@@ -391,7 +390,7 @@ def run_dashboard():
             overflow: hidden;
             white-space: nowrap;
             width: 100%;
-            background-color: #E57373; /* Lighter Arsenal Red */
+            background-color: #fff0f0;
             color: white;
             padding: 10px 15px;
             border-radius: 15px;
