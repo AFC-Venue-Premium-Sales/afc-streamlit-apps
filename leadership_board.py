@@ -273,10 +273,10 @@ def run_dashboard():
             border: 1px solid #c3e6cb; /* Light green border */
             border-radius: 8px; /* Soft curved edges */
             padding: 10px;
-            margin-bottom: 20px;
             font-family: Arial, sans-serif;
             font-size: 14px;
             color: #155724; /* Dark green text for contrast */
+            margin-bottom: 20px;
             text-align: center;
         ">
             <strong>Latest Data Update:</strong> {refresh_time}
