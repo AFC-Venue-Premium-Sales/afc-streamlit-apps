@@ -16,7 +16,7 @@ def load_live_data():
         return filtered_df_without_seats
     except ImportError as e:
         st.error(f"Error reloading tjt_hosp_api: {e}")
-        return pd.DataFrame(columns=["CreatedBy", "Price", "CreatedOn", "ExecType", "KickOffEventStart", "Fixture Name"])
+        return pd.DataFrame(columns=["CreatedBy", "Price", "CreatedOn", "ExecType", "KickOffEventStart", "Fixture Name", "TotalPrice"])
 
 # Load data
 filtered_df_without_seats = load_live_data()
@@ -66,6 +66,11 @@ def calculate_overall_progress(data, start_date, end_date):
     total_target = targets_data.loc[(start_date.strftime("%B"), start_date.year)].sum()
     progress_percentage = (total_revenue / total_target) * 100 if total_target > 0 else 0
     return total_revenue, total_target, progress_percentage
+
+# Calculate total sales (including website)
+def calculate_total_sales(data):
+    total_sales = data["TotalPrice"].sum()
+    return total_sales
 
 # Calculate monthly progress
 def calculate_monthly_progress(data, start_date, end_date):
@@ -152,12 +157,13 @@ def auto_refresh():
 # Main dashboard
 def run_dashboard():
     st.set_page_config(page_title="Hospitality Leadership Board", layout="wide")
-    st.title("Arsenal Hospitality Leadership Board")
+    st.title("💎 Arsenal Premium Sales")
 
     # Sidebar
     st.sidebar.markdown("### Date Range Filter")
-    start_date = st.sidebar.date_input("Start Date", value=datetime.now().replace(day=1))
-    end_date = st.sidebar.date_input("End Date", value=datetime.now())
+    col1, col2 = st.sidebar.columns(2)
+    start_date = col1.date_input("Start Date", value=datetime.now().replace(day=1), label_visibility="collapsed")
+    end_date = col2.date_input("End Date", value=datetime.now(), label_visibility="collapsed")
 
     # Auto-refresh
     refresh_time = auto_refresh()  # Auto-refreshes every 2 minutes
@@ -204,7 +210,7 @@ def run_dashboard():
                 <h4 style="color: #0047AB; font-size: 18px;">🏟️ Next Fixture</h4>
                 <p style="font-size: 16px; font-weight: bold;">{fixture_name}</p>
                 <p>⏳ <strong>{days_to_fixture} days</strong></p>
-                <p>🎯 <strong>Budget Target Achieved</strong>: <strong>{budget_achieved}%</strong></p>
+                <p>🎯 <strong>Budget Target Achieved:</strong> <strong>{budget_achieved}%</strong></p>
             </div>
             """,
             unsafe_allow_html=True
@@ -224,23 +230,42 @@ def run_dashboard():
             margin-bottom: 20px;
             text-align: center;
         ">
-            <h4 style="color: #0047AB; font-size: 18px;">📊 Overall Progress</h4>
-            <p><strong>Total Revenue:</strong> £{total_revenue:,.0f}</p>
-            <p><strong>Total Target:</strong> £{total_target:,.0f}</p>
-            <p>🌟 <strong>Progress Achieved:</strong> {progress_percentage:.2f}%</p>
+            <h4 style="color: #0047AB; font-size: 18px;">📊 Premium Monthly Progress</h4>
+            <p><strong>Total Revenue: £{total_revenue:,.0f} ({start_date.strftime("%B")})</strong></p>
+            <p><strong>Total Target: £{total_target:,.0f}</strong></p>
+            <p>🌟 <strong>Progress Achieved: {progress_percentage:.2f}%</strong></p>
         </div>
         """,
         unsafe_allow_html=True
     )
 
-    # Monthly Progress
-    st.markdown("<h3 style='color:#b22222;'>Monthly Progress</h3>", unsafe_allow_html=True)
+    # Total Sales Section
+    total_sales = calculate_total_sales(filtered_df_without_seats)
+    st.sidebar.markdown(
+        f"""
+        <div style="
+            background-color: #fff4e6;
+            border: 1px solid #ffd699;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        ">
+            <h4 style="color: #cc6600; font-size: 18px;">🛒 Total Sales</h4>
+            <p><strong>Overall Sales Since Go Live: £{total_sales:,.0f}</strong></p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # Monthly Progress Table
     monthly_progress, sales_made = calculate_monthly_progress(filtered_df_without_seats, start_date, end_date)
 
-    if monthly_progress is None:
-        st.warning("Targets are not available for the selected dates.")
-    else:
+    if monthly_progress is not None:
+        st.markdown("<h3 style='color:#b22222;'>Monthly Progress Leaderboard</h3>", unsafe_allow_html=True)
         st.markdown(monthly_progress.to_html(escape=False, index=False), unsafe_allow_html=True)
+    else:
+        st.warning("Monthly Progress data not available for the selected date range.")
 
 if __name__ == "__main__":
     run_dashboard()
