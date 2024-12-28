@@ -54,6 +54,19 @@ def load_budget_targets():
 
 budget_df = load_budget_targets()
 
+# Calculate overall progress
+def calculate_overall_progress(data, start_date, end_date):
+    data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], errors="coerce", dayfirst=True)
+    filtered_data = data[
+        (data["CreatedOn"] >= pd.to_datetime(start_date)) &
+        (data["CreatedOn"] <= pd.to_datetime(end_date))
+    ]
+
+    total_revenue = filtered_data["Price"].sum()
+    total_target = targets_data.loc[(start_date.strftime("%B"), start_date.year)].sum()
+    progress_percentage = (total_revenue / total_target) * 100 if total_target > 0 else 0
+    return total_revenue, total_target, progress_percentage
+
 # Calculate monthly progress
 def calculate_monthly_progress(data, start_date, end_date):
     data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], errors="coerce", dayfirst=True)
@@ -83,7 +96,6 @@ def calculate_monthly_progress(data, start_date, end_date):
         "Current Revenue": progress.values,
         "Target": monthly_targets.values,
         "% Sold (Numeric)": (progress / monthly_targets * 100).round(2),
-        "Today's Date": datetime.now().strftime("%d/%m/%Y")
     }).reset_index(drop=True)
 
     # Format columns for display
@@ -199,6 +211,27 @@ def run_dashboard():
         )
     else:
         st.sidebar.markdown("**No upcoming fixtures found.**")
+
+    # Overall Progress
+    total_revenue, total_target, progress_percentage = calculate_overall_progress(filtered_df_without_seats, start_date, end_date)
+    st.sidebar.markdown(
+        f"""
+        <div style="
+            background-color: #e9f5ff;
+            border: 1px solid #b3d8ff;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        ">
+            <h4 style="color: #0047AB; font-size: 18px;">📊 Overall Progress</h4>
+            <p><strong>Total Revenue:</strong> £{total_revenue:,.0f}</p>
+            <p><strong>Total Target:</strong> £{total_target:,.0f}</p>
+            <p>🌟 <strong>Progress Achieved:</strong> {progress_percentage:.2f}%</p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
     # Monthly Progress
     st.markdown("<h3 style='color:#b22222;'>Monthly Progress</h3>", unsafe_allow_html=True)
