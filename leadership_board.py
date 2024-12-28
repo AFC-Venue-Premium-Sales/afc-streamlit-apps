@@ -157,7 +157,7 @@ def auto_refresh():
 # Main dashboard
 def run_dashboard():
     st.set_page_config(page_title="Hospitality Leadership Board", layout="wide")
-    st.title("💎 Arsenal Premium Sales")
+    st.title("💷 Arsenal Premium Sales 💷")
 
     # Sidebar
     st.sidebar.markdown("### Date Range Filter")
