@@ -267,23 +267,24 @@ def run_dashboard():
 
     # Display refresh message in the sidebar
     st.sidebar.markdown(
-        f"""
-        <div style="
-            background-color: #d4edda; /* Soft green */
-            border: 1px solid #c3e6cb; /* Light green border */
-            border-radius: 8px; /* Soft curved edges */
-            padding: 10px;
-            font-family: Arial, sans-serif;
-            font-size: 14px;
-            color: #155724; /* Dark green text for contrast */
-            margin-bottom: 20px;
-            text-align: center;
-        ">
-            <strong>Latest Data Update:</strong> {refresh_time}
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    f"""
+    <div style="
+        background-color: #d4edda; /* Soft green */
+        border: 1px solid #c3e6cb; /* Light green border */
+        border-radius: 8px; /* Soft curved edges */
+        padding: 10px;
+        font-family: Arial, sans-serif;
+        font-size: 14px;
+        color: #155724; /* Dark green text for contrast */
+        margin-bottom: 20px; /* Ensures spacing below this widget */
+        text-align: center;
+    ">
+        <strong>Latest Data Update:</strong> {refresh_time}
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
     
     # Total Sales Section
     total_sales = calculate_total_sales(filtered_df_without_seats)
@@ -393,8 +394,8 @@ def run_dashboard():
             overflow: hidden;
             white-space: nowrap;
             width: 100%;
-            background-color: #fff0f0;
-            color: #E41B17; /* Arsenal red for font color */
+            background-color: #E57373; /* Lighter Arsenal Red */
+            color: white;
             padding: 10px 15px;
             border-radius: 15px;
             font-family: 'Roboto', Arial, sans-serif;
@@ -402,7 +403,6 @@ def run_dashboard():
             font-weight: 600;
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
             letter-spacing: 0.5px;
-
         ">
             <marquee behavior="scroll" direction="left" scrollamount="3">
                 {scrolling_message}
