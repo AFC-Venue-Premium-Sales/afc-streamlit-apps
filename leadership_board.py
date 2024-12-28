@@ -63,9 +63,12 @@ def calculate_overall_progress(data, start_date, end_date):
     ]
 
     total_revenue = filtered_data["Price"].sum()
-    total_target = targets_data.loc[(start_date.strftime("%B"), start_date.year)].sum()
-    progress_percentage = (total_revenue / total_target) * 100 if total_target > 0 else 0
-    return total_revenue, total_target, progress_percentage
+    try:
+        total_target = targets_data.loc[(start_date.strftime("%B"), start_date.year)].sum()
+        progress_percentage = (total_revenue / total_target) * 100 if total_target > 0 else 0
+        return total_revenue, total_target, progress_percentage
+    except KeyError:
+        return None, None, None
 
 # Calculate total sales (including website)
 def calculate_total_sales(data):
@@ -104,8 +107,8 @@ def calculate_monthly_progress(data, start_date, end_date):
     }).reset_index(drop=True)
 
     # Format columns for display
-    progress_data["Current Revenue"] = progress_data["Current Revenue"].apply(lambda x: f"£{x:,.0f}")
-    progress_data["Target"] = progress_data["Target"].apply(lambda x: f"£{x:,.0f}")
+    progress_data["Current Revenue"] = progress_data["Current Revenue"].apply(lambda x: f"\u00a3{x:,.0f}")
+    progress_data["Target"] = progress_data["Target"].apply(lambda x: f"\u00a3{x:,.0f}")
 
     # Add conditional colors to % Sold
     def style_percent(value):
@@ -157,7 +160,7 @@ def auto_refresh():
 # Main dashboard
 def run_dashboard():
     st.set_page_config(page_title="Hospitality Leadership Board", layout="wide")
-    st.title("💷 Arsenal Premium Sales 💷")
+    st.title("💎 Arsenal Premium Sales")
 
     # Sidebar
     st.sidebar.markdown("### Date Range Filter")
@@ -207,26 +210,45 @@ def run_dashboard():
         unsafe_allow_html=True
     )
 
-    # Premium Monthly Progress
+    # Overall Progress
     total_revenue, total_target, progress_percentage = calculate_overall_progress(filtered_df_without_seats, start_date, end_date)
-    st.sidebar.markdown(
-        f"""
-        <div style="
-            background-color: #e9f5ff;
-            border: 1px solid #b3d8ff;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
-            text-align: center;
-        ">
-            <h4 style="color: #0047AB; font-size: 18px;">📊 Premium Monthly Progress</h4>
-            <p><strong>Total Revenue: £{total_revenue:,.0f} ({start_date.strftime("%B")})</strong></p>
-            <p><strong>Total Target: £{total_target:,.0f}</strong></p>
-            <p>🌟 <strong>Progress Achieved: {progress_percentage:.2f}%</strong></p>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+
+    if total_revenue is None:
+        st.sidebar.markdown(
+            """
+            <div style="
+                background-color: #f8d7da;
+                border: 1px solid #f5c6cb;
+                border-radius: 8px;
+                padding: 15px;
+                margin-bottom: 20px;
+                text-align: center;
+            ">
+                <h4 style="color: #721c24; font-size: 18px;">⚠️ Out of Range</h4>
+                <p><strong>The selected date range does not fall within target periods.</strong></p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    else:
+        st.sidebar.markdown(
+            f"""
+            <div style="
+                background-color: #e9f5ff;
+                border: 1px solid #b3d8ff;
+                border-radius: 8px;
+                padding: 15px;
+                margin-bottom: 20px;
+                text-align: center;
+            ">
+                <h4 style="color: #0047AB; font-size: 18px;">📊 Premium Monthly Progress</h4>
+                <p><strong>Total Revenue: £{total_revenue:,.0f} ({start_date.strftime("%B")})</strong></p>
+                <p><strong>Total Target: £{total_target:,.0f}</strong></p>
+                <p>🌟 <strong>Progress Achieved: {progress_percentage:.2f}%</strong></p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
     # Next Fixture in Sidebar
     fixture_name, fixture_date, budget_target = get_next_fixture(filtered_df_without_seats, budget_df)
