@@ -163,7 +163,7 @@ def generate_scrolling_messages(data, budget_df):
             # Default message for other sources
             latest_sale_message = (
                 f"{int(latest_sale['Seats'].iloc[0])} seat(s) x {latest_sale['Package Name'].iloc[0]} "
-                f"for {latest_sale['Fixture Name'].iloc[0]} sold by {created_by} via {source.capitalize()} @ £{total_price:,.2f}"
+                f"for {latest_sale['Fixture Name'].iloc[0]} via {source.capitalize()} @ £{total_price:,.2f}"
             )
     else:
         latest_sale_message = "No recent sales to display."
@@ -185,7 +185,7 @@ def generate_scrolling_messages(data, budget_df):
     if not today_sales.empty:
         top_fixture = today_sales.groupby("Fixture Name")["Price"].sum().idxmax()
         top_fixture_revenue = today_sales.groupby("Fixture Name")["Price"].sum().max()
-        top_fixture_message = f"Top Fixture Today: {top_fixture} with £{top_fixture_revenue:,.2f} generated."
+        top_fixture_message = f"Top Selling Fixture Today: {top_fixture} with £{top_fixture_revenue:,.2f} generated."
     else:
         top_fixture_message = "No sales recorded today."
 
@@ -193,7 +193,7 @@ def generate_scrolling_messages(data, budget_df):
     if not today_sales.empty:
         top_executive = today_sales.groupby("CreatedBy")["Price"].sum().idxmax()
         top_executive_revenue = today_sales.groupby("CreatedBy")["Price"].sum().max()
-        top_executive_message = f"Top Seller Today: {top_executive} with £{top_executive_revenue:,.2f} generated."
+        top_executive_message = f"Top Selling Exec Today: {top_executive} with £{top_executive_revenue:,.2f} generated."
     else:
         top_executive_message = "No Premium Executive sales recorded today."
 
@@ -303,6 +303,7 @@ def run_dashboard():
     total_sales = calculate_total_sales(filtered_df_without_seats)
     st.sidebar.markdown(
         f"""
+        
         <div style="
             background-color: #fff0f0;
             border: 1px solid #E41B17;
@@ -379,7 +380,7 @@ def run_dashboard():
     monthly_progress, sales_made = calculate_monthly_progress(filtered_df_without_seats, start_date, end_date)
 
     if monthly_progress is not None:
-        st.markdown("<h3 style='color:#b22222; text-align:center;'>Monthly Target Leaderboard</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color:#b22222; text-align:center;'>Monthly Premium Leaderboard</h3>", unsafe_allow_html=True)
         st.markdown(
             f"""
             <div style="
@@ -409,17 +410,13 @@ def run_dashboard():
             width: 100%;
             background-color: #fff0f0; /* Soft pastel pink background */
             color: #E41B17; /* Arsenal red font color */
-            padding: 20px 30px; /* Increased padding for better spacing */
-            border-radius: 15px; /* Soft curved edges like sidebar widgets */
-            font-family: 'Roboto', Arial, sans-serif; /* Sans-serif font */
-            font-size: 24px; /* Larger font size */
+            padding: 20px 30px; /* Padding for spacing */
+            border-radius: 15px; /* Curved edges */
+            font-family: Arial, sans-serif; /* Simple sans-serif font */
+            font-size: 32px; /* Big font size */
             font-weight: bold; /* Bold text */
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1); /* Subtle text shadow for contrast */
-            letter-spacing: 1px; /* Slight letter spacing for readability */
-            text-align: center; /* Center align text */
-            border: 1px solid #E41B17; /* Arsenal red border */
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Subtle shadow for elevation */
-        ">
+            text-align: center; /* Center-aligned text */
+            border: 1px solid #E41B17; /* Red border */
             <marquee behavior="scroll" direction="left" scrollamount="4">
                 {scrolling_message}
             </marquee>
