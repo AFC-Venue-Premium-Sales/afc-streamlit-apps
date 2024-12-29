@@ -303,50 +303,55 @@ def run_dashboard():
     total_sales = calculate_total_sales(filtered_df_without_seats)
     st.sidebar.markdown(
         f"""
-        
         <div style="
-            background-color: #fff0f0;
-            border: 1px solid #E41B17;
-            border-radius: 8px;
+            background-color: #FAF3F3;
+            border: 2px solid #E41B17;
+            border-radius: 12px;
             padding: 15px;
             margin-bottom: 20px;
             text-align: center;
+            font-family: Arial, sans-serif;
         ">
-            <h4 style="color: #0047AB; font-size: 18px;">🛒 Total Sales</h4>
-            <p><strong>Overall Sales Since Go Live: \u00a3{total_sales:,.0f}</strong></p>
+            <h4 style="color: #E41B17; font-size: 20px; font-weight: bold;">🛒 Total Sales</h4>
+            <p style="font-size: 16px; color: #0047AB; font-weight: bold;">Overall Sales Since Go Live:</p>
+            <p style="font-size: 18px; color: #0047AB; font-weight: bold;">£{total_sales:,.0f}</p>
         </div>
         """,
         unsafe_allow_html=True
     )
 
-    # Premium Monthly Progress
+    # Premium Monthly Progress Section
     total_revenue, total_target, progress_percentage = calculate_overall_progress(filtered_df_without_seats, start_date, end_date)
     if total_target == 0:
         st.sidebar.markdown(
-            "<div style='color: red; font-weight: bold;'>Selected date range is out of bounds for available targets.</div>",
+            "<div style='color: #E41B17; font-weight: bold; font-family: Arial, sans-serif;'>⚠️ Selected date range is out of bounds for available targets.</div>",
             unsafe_allow_html=True
         )
     else:
         st.sidebar.markdown(
             f"""
             <div style="
-                background-color: #fff0f0;
-                border: 1px solid #E41B17;
-                border-radius: 8px;
+                background-color: #FAF3F3;
+                border: 2px solid #E41B17;
+                border-radius: 12px;
                 padding: 15px;
                 margin-bottom: 20px;
                 text-align: center;
+                font-family: Arial, sans-serif;
             ">
-                <h4 style="color: #0047AB; font-size: 18px;">📊 Premium Monthly Progress</h4>
-                <p><strong>Total Revenue: \u00a3{total_revenue:,.0f} ({start_date.strftime("%B")})</strong></p>
-                <p><strong>Total Target: \u00a3{total_target:,.0f}</strong></p>
-                <p>🌟 <strong>Progress Achieved: {progress_percentage:.0f}%</strong></p>
+                <h4 style="color: #E41B17; font-size: 20px; font-weight: bold;">📊 Premium Monthly Progress</h4>
+                <p style="font-size: 16px; color: #0047AB;">Total Revenue ({start_date.strftime("%B")}):</p>
+                <p style="font-size: 18px; color: #0047AB; font-weight: bold;">£{total_revenue:,.0f}</p>
+                <p style="font-size: 16px; color: #0047AB;">Total Target:</p>
+                <p style="font-size: 18px; color: #0047AB; font-weight: bold;">£{total_target:,.0f}</p>
+                <p style="font-size: 16px; color: #0047AB;">🌟 Progress Achieved:</p>
+                <p style="font-size: 18px; color: #0047AB; font-weight: bold;">{progress_percentage:.0f}%</p>
             </div>
             """,
             unsafe_allow_html=True
         )
 
-    # Next Fixture in Sidebar
+    # Next Fixture Section
     fixture_name, fixture_date, budget_target = get_next_fixture(filtered_df_without_seats, budget_df)
     if fixture_name:
         days_to_fixture = (fixture_date - datetime.now()).days
@@ -358,23 +363,30 @@ def run_dashboard():
         st.sidebar.markdown(
             f"""
             <div style="
-                background-color: #fff0f0;
-                border: 1px solid #E41B17;
-                border-radius: 8px;
+                background-color: #FAF3F3;
+                border: 2px solid #E41B17;
+                border-radius: 12px;
                 padding: 15px;
                 margin-bottom: 20px;
                 text-align: center;
+                font-family: Arial, sans-serif;
             ">
-                <h4 style="color: #0047AB; font-size: 18px;">🏟️ Next Fixture</h4>
-                <p style="font-size: 16px; font-weight: bold;">{fixture_name}</p>
-                <p>⏳ <strong>{days_to_fixture} days</strong></p>
-                <p>🎯 <strong>Budget Target Achieved:</strong> <strong>{budget_achieved}%</strong></p>
+                <h4 style="color: #E41B17; font-size: 20px; font-weight: bold;">🏟️ Next Fixture</h4>
+                <p style="font-size: 16px; color: #0047AB; font-weight: bold;">{fixture_name}</p>
+                <p style="font-size: 16px; color: #0047AB;">⏳ Days to Fixture:</p>
+                <p style="font-size: 18px; color: #0047AB; font-weight: bold;">{days_to_fixture} days</p>
+                <p style="font-size: 16px; color: #0047AB;">🎯 Budget Target Achieved:</p>
+                <p style="font-size: 18px; color: #0047AB; font-weight: bold;">{budget_achieved}%</p>
             </div>
             """,
             unsafe_allow_html=True
         )
     else:
-        st.sidebar.markdown("**No upcoming fixtures found.**")
+        st.sidebar.markdown(
+            "<div style='color: #E41B17; font-weight: bold; font-family: Arial, sans-serif;'>⚠️ No upcoming fixtures found.</div>",
+            unsafe_allow_html=True
+        )
+
 
     # Monthly Progress Table
     monthly_progress, sales_made = calculate_monthly_progress(filtered_df_without_seats, start_date, end_date)
@@ -414,14 +426,14 @@ def run_dashboard():
             padding: 20px 30px; /* Padding for spacing */
             border-radius: 15px; /* Curved edges */
             font-family: Impact, Arial, sans-serif; /* Bold, blocky font */
-            font-size: 30px; /* Extra-large font size */
+            font-size: 20px; /* Extra-large font size */
             font-weight: bold; /* Extra-bold text */
             text-align: center; /* Center-aligned text */
             border: 1px solid #E41B17; /* Red border */
         }}
     </style>
     <div class="custom-scroll-box">
-        <marquee behavior="scroll" direction="left" scrollamount="5">
+        <marquee behavior="scroll" direction="left" scrollamount="4">
             {scrolling_message}
         </marquee>
     </div>
