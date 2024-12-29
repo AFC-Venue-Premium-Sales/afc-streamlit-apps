@@ -414,14 +414,14 @@ def run_dashboard():
             padding: 20px 30px; /* Padding for spacing */
             border-radius: 15px; /* Curved edges */
             font-family: Impact, Arial, sans-serif; /* Bold, blocky font */
-            font-size: 48px; /* Extra-large font size */
+            font-size: 30px; /* Extra-large font size */
             font-weight: bold; /* Extra-bold text */
             text-align: center; /* Center-aligned text */
             border: 1px solid #E41B17; /* Red border */
         }}
     </style>
     <div class="custom-scroll-box">
-        <marquee behavior="scroll" direction="left" scrollamount="4">
+        <marquee behavior="scroll" direction="left" scrollamount="5">
             {scrolling_message}
         </marquee>
     </div>

@@ -2,9 +2,8 @@ import streamlit as st
 import pandas as pd
 import logging
 from io import StringIO
-import matplotlib.pyplot as plt
 
-# Configure logging to Streamlit and a log stream
+# Configure logging
 log_stream = StringIO()
 logging.basicConfig(stream=log_stream, level=logging.INFO, format="%(asctime)s - %(message)s")
 
@@ -12,89 +11,108 @@ logging.basicConfig(stream=log_stream, level=logging.INFO, format="%(asctime)s -
 def adjust_block(block):
     if isinstance(block, str) and block.startswith("C") and block[1:].isdigit():
         block_number = int(block[1:])
-        return f"{block_number} Club level"
+        return f"{block_number} Club Level"
     elif isinstance(block, str) and block.isdigit():
         block_number = int(block)
-        return f"{block_number} Club level"
+        return f"{block_number} Club Level"
     return block
 
-# Data preprocessing
+# Preprocess data
 def preprocess_data(df):
-    """Preprocess the input data: strip spaces, clean duplicates, normalize casing."""
     for col in df.select_dtypes(include=["object"]).columns:
         df[col] = df[col].map(lambda x: x.strip() if isinstance(x, str) else x)
-
     df.drop_duplicates(inplace=True)
     return df
 
-# Load Seat List and Game Category
+# Load and preprocess Seat List and Game Category
 @st.cache_data
 def load_seat_list_and_game_category(path):
-    """Load the Seat List and Game Category sheets."""
-    seat_list = pd.read_excel(path, sheet_name="Seat List")
-    game_category = pd.read_excel(path, sheet_name="Game Category")
-    seat_list.columns = seat_list.columns.str.strip().str.lower()
-    game_category.columns = game_category.columns.str.strip().str.lower()
-    seat_list["block"] = seat_list["block"].apply(adjust_block)
-    game_category["seat_value"] = pd.to_numeric(game_category["seat_value"], errors="coerce")
-    return preprocess_data(seat_list), preprocess_data(game_category)
+    try:
+        seat_list = pd.read_excel(path, sheet_name="Seat List")
+        seat_list.columns = seat_list.columns.str.strip().str.lower()
+        seat_list["block"] = seat_list["block"].apply(adjust_block)
+        seat_list = preprocess_data(seat_list)
 
-# Process TX Sales and From Hosp files
+        game_category = pd.read_excel(path, sheet_name="Game Category")
+        game_category.columns = game_category.columns.str.strip().str.lower()
+        game_category = preprocess_data(game_category)
+
+        return seat_list, game_category
+    except Exception as e:
+        st.error(f"Error loading Seat List and Game Category: {e}")
+        return None, None
+
+# Process From Hosp data
 @st.cache_data
-def process_files(tx_sales_file, from_hosp_file, seat_list, game_category):
-    """Process TX Sales and From Hosp files."""
-    cols_to_load = ["block", "row", "seat", "game_name", "game_date", "price_band", "ticket_sold_price"]
-    tx_sales_data = pd.read_excel(tx_sales_file, sheet_name="TX Sales Data", usecols=cols_to_load)
-    tx_sales_data.columns = tx_sales_data.columns.str.strip().str.replace(" ", "_").str.lower()
-    tx_sales_data["block"] = tx_sales_data["block"].apply(adjust_block)
-    tx_sales_data["ticket_sold_price"] = pd.to_numeric(tx_sales_data["ticket_sold_price"], errors="coerce")
-    tx_sales_data = preprocess_data(tx_sales_data)
+def process_from_hosp(from_hosp_file):
+    try:
+        from_hosp = pd.read_excel(from_hosp_file, sheet_name=None)
+        from_hosp_combined = pd.concat(from_hosp.values(), ignore_index=True)
+        from_hosp_combined.columns = from_hosp_combined.columns.str.strip().str.lower()
+        from_hosp_combined = preprocess_data(from_hosp_combined)
+        from_hosp_combined["row"] = pd.to_numeric(from_hosp_combined["row"], errors="coerce")
+        from_hosp_combined["seat"] = pd.to_numeric(from_hosp_combined["seat"], errors="coerce")
+        return from_hosp_combined
+    except Exception as e:
+        st.error(f"Error processing From Hosp data: {e}")
+        return None
 
-    from_hosp = pd.read_excel(from_hosp_file, sheet_name=None)
-    from_hosp_combined = pd.concat(from_hosp.values(), ignore_index=True)
-    from_hosp_combined.columns = from_hosp_combined.columns.str.strip().str.replace(" ", "_").str.lower()
-    from_hosp_combined["block"] = from_hosp_combined["block"].apply(adjust_block)
-    from_hosp_combined = from_hosp_combined[from_hosp_combined["crc_desc"].notnull()]
-    from_hosp_combined = preprocess_data(from_hosp_combined)
+# Process TX Sales data
+@st.cache_data
+def process_tx_sales(tx_sales_file):
+    try:
+        tx_sales_data = pd.read_excel(tx_sales_file, sheet_name=1)
+        tx_sales_data.columns = tx_sales_data.columns.str.strip().str.lower()
+        tx_sales_data = preprocess_data(tx_sales_data)
+        tx_sales_data["block_lower"] = tx_sales_data["block"].str.lower()
+        tx_sales_data["is_club_level"] = tx_sales_data["block_lower"].str.contains("club level", na=False)
+        return tx_sales_data
+    except Exception as e:
+        st.error(f"Error processing TX Sales data: {e}")
+        return None
 
-    # Vectorized merging for faster matching
-    tx_sales_data = tx_sales_data.merge(seat_list, how="left", on=["block", "row", "seat"])
-    tx_sales_data = tx_sales_data.merge(
-        game_category,
+# Combine and classify matches
+def classify_matches(tx_sales_data, seat_list, from_hosp_combined):
+    # Match TX Sales with predefined seats
+    tx_sales_with_seat_list = tx_sales_data.merge(seat_list, how="left", on=["block", "row", "seat"], indicator=True)
+    tx_sales_with_seat_list["matched_predefined_seats"] = tx_sales_with_seat_list["_merge"] == "both"
+    tx_sales_with_seat_list.drop(columns=["_merge"], inplace=True)
+
+    # Match TX Sales with From Hosp
+    tx_sales_with_hosp = tx_sales_data.merge(from_hosp_combined, how="left", on=["game_name", "block", "row", "seat"], indicator=True)
+    tx_sales_with_hosp["matched_from_hosp"] = tx_sales_with_hosp["_merge"] == "both"
+    tx_sales_with_hosp.drop(columns=["_merge"], inplace=True)
+
+    # Combine matches
+    combined_matches = tx_sales_with_seat_list.merge(tx_sales_with_hosp, how="outer", on=["game_name", "block", "row", "seat"], suffixes=("_seat_list", "_from_hosp"))
+
+    # Add club level only flag
+    combined_matches = combined_matches.merge(
+        tx_sales_data[["game_name", "block", "row", "seat", "is_club_level"]],
         how="left",
-        left_on=["game_name", "game_date", "price_band"],
-        right_on=["game_name", "game_date", "price_band"]
+        on=["game_name", "block", "row", "seat"]
     )
 
-    # Calculate value generated
-    tx_sales_data["value_generated"] = tx_sales_data["ticket_sold_price"] - tx_sales_data["seat_value"]
+    # Classify rows based on match source
+    def classify_source(row):
+        if row["matched_predefined_seats"] and row["matched_from_hosp"]:
+            return "Both"
+        elif row["matched_predefined_seats"]:
+            return "Predefined Only"
+        elif row["matched_from_hosp"]:
+            return "From Hosp Only"
+        elif row["is_club_level"]:
+            return "Club Level Only"
+        else:
+            return "Neither"
 
-    # Separate matched and unmatched rows
-    matched_df = tx_sales_data.dropna(subset=["seat_value"]).reset_index(drop=True)
-    missing_df = tx_sales_data[tx_sales_data["seat_value"].isna()].reset_index(drop=True)
+    combined_matches["match_source"] = combined_matches.apply(classify_source, axis=1)
+    return combined_matches
 
-    # Process From Hosp data for matching
-    release_data = []
-    for _, row in from_hosp_combined.iterrows():
-        sales_match = tx_sales_data[
-            (tx_sales_data["game_name"] == row["game_name"]) &
-            (tx_sales_data["block"] == row["block"]) &
-            (tx_sales_data["row"] == row["row"]) &
-            (tx_sales_data["seat"] == row["seat"])
-        ]
-        row["found_on_tx_file"] = "Y" if not sales_match.empty else "N"
-        row["ticket_sold_price"] = sales_match["ticket_sold_price"].values[0] if not sales_match.empty else None
-        release_data.append(row.to_dict())
-
-    release_df = pd.DataFrame(release_data).pipe(lambda df: df.loc[:, ~df.columns.duplicated()])
-
-    print("Returning values from process_files: tx_sales_data, matched_df, release_df, missing_df")
-    return tx_sales_data, matched_df, release_df, missing_df
-
-# Main Streamlit App
+# Main Streamlit app
 def run_app():
-    st.title("🏟️ AFC Hospitality Ticket Exchange Inventory Tracker")
-    
+    st.title("🏟️ Hospitality Seat Matching App")
+
     st.sidebar.title("File Uploads")
     seat_list_game_cat_path = "seat_list_game_cat.xlsx"
     tx_sales_file = st.sidebar.file_uploader("Upload TX Sales File", type=["xlsx"])
@@ -102,32 +120,48 @@ def run_app():
 
     with st.spinner("Loading Seat List and Game Category..."):
         seat_list, game_category = load_seat_list_and_game_category(seat_list_game_cat_path)
-        st.sidebar.success("Seat List and Game Category loaded successfully.")
+        if seat_list is None or game_category is None:
+            return
 
     if not tx_sales_file or not from_hosp_file:
         st.sidebar.info("Please upload all required files to proceed.")
         return
 
     with st.spinner("Processing files..."):
-        print("Unpacking values from process_files...")
-        tx_sales_data, matched_df, release_df, missing_df = process_files(tx_sales_file, from_hosp_file, seat_list, game_category)
+        tx_sales_data = process_tx_sales(tx_sales_file)
+        from_hosp_combined = process_from_hosp(from_hosp_file)
+        if tx_sales_data is None or from_hosp_combined is None:
+            return
 
-    # Metrics
-    st.sidebar.markdown("### Metrics")
-    total_matched = len(matched_df)
-    total_missing = len(missing_df)
+        combined_matches = classify_matches(tx_sales_data, seat_list, from_hosp_combined)
 
-    st.sidebar.metric("Total Matched Rows", total_matched)
-    st.sidebar.metric("Total Missing Rows", total_missing)
+    # Separate outputs
+    predefined_only = combined_matches[combined_matches["match_source"] == "Predefined Only"]
+    from_hosp_only = combined_matches[combined_matches["match_source"] == "From Hosp Only"]
+    both_matches = combined_matches[combined_matches["match_source"] == "Both"]
+    club_level_only = combined_matches[combined_matches["match_source"] == "Club Level Only"]
+    neither_matches = combined_matches[combined_matches["match_source"] == "Neither"]
 
-    # Display DataFrames
-    st.markdown("### Matched Data")
-    st.dataframe(matched_df.head(100))  # Display the first 100 rows for performance
-    st.download_button("Download Matched Data", matched_df.to_csv(index=False), "matched_data.csv")
+    # Display results
+    st.markdown("### Predefined Club Level Seats Only")
+    st.dataframe(predefined_only.head(100))
+    st.download_button("Download Predefined Only", predefined_only.to_csv(index=False), "predefined_only.csv")
 
-    st.markdown("### Missing Data")
-    st.dataframe(missing_df.head(100))  # Display the first 100 rows for performance
-    st.download_button("Download Missing Data", missing_df.to_csv(index=False), "missing_data.csv")
+    st.markdown("### From Hosp Seats Only")
+    st.dataframe(from_hosp_only.head(100))
+    st.download_button("Download From Hosp Only", from_hosp_only.to_csv(index=False), "from_hosp_only.csv")
+
+    st.markdown("### Both (Predefined + From Hosp)")
+    st.dataframe(both_matches.head(100))
+    st.download_button("Download Both Matches", both_matches.to_csv(index=False), "both_matches.csv")
+
+    st.markdown("### Club Level Seats Only (Not Predefined)")
+    st.dataframe(club_level_only.head(100))
+    st.download_button("Download Club Level Only", club_level_only.to_csv(index=False), "club_level_only.csv")
+
+    st.markdown("### Neither Matches")
+    st.dataframe(neither_matches.head(100))
+    st.download_button("Download Neither Matches", neither_matches.to_csv(index=False), "neither_matches.csv")
 
 if __name__ == "__main__":
     run_app()
