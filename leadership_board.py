@@ -403,27 +403,29 @@ def run_dashboard():
     scrolling_message = generate_scrolling_messages(filtered_df_without_seats, budget_df)
 
     st.markdown(
-        f"""
-        <div style="
-            overflow: hidden;
-            white-space: nowrap;
-            width: 100%;
-            background-color: #fff0f0; /* Soft pastel pink background */
-            color: #E41B17; /* Arsenal red font color */
-            padding: 20px 30px; /* Padding for spacing */
-            border-radius: 15px; /* Curved edges */
-            font-family: Arial, sans-serif; /* Simple sans-serif font */
-            font-size: 32px; /* Big font size */
-            font-weight: bold; /* Bold text */
-            text-align: center; /* Center-aligned text */
-            border: 1px solid #E41B17; /* Red border */
-            <marquee behavior="scroll" direction="left" scrollamount="4">
-                {scrolling_message}
-            </marquee>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    f"""
+    <div style="
+        overflow: hidden;
+        white-space: nowrap;
+        width: 100%;
+        background-color: #fff0f0; /* Soft pastel pink background */
+        color: #E41B17; /* Arsenal red font color */
+        padding: 20px 30px; /* Padding for spacing */
+        border-radius: 15px; /* Curved edges */
+        font-family: Arial, sans-serif; /* Simple sans-serif font */
+        font-size: 32px; /* Big font size */
+        font-weight: bold; /* Bold text */
+        text-align: center; /* Center-aligned text */
+        border: 1px solid #E41B17; /* Red border */
+    ">
+        <marquee behavior="scroll" direction="left" scrollamount="4">
+            {scrolling_message}
+        </marquee>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
 
 
 # # Latest Sale Information
