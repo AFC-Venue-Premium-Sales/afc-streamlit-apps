@@ -404,20 +404,23 @@ def run_dashboard():
 
     st.markdown(
     f"""
-    <div style="
-        overflow: hidden;
-        white-space: nowrap;
-        width: 100%;
-        background-color: #fff0f0; /* Soft pastel pink background */
-        color: #E41B17; /* Arsenal red font color */
-        padding: 20px 30px; /* Padding for spacing */
-        border-radius: 15px; /* Curved edges */
-        font-family: Arial, sans-serif; /* Simple sans-serif font */
-        font-size: 32px; /* Big font size */
-        font-weight: bold; /* Bold text */
-        text-align: center; /* Center-aligned text */
-        border: 1px solid #E41B17; /* Red border */
-    ">
+    <style>
+        .custom-scroll-box {{
+            overflow: hidden;
+            white-space: nowrap;
+            width: 100%;
+            background-color: #fff0f0; /* Soft pastel pink background */
+            color: #E41B17; /* Arsenal red font color */
+            padding: 20px 30px; /* Padding for spacing */
+            border-radius: 15px; /* Curved edges */
+            font-family: Impact, Arial, sans-serif; /* Bold, blocky font */
+            font-size: 48px; /* Extra-large font size */
+            font-weight: bold; /* Extra-bold text */
+            text-align: center; /* Center-aligned text */
+            border: 1px solid #E41B17; /* Red border */
+        }}
+    </style>
+    <div class="custom-scroll-box">
         <marquee behavior="scroll" direction="left" scrollamount="4">
             {scrolling_message}
         </marquee>
@@ -425,6 +428,7 @@ def run_dashboard():
     """,
     unsafe_allow_html=True
 )
+
 
 
 
