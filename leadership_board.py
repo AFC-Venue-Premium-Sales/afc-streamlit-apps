@@ -91,6 +91,19 @@ def calculate_monthly_progress(data, start_date, end_date):
     if (current_month, current_year) not in targets_data.index:
         return None, []
 
+    # Count sales for each executive
+    sales_count = (
+        filtered_data.groupby("CreatedBy")["Price"]
+        .count()  # Count number of sales
+        .reindex(targets_data.columns, fill_value=0)
+    )
+
+    # Add 💰 symbols for each sale
+    sales_indicators = {
+        name: " ".join(["💰"] * count) if count > 0 else ""
+        for name, count in sales_count.items()
+    }
+
     progress = (
         filtered_data.groupby("CreatedBy")["Price"]
         .sum()
@@ -100,7 +113,9 @@ def calculate_monthly_progress(data, start_date, end_date):
     monthly_targets = targets_data.loc[(current_month, current_year)]
 
     progress_data = pd.DataFrame({
-        "Premium Executive": progress.index,
+        "Premium Executive": [
+            f"{name} {sales_indicators[name]}" for name in progress.index
+        ],
         "Current Revenue": progress.values,
         "Target": monthly_targets.values,
         "Variance": (progress - monthly_targets).values,
@@ -180,7 +195,6 @@ def generate_scrolling_messages(data, budget_df):
 
     # Latest Sale
     latest_sale = data.sort_values(by="CreatedOn", ascending=False).head(1)
-
     if not latest_sale.empty:
         source = latest_sale["SaleLocation"].iloc[0].lower() if pd.notna(latest_sale["SaleLocation"].iloc[0]) else "Unknown"
         created_by = latest_sale["CreatedBy"].iloc[0] if pd.notna(latest_sale["CreatedBy"].iloc[0]) else "Unknown"
@@ -202,17 +216,16 @@ def generate_scrolling_messages(data, budget_df):
         latest_sale_message = "🚫 No recent sales to display."
 
     # Next Fixture Section
-    fixture_name, fixture_date, budget_target = get_next_fixture(filtered_df_without_seats, budget_df)
-
+    fixture_name, fixture_date, budget_target, event_competition = get_next_fixture(filtered_df_without_seats, budget_df)
     if fixture_name:
         days_to_fixture = (fixture_date - datetime.now()).days
         fixture_revenue = filtered_df_without_seats[
             filtered_df_without_seats["Fixture Name"] == fixture_name
         ]["Price"].sum()
         budget_achieved = round((fixture_revenue / budget_target) * 100, 2) if budget_target > 0 else 0
+        fixture_display = f"{fixture_name} ({event_competition})"
         next_fixture_message = (
-            f"🏟️ Next Fixture: {fixture_name} in {days_to_fixture} days "
-            f"🎯 Budget Target Achieved: {budget_achieved}%."
+            f"🏟️ Next Fixture: {fixture_display} in {days_to_fixture} days 🎯 Budget Target Achieved: {budget_achieved}%."
         )
     else:
         next_fixture_message = "⚠️ No upcoming fixtures to display."
@@ -236,6 +249,7 @@ def generate_scrolling_messages(data, budget_df):
 
     # Combine all messages
     return f"{latest_sale_message} | {next_fixture_message} | {top_fixture_message} | {top_executive_message}"
+
 
 
 
