@@ -203,22 +203,37 @@ def generate_scrolling_messages(data, budget_df):
 
 
 def get_next_fixture(data, budget_df):
+    # Ensure KickOffEventStart is a proper datetime
     data["KickOffEventStart"] = pd.to_datetime(data["KickOffEventStart"], errors="coerce")
-    today = datetime.now()
-    next_fixture = data[data["KickOffEventStart"] > today].sort_values("KickOffEventStart").head(1)
 
-    if next_fixture.empty:
+    # Aggregate at the fixture level
+    aggregated_data = data.groupby(["Fixture Name", "KickOffEventStart"], as_index=False).agg({"Price": "sum"})
+    print("Aggregated Data (Debug):", aggregated_data)
+
+    # Get today's date
+    today = datetime.now()
+
+    # Filter for future fixtures
+    future_fixtures = aggregated_data[aggregated_data["KickOffEventStart"] > today].sort_values("KickOffEventStart")
+    print("Filtered Future Fixtures (Debug):", future_fixtures)
+
+    # Check if there are any future fixtures
+    if future_fixtures.empty:
         return None, None, None
 
+    # Get the next fixture
+    next_fixture = future_fixtures.head(1)
     fixture_name = next_fixture["Fixture Name"].iloc[0]
     fixture_date = next_fixture["KickOffEventStart"].iloc[0]
-    budget_target = budget_df.loc[budget_df["Fixture Name"] == fixture_name, "Budget Target"].values
+    print("Next Fixture Selected:", fixture_name, fixture_date)
 
-    return (
-        fixture_name,
-        fixture_date,
-        budget_target[0] if len(budget_target) > 0 else 0,
-    )
+    # Retrieve budget target
+    budget_target = budget_df.loc[budget_df["Fixture Name"] == fixture_name, "Budget Target"].values
+    budget_target = budget_target[0] if len(budget_target) > 0 else 0
+    print("Budget Target for Fixture:", fixture_name, budget_target)
+
+    return fixture_name, fixture_date, budget_target
+
 
 # Get the latest sale made
 def get_latest_sale(data):
