@@ -140,59 +140,37 @@ def get_next_fixture(data, budget_df):
     # Ensure KickOffEventStart is a proper datetime
     data["KickOffEventStart"] = pd.to_datetime(data["KickOffEventStart"], errors="coerce")
 
-    # Debug: Raw data before filtering
-    print("Raw Data (Before Filtering):")
-    print(data[["Fixture Name", "KickOffEventStart", "Price"]])
-
-    # Filter for future fixtures
+    # Filter for valid future fixtures
     today = datetime.now()
     future_data = data[data["KickOffEventStart"] > today]
 
-    # Debug: Future fixtures after filtering
-    print("Future Data (After Filtering):")
-    print(future_data[["Fixture Name", "KickOffEventStart", "Price"]])
+    # Group and aggregate data
+    aggregated_data = (
+        future_data.groupby("Fixture Name", as_index=False)
+        .agg({
+            "KickOffEventStart": "min",  # Earliest kickoff time
+            "Price": "sum",             # Total price
+            "EventCompetition": "first" # First occurrence of Event Competition
+        })
+        .sort_values("KickOffEventStart", ascending=True)  # Sort by earliest kickoff
+    )
 
-    # Aggregate data to get the earliest kickoff time and total price
-    aggregated_data = future_data.groupby("Fixture Name", as_index=False).agg({
-        "KickOffEventStart": "min",  # Take the earliest kickoff time
-        "Price": "sum"              # Sum the price (total revenue)
-    })
-
-    # Debug: Aggregated data after grouping
-    print("Aggregated Data:")
-    print(aggregated_data)
-
-    # Sort by the earliest kickoff time
-    aggregated_data = aggregated_data.sort_values(by="KickOffEventStart", ascending=True)
-
-    # Debug: Sorted fixtures
-    print("Sorted Fixtures:")
-    print(aggregated_data)
-
-    # Select the next fixture
+    # Check if there are any future fixtures
     if not aggregated_data.empty:
+        # Select the next fixture
         next_fixture = aggregated_data.iloc[0]
         fixture_name = next_fixture["Fixture Name"]
         fixture_date = next_fixture["KickOffEventStart"]
+        event_competition = next_fixture["EventCompetition"]
 
-        # Retrieve budget target
-        budget_target = budget_df.loc[budget_df["Fixture Name"] == fixture_name, "Budget Target"].values
-        budget_target = budget_target[0] if len(budget_target) > 0 else 0
+        # Retrieve the budget target for the selected fixture
+        budget_target_row = budget_df[budget_df["Fixture Name"] == fixture_name]
+        budget_target = budget_target_row["Budget Target"].iloc[0] if not budget_target_row.empty else 0
 
-        # Debug: Selected fixture and budget target
-        print("Next Fixture Selected:", fixture_name, fixture_date)
-        print("Budget Target for Fixture:", budget_target)
-
-        return fixture_name, fixture_date, budget_target
+        return fixture_name, fixture_date, budget_target, event_competition
 
     # If no future fixtures are found
-    return None, None, None
-
-
-
-
-
-
+    return None, None, None, None
 
 
 def generate_scrolling_messages(data, budget_df):
@@ -233,7 +211,7 @@ def generate_scrolling_messages(data, budget_df):
         ]["Price"].sum()
         budget_achieved = round((fixture_revenue / budget_target) * 100, 2) if budget_target > 0 else 0
         next_fixture_message = (
-            f"🏟️ Next Fixture: {fixture_name} in {days_to_fixture} days. "
+            f"🏟️ Next Fixture: {fixture_name} in {days_to_fixture} days "
             f"🎯 Budget Target Achieved: {budget_achieved}%."
         )
     else:
@@ -392,7 +370,7 @@ def run_dashboard():
         )
 
     # Next Fixture Section
-    fixture_name, fixture_date, budget_target = get_next_fixture(filtered_df_without_seats, budget_df)
+    fixture_name, fixture_date, budget_target, event_competition = get_next_fixture(filtered_df_without_seats, budget_df)
 
     if fixture_name:
         # Calculate days to fixture
@@ -405,6 +383,9 @@ def run_dashboard():
 
         # Calculate budget achieved
         budget_achieved = round((fixture_revenue / budget_target) * 100, 2) if budget_target > 0 else 0
+
+        # Combine Fixture Name and Event Competition
+        fixture_display = f"{fixture_name} ({event_competition})"
 
         # Render the next fixture details in the sidebar
         st.sidebar.markdown(
@@ -419,7 +400,7 @@ def run_dashboard():
                 font-family: Arial, sans-serif;
             ">
                 <h4 style="color: #E41B17; font-size: 20px; font-weight: bold;">🏟️ Next Fixture</h4>
-                <p style="font-size: 16px; color: #0047AB; font-weight: bold;">{fixture_name}</p>
+                <p style="font-size: 16px; color: #0047AB; font-weight: bold;">{fixture_display}</p>
                 <p style="font-size: 16px; color: #0047AB;">⏳ Days to Fixture:</p>
                 <p style="font-size: 18px; color: #0047AB; font-weight: bold;">{days_to_fixture} days</p>
                 <p style="font-size: 16px; color: #0047AB;">🎯 Budget Target Achieved:</p>
@@ -429,11 +410,11 @@ def run_dashboard():
             unsafe_allow_html=True
         )
     else:
-    # Render no fixture message in the sidebar
         st.sidebar.markdown(
             "<div style='color: #E41B17; font-weight: bold; font-family: Arial, sans-serif;'>⚠️ No upcoming fixtures found.</div>",
             unsafe_allow_html=True
         )
+
         
     # Monthly Progress Table
     monthly_progress, sales_made = calculate_monthly_progress(filtered_df_without_seats, start_date, end_date)
