@@ -423,7 +423,7 @@ def run_dashboard():
             width: 100%;
             background-color: #fff0f0; /* Soft pastel pink background */
             color: #E41B17; /* Arsenal red font color */
-            padding: 20px 30px; /* Padding for spacing */
+            padding: 15px 20px; /* Padding for spacing */
             border-radius: 15px; /* Curved edges */
             font-family: Impact, Arial, sans-serif; /* Bold, blocky font */
             font-size: 20px; /* Extra-large font size */
