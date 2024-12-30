@@ -348,29 +348,42 @@ def run_dashboard():
         unsafe_allow_html=True
     )
 
-    # Sidebar: Auto-refresh
-    refresh_time = auto_refresh()
+    # # Sidebar: Auto-refresh
+    # refresh_time = auto_refresh()
+    # st.sidebar.markdown(
+    #     f"""
+    #     <div style="
+    #         background-color: #d4edda; /* Soft green */
+    #         border: 1px solid #c3e6cb; /* Light green border */
+    #         border-radius: 8px; /* Rounded corners */
+    #         padding: 10px;
+    #         margin-bottom: 20px; /* Add spacing below the widget */
+    #         font-family: Arial, sans-serif;
+    #         font-size: 14px;
+    #         color: #155724; /* Dark green text */
+    #         text-align: center;
+    #     ">
+    #         <strong>Latest Data Update:</strong> {refresh_time}
+    #     </div>
+    #     """,
+    #     unsafe_allow_html=True
+    # )
+
+   # Sidebar: Date Range Filter
     st.sidebar.markdown(
-        f"""
+        """
         <div style="
-            background-color: #d4edda; /* Soft green */
-            border: 1px solid #c3e6cb; /* Light green border */
-            border-radius: 8px; /* Rounded corners */
-            padding: 10px;
-            margin-bottom: 20px; /* Add spacing below the widget */
-            font-family: Arial, sans-serif;
-            font-size: 14px;
-            color: #155724; /* Dark green text */
-            text-align: center;
-        ">
-            <strong>Latest Data Update:</strong> {refresh_time}
+            text-align: center; 
+            font-family: Arial, sans-serif; 
+            font-size: 18px; 
+            font-weight: bold; 
+            color: #2c3e50; 
+            margin-bottom: 10px;">
+            Date Range Filter
         </div>
         """,
         unsafe_allow_html=True
     )
-
-    # Sidebar: Date Range Filter
-    st.sidebar.markdown("### Date Range Filter")
     col1, col2 = st.sidebar.columns(2)
     start_date = col1.date_input("Start Date", value=datetime.now().replace(day=1), label_visibility="collapsed")
     end_date = col2.date_input("End Date", value=datetime.now(), label_visibility="collapsed")
@@ -388,16 +401,12 @@ def run_dashboard():
             font-weight: bold; /* Match weight */
             color: #E41B17; /* Match font color */
         ">
-            🛒 Total Sales <br>
-            <span style="font-size: 22px; color: #E41B17; text-align: center; font-weight: bold;">Since Go Live:</span><br>
+            <span style="font-size: 22px; color: #E41B17; text-align: center; font-weight: bold;">🛒 Sales To Date:</span><br>
             <span style="font-size: 24px; color: #E41B17; text-align: center; font-weight: bold;">£{total_sales:,.0f}</span>
         </div>
         """,
         unsafe_allow_html=True
     )
-
-
-
     
     # Premium Monthly Progress Section
     total_revenue, total_target, progress_percentage = calculate_overall_progress(filtered_df_without_seats, start_date, end_date)
@@ -500,8 +509,28 @@ def run_dashboard():
             """,
             unsafe_allow_html=True
         )
-
         
+        
+    # Sidebar: Auto-refresh
+    refresh_time = auto_refresh()
+    st.sidebar.markdown(
+        f"""
+        <div style="
+            background-color: #d4edda; /* Soft green */
+            border: 1px solid #c3e6cb; /* Light green border */
+            border-radius: 8px; /* Rounded corners */
+            padding: 10px;
+            margin-bottom: 20px; /* Add spacing below the widget */
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            color: #155724; /* Dark green text */
+            text-align: center;
+        ">
+            <strong>Latest Data Update:</strong> {refresh_time}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
         
     # Monthly Progress Table
     monthly_progress, sales_made = calculate_monthly_progress(filtered_df_without_seats, start_date, end_date)
