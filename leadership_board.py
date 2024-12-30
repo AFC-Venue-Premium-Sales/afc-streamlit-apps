@@ -383,14 +383,14 @@ def run_dashboard():
             background-color: #fff0f0; /* Soft pastel pink background */
             border: 2px solid #E41B17; /* Arsenal red solid border */
             border-radius: 15px; /* Match the scroll message's curved edges */
-            padding: 15px 20px; /* Match padding of the scroll message */
+            padding: 20px; /* Center the text vertically and horizontally */
             margin-bottom: 20px;
-            text-align: center;
             font-family: Arial, sans-serif;
+            text-align: center; /* Center align all content */
         ">
             <h4 style="color: #0047AB; font-size: 24px; font-weight: bold;">🛒 Total Sales</h4>
-            <p style="font-size: 16px; color: #E41B17; font-weight: bold;">Overall Sales Since Go Live:</p>
-            <p style="font-size: 22px; color: #E41B17; font-weight: bold;">£{total_sales:,.0f}</p>
+            <p style="font-size: 18px; color: #E41B17; font-weight: bold;">Overall Sales Since Go Live:</p>
+            <p style="font-size: 26px; color: #E41B17; font-weight: bold;">£{total_sales:,.0f}</p>
         </div>
         """,
         unsafe_allow_html=True
@@ -405,10 +405,10 @@ def run_dashboard():
                 background-color: #fff0f0; /* Light pastel pink background */
                 border: 2px solid #E41B17; /* Arsenal red solid border */
                 border-radius: 15px; /* Rounded edges */
-                padding: 15px;
+                padding: 20px; /* Center the text vertically and horizontally */
                 margin-bottom: 20px;
-                text-align: center;
                 font-family: Arial, sans-serif;
+                text-align: center; /* Center align all content */
             ">
                 <p style="color: #E41B17; font-size: 18px; font-weight: bold;">⚠️ Selected date range is out of bounds for available targets.</p>
             </div>
@@ -422,18 +422,18 @@ def run_dashboard():
                 background-color: #fff0f0; /* Light pastel pink background */
                 border: 2px solid #E41B17; /* Arsenal red solid border */
                 border-radius: 15px; /* Rounded edges for consistency */
-                padding: 15px 20px; /* Match padding of the scroll message */
+                padding: 20px; /* Center the text vertically and horizontally */
                 margin-bottom: 20px;
-                text-align: center;
                 font-family: Arial, sans-serif;
+                text-align: center; /* Center align all content */
             ">
                 <h4 style="color: #0047AB; font-size: 24px; font-weight: bold;">📊 Premium Monthly Progress</h4>
-                <p style="font-size: 16px; color: #0047AB;">Total Revenue ({start_date.strftime("%B")}):</p>
-                <p style="font-size: 22px; color: #E41B17; font-weight: bold;">£{total_revenue:,.0f}</p>
-                <p style="font-size: 16px; color: #0047AB;">Total Target:</p>
-                <p style="font-size: 22px; color: #E41B17; font-weight: bold;">£{total_target:,.0f}</p>
-                <p style="font-size: 16px; color: #0047AB;">🌟 Progress Achieved:</p>
-                <p style="font-size: 22px; color: #E41B17; font-weight: bold;">{progress_percentage:.0f}%</p>
+                <p style="font-size: 18px; color: #0047AB;">Total Revenue ({start_date.strftime("%B")}):</p>
+                <p style="font-size: 26px; color: #E41B17; font-weight: bold;">£{total_revenue:,.0f}</p>
+                <p style="font-size: 18px; color: #0047AB;">Total Target:</p>
+                <p style="font-size: 26px; color: #E41B17; font-weight: bold;">£{total_target:,.0f}</p>
+                <p style="font-size: 18px; color: #0047AB;">🌟 Progress Achieved:</p>
+                <p style="font-size: 26px; color: #E41B17; font-weight: bold;">{progress_percentage:.0f}%</p>
             </div>
             """,
             unsafe_allow_html=True
@@ -454,17 +454,17 @@ def run_dashboard():
                 background-color: #fff0f0; /* Light pastel pink background */
                 border: 2px solid #E41B17; /* Arsenal red solid border */
                 border-radius: 15px; /* Rounded edges for consistency */
-                padding: 15px 20px; /* Match padding of the scroll message */
+                padding: 20px; /* Center the text vertically and horizontally */
                 margin-bottom: 20px;
-                text-align: center;
                 font-family: Arial, sans-serif;
+                text-align: center; /* Center align all content */
             ">
                 <h4 style="color: #0047AB; font-size: 24px; font-weight: bold;">🏟️ Next Fixture</h4>
                 <p style="font-size: 18px; color: #E41B17; font-weight: bold;">{fixture_display}</p>
-                <p style="font-size: 16px; color: #0047AB;">⏳ Days to Fixture:</p>
-                <p style="font-size: 22px; color: #E41B17; font-weight: bold;">{days_to_fixture} days</p>
-                <p style="font-size: 16px; color: #0047AB;">🎯 Budget Target Achieved:</p>
-                <p style="font-size: 22px; color: #E41B17; font-weight: bold;">{budget_achieved}%</p>
+                <p style="font-size: 18px; color: #0047AB;">⏳ Days to Fixture:</p>
+                <p style="font-size: 26px; color: #E41B17; font-weight: bold;">{days_to_fixture} days</p>
+                <p style="font-size: 18px; color: #0047AB;">🎯 Budget Target Achieved:</p>
+                <p style="font-size: 26px; color: #E41B17; font-weight: bold;">{budget_achieved}%</p>
             </div>
             """,
             unsafe_allow_html=True
@@ -476,37 +476,16 @@ def run_dashboard():
                 background-color: #fff0f0; /* Light pastel pink background */
                 border: 2px solid #E41B17; /* Arsenal red solid border */
                 border-radius: 15px; /* Rounded edges for consistency */
-                padding: 15px 20px; /* Match padding of the scroll message */
+                padding: 20px; /* Center the text vertically and horizontally */
                 margin-bottom: 20px;
-                text-align: center;
                 font-family: Arial, sans-serif;
+                text-align: center; /* Center align all content */
             ">
                 <p style="font-size: 18px; color: #E41B17; font-weight: bold;">⚠️ No upcoming fixtures found.</p>
             </div>
             """,
             unsafe_allow_html=True
         )
-
-    # Monthly Progress Table
-    monthly_progress, sales_made = calculate_monthly_progress(filtered_df_without_seats, start_date, end_date)
-    if monthly_progress is not None:
-        st.markdown("<h3 style='color:#E41B17; text-align:center;'>Monthly Premium Leaderboard</h3>", unsafe_allow_html=True)
-        st.markdown(
-            f"""
-            <div style="
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                margin-top: 20px;
-                margin-bottom: 20px;
-            ">
-                {monthly_progress.to_html(escape=False, index=False)}
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-    else:
-        st.warning("Monthly Progress data not available for the selected date range.")
 
     # Scrolling Message Section
     scrolling_message = generate_scrolling_messages(filtered_df_without_seats, budget_df)
