@@ -170,15 +170,25 @@ def generate_scrolling_messages(data, budget_df):
 
     # Next Fixture
     fixture_name, fixture_date, budget_target = get_next_fixture(data, budget_df)
+
     if fixture_name:
+        # Calculate days to fixture
         days_to_fixture = (fixture_date - datetime.now()).days
-        fixture_revenue = data[data["KickOffEventStart"] == fixture_date]["Price"].sum()
+
+        # Aggregate fixture revenue by summing 'Price' for the specific fixture
+        fixture_revenue = data[data["Fixture Name"] == fixture_name]["Price"].sum()
+
+        # Calculate remaining budget
         remaining_budget = budget_target - fixture_revenue
+
+        # Generate the next fixture message
         next_fixture_message = (
-            f"Next Fixture: {fixture_name} in {days_to_fixture} days. Remaining Budget: £{remaining_budget:,.2f}."
+            f"Next Fixture: {fixture_name} in {days_to_fixture} days. "
+            f"Remaining Budget: £{remaining_budget:,.2f}."
         )
     else:
         next_fixture_message = "No upcoming fixtures to display."
+
 
     # Top Fixture of the Day
     today_sales = data[data["CreatedOn"].dt.date == datetime.now().date()]
