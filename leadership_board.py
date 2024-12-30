@@ -380,9 +380,6 @@ def run_dashboard():
     st.sidebar.markdown(
         f"""
         <div style="
-            background-color: #fff0f0; /* Light pastel pink background */
-            border: 3px solid #E41B17; /* Arsenal red solid border */
-            border-radius: 15px; /* Rounded edges for consistency */
             padding: 20px 15px; /* Match padding of the other widgets */
             margin-bottom: 30px; /* Space between widgets */
             text-align: center; /* Center align all text */
@@ -466,6 +463,7 @@ def run_dashboard():
                 background-color: #fff0f0;
                 border: 2px solid #E41B17;
                 border-radius: 15px;
+                margin-top: 10px;
                 padding: 20px 15px;
                 text-align: center;
                 font-family: Impact, Arial, sans-serif;
@@ -514,7 +512,7 @@ def run_dashboard():
             <div style="
                 padding: 15px; 
                 font-family: Impact, Arial, sans-serif; 
-                font-size: 28px; 
+                font-size: 36px; 
                 font-weight: bold; 
                 color: #E41B17; 
                 text-align: center;">
