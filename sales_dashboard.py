@@ -92,10 +92,6 @@ def display_sidebar_summary(filtered_data, budget_df):
         top_package = today_data.groupby("Package Name")["Price"].sum().idxmax()
         st.sidebar.metric("Most Sold Package", top_package)
 
-        top_user = today_data.groupby("CreatedBy")["Price"].sum().idxmax()
-        top_user_sales = today_data.groupby("CreatedBy")["Price"].sum().max()
-        st.sidebar.metric("Top User", f"{top_user} (£{top_user_sales:,.2f})")
-
     filtered_data["KickOffEventStart"] = pd.to_datetime(filtered_data["KickOffEventStart"], errors="coerce")
     next_fixtures = filtered_data[filtered_data["KickOffEventStart"] > datetime.now()].sort_values("KickOffEventStart")
 
@@ -126,6 +122,7 @@ def run_app():
         - **Filters**: Use the filters to adjust the data displayed:
           - **Date Range (Monthly)**: Displays data for the selected date range, typically spanning a month or multiple months. This range updates all metrics, tables, and charts.
           - **Date Range (Daily)**: Allows you to focus on sales for a specific day or range of days within the selected month. Useful for tracking daily performance.
+          - **Fixture Filter**: Focus on specific fixtures by selecting from the available list.
           - **Select Users**: Highlight data for specific users or team members.
         - **Summary for Today**: Displays key metrics like total sales, top-selling games and packages, and the next fixture information.
         - **Tables**: Shows detailed performance metrics for the Sales and Services teams.
@@ -168,28 +165,25 @@ def run_app():
     st.sidebar.header("Filters")
     specified_users = ["bgardiner", "dcoppin", "jedwards", "MillieS", "dmontague", 
                        "MeganS", "BethNW", "HayleyA", "jmurphy", "BenT", "ayildirim"]
-    selected_date_range_monthly = st.sidebar.date_input("Date Range (Monthly)", value=(start_of_month, today))
-    selected_date_range_daily = st.sidebar.date_input("Date Range (Daily)", value=today)
+    selected_fixture = st.sidebar.multiselect("Filter by Fixture", options=filtered_df_without_seats["Fixture Name"].unique(),
+                                              default=filtered_df_without_seats["Fixture Name"].unique())
+    selected_date_range = st.sidebar.date_input("Date Range", value=(start_of_month, today))
     selected_users = st.sidebar.multiselect("Select Users", options=specified_users, default=specified_users)
 
     # Apply filters
     filtered_data = filtered_df_without_seats.copy()
     if selected_users:
         filtered_data = filtered_data[filtered_data["CreatedBy"].isin(selected_users)]
-    if selected_date_range_monthly:
+    if selected_fixture:
+        filtered_data = filtered_data[filtered_data["Fixture Name"].isin(selected_fixture)]
+    if selected_date_range:
         filtered_data = filtered_data[
-            (pd.to_datetime(filtered_data["PaymentTime"], format="%d-%m-%Y %H:%M", errors="coerce") >= pd.to_datetime(selected_date_range_monthly[0])) &
-            (pd.to_datetime(filtered_data["PaymentTime"], format="%d-%m-%Y %H:%M", errors="coerce") <= pd.to_datetime(selected_date_range_monthly[1]))
-        ]
-    daily_filtered_data = filtered_data.copy()
-    if selected_date_range_daily:
-        daily_filtered_data = daily_filtered_data[
-            (pd.to_datetime(daily_filtered_data["PaymentTime"], format="%d-%m-%Y %H:%M", errors="coerce") >= pd.to_datetime(selected_date_range_daily[0])) &
-            (pd.to_datetime(daily_filtered_data["PaymentTime"], format="%d-%m-%Y %H:%M", errors="coerce") <= pd.to_datetime(selected_date_range_daily[1]))
+            (pd.to_datetime(filtered_data["PaymentTime"], format="%d-%m-%Y %H:%M", errors="coerce") >= pd.to_datetime(selected_date_range[0])) &
+            (pd.to_datetime(filtered_data["PaymentTime"], format="%d-%m-%Y %H:%M", errors="coerce") <= pd.to_datetime(selected_date_range[1]))
         ]
 
     # Display Sidebar Summary
-    display_sidebar_summary(daily_filtered_data, budget_df)
+    display_sidebar_summary(filtered_data, budget_df)
 
     # Team Members
     sales_team = ["bgardiner", "dcoppin", "jedwards", "MillieS", "dmontague"]
