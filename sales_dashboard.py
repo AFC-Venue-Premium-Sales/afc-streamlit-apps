@@ -12,7 +12,7 @@ try:
     if filtered_df_without_seats is None:
         raise ImportError("filtered_df_without_seats is not available in tjt_hosp_api.")
 except ImportError as e:
-    st.error(f"Error importing tjt_hosp_api: {e}")
+    st.error(f"❌ Error importing tjt_hosp_api: {e}")
     filtered_df_without_seats = None
 
 # Define monthly targets
@@ -41,10 +41,10 @@ def load_budget_targets():
         return budget_df
     except FileNotFoundError:
         st.error(f"Budget file not found at {file_path}. Ensure it is correctly placed.")
-        raise
+        return pd.DataFrame()
     except Exception as e:
         st.error(f"An error occurred while loading the budget file: {e}")
-        raise
+        return pd.DataFrame()
 
 # Helper Functions
 def calculate_metrics(filtered_data, targets, team_members, working_days_so_far, remaining_working_days):
@@ -72,7 +72,7 @@ def calculate_metrics(filtered_data, targets, team_members, working_days_so_far,
     return pd.DataFrame(results)
 
 def display_sidebar_summary(filtered_data, budget_df):
-    st.sidebar.header("Summary for Today")
+    st.sidebar.header("📊 Summary for Today")
     today = datetime.now().date()
     filtered_data["PaymentTime"] = pd.to_datetime(filtered_data["PaymentTime"], format="%d-%m-%Y %H:%M", errors="coerce")
     today_data = filtered_data[filtered_data["PaymentTime"].dt.date == today]
@@ -113,30 +113,12 @@ def display_sidebar_summary(filtered_data, budget_df):
 def run_app():
     st.title("AFC Sales Dashboard")
 
-    with st.expander("About This Dashboard"):
-        st.write("""
-        This dashboard provides real-time updates on sales and services performance for the AFC Hospitality team. It helps track progress towards monthly and daily targets, providing valuable insights into sales trends and team performance.
-        """)
-        st.write("""
-        **How to Use This Dashboard:**
-        - **Filters**: Use the filters to adjust the data displayed:
-          - **Date Range (Monthly)**: Displays data for the selected date range, typically spanning a month or multiple months. This range updates all metrics, tables, and charts.
-          - **Date Range (Daily)**: Allows you to focus on sales for a specific day or range of days within the selected month. Useful for tracking daily performance.
-          - **Fixture Filter**: Focus on specific fixtures by selecting from the available list.
-          - **Select Users**: Highlight data for specific users or team members.
-        - **Summary for Today**: Displays key metrics like total sales, top-selling games and packages, and the next fixture information.
-        - **Tables**: Shows detailed performance metrics for the Sales and Services teams.
-        - **Team Progress Chart**: A visual representation of revenue achieved versus targets for both teams.
-        """)
-        st.write("""
-        **Tips for Analysis:**
-        - Compare individual and team performance using the filters.
-        - Analyze daily sales trends by adjusting the date range (daily) filter.
-        - Use the "Next Fixture" and "Budget Target" metrics to monitor upcoming opportunities.
-        """)
+    with st.expander("ℹ️ About This Dashboard"):
+        st.write("This dashboard provides real-time updates on sales performance.")
+        st.write("**How to Use:** View metrics and performance insights.")
 
     if filtered_df_without_seats is None:
-        st.error("No data available to display. Please check the API.")
+        st.error("No data available to display.")
         return
 
     budget_df = load_budget_targets()
