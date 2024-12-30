@@ -329,7 +329,7 @@ def auto_refresh():
     st.session_state["refresh_log"] = st.session_state.get("refresh_log", [])
     st.session_state["refresh_log"].append(f"Auto-refresh triggered at {refresh_time}, Count: {st.session_state['refresh_count']}")
     
-    st_autorefresh(interval=120 * 1000, key="auto_refresh")  # Auto-refresh every 2 minutes
+    st_autorefresh(interval=300 * 1000, key="auto_refresh")  # Auto-refresh every 2 minutes
     
     st.sidebar.text(f"Refresh Count: {st.session_state['refresh_count']}")
     return refresh_time
