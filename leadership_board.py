@@ -393,7 +393,7 @@ def run_dashboard():
     st.sidebar.markdown(
         f"""
         <div style="
-            background-color: #E1EFFF; /* Light blue background */
+            background-color: #fff0f0; /* Light blue background */
             border: 2px solid #0047AB; /* Arsenal blue border */
             border-radius: 12px;
             padding: 15px;
@@ -420,7 +420,7 @@ def run_dashboard():
         st.sidebar.markdown(
             f"""
             <div style="
-                background-color: #E1EFFF; /* Light blue background */
+                background-color: #fff0f0; /* Light blue background */
                 border: 2px solid #0047AB; /* Arsenal blue border */
                 border-radius: 12px;
                 padding: 15px;
@@ -462,7 +462,7 @@ def run_dashboard():
         st.sidebar.markdown(
             f"""
             <div style="
-                background-color: #E1EFFF; /* Light blue background */
+                background-color: #fff0f0; /* Light blue background */
                 border: 2px solid #0047AB; /* Arsenal blue border */
                 border-radius: 12px;
                 padding: 15px;
