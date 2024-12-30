@@ -385,16 +385,17 @@ def run_dashboard():
             border-radius: 15px; /* Rounded edges for consistency */
             padding: 15px 20px; /* Match padding of the other widgets */
             margin-bottom: 20px; /* Space between widgets */
-            text-align: center;
+            text-align: center; /* Center align all text */
             font-family: Arial, sans-serif;
         ">
             <h4 style="color: #E41B17; font-size: 24px; font-weight: bold;">🛒 Total Sales</h4>
-            <p style="font-size: 16px; color: #0047AB; font-weight: bold;">Overall Sales Since Go Live:</p>
-            <p style="font-size: 20px; color: #E41B17; font-weight: bold;">£{total_sales:,.0f}</p>
+            <p style="font-size: 18px; color: #0047AB; font-weight: bold;">Overall Sales Since Go Live:</p>
+            <p style="font-size: 28px; color: #E41B17; font-weight: bold;">£{total_sales:,.0f}</p>
         </div>
         """,
         unsafe_allow_html=True
     )
+
 
 
     
@@ -408,7 +409,7 @@ def run_dashboard():
                 border: 2px solid #E41B17;
                 border-radius: 15px;
                 padding: 20px 15px;
-                margin-bottom: 20px;
+                margin-bottom: 30px;
                 text-align: center;
                 font-family: Impact, Arial, sans-serif;
                 font-size: 28px;
