@@ -382,18 +382,17 @@ def run_dashboard():
     st.sidebar.markdown(
         f"""
         <div style="
-            background-color: #fff0f0; /* Light blue background */
-            border: 2px solid #0047AB; /* Arsenal blue border */
+            background-color: #FAF3F3;
+            border: 2px solid #E41B17;
             border-radius: 12px;
             padding: 15px;
             margin-bottom: 20px;
             text-align: center;
             font-family: Arial, sans-serif;
-            border: 1px solid #E41B17; /* Red border */
         ">
-            <h4 style="color: #0047AB; font-size: 24px; font-weight: bold;">🛒 Total Sales</h4>
-            <p style="font-size: 16px; color: #E41B17; font-weight: bold;">Overall Sales Since Go Live:</p>
-            <p style="font-size: 22px; color: #E41B17; font-weight: bold;">£{total_sales:,.0f}</p>
+            <h4 style="color: #E41B17; font-size: 20px; font-weight: bold;">🛒 Total Sales</h4>
+            <p style="font-size: 16px; color: #0047AB; font-weight: bold;">Overall Sales Since Go Live:</p>
+            <p style="font-size: 18px; color: #0047AB; font-weight: bold;">£{total_sales:,.0f}</p>
         </div>
         """,
         unsafe_allow_html=True
@@ -410,64 +409,52 @@ def run_dashboard():
         st.sidebar.markdown(
             f"""
             <div style="
-                background-color: #fff0f0; /* Light blue background */
-                border: 2px solid #0047AB; /* Arsenal blue border */
+                background-color: #FAF3F3;
+                border: 2px solid #E41B17;
                 border-radius: 12px;
                 padding: 15px;
                 margin-bottom: 20px;
                 text-align: center;
                 font-family: Arial, sans-serif;
-                border: 1px solid #E41B17; /* Red border */
             ">
-                <h4 style="color: #0047AB; font-size: 24px; font-weight: bold;">📊 Premium Monthly Progress</h4>
+                <h4 style="color: #E41B17; font-size: 20px; font-weight: bold;">📊 Premium Monthly Progress</h4>
                 <p style="font-size: 16px; color: #0047AB;">Total Revenue ({start_date.strftime("%B")}):</p>
-                <p style="font-size: 22px; color: #E41B17; font-weight: bold;">£{total_revenue:,.0f}</p>
+                <p style="font-size: 18px; color: #0047AB; font-weight: bold;">£{total_revenue:,.0f}</p>
                 <p style="font-size: 16px; color: #0047AB;">Total Target:</p>
-                <p style="font-size: 22px; color: #E41B17; font-weight: bold;">£{total_target:,.0f}</p>
+                <p style="font-size: 18px; color: #0047AB; font-weight: bold;">£{total_target:,.0f}</p>
                 <p style="font-size: 16px; color: #0047AB;">🌟 Progress Achieved:</p>
-                <p style="font-size: 22px; color: #E41B17; font-weight: bold;">{progress_percentage:.0f}%</p>
+                <p style="font-size: 18px; color: #0047AB; font-weight: bold;">{progress_percentage:.0f}%</p>
             </div>
             """,
             unsafe_allow_html=True
         )
 
     # Next Fixture Section
-    fixture_name, fixture_date, budget_target, event_competition = get_next_fixture(filtered_df_without_seats, budget_df)
-
+    fixture_name, fixture_date, budget_target = get_next_fixture(filtered_df_without_seats, budget_df)
     if fixture_name:
-        # Calculate days to fixture
         days_to_fixture = (fixture_date - datetime.now()).days
-
-        # Calculate total revenue for the selected fixture
         fixture_revenue = filtered_df_without_seats[
-            filtered_df_without_seats["Fixture Name"] == fixture_name
+            (filtered_df_without_seats["KickOffEventStart"] == fixture_date)
         ]["Price"].sum()
+        budget_achieved = round((fixture_revenue / budget_target) * 100, 2)
 
-        # Calculate budget achieved
-        budget_achieved = round((fixture_revenue / budget_target) * 100, 2) if budget_target > 0 else 0
-
-        # Combine Fixture Name and Event Competition
-        fixture_display = f"{fixture_name} ({event_competition})"
-
-        # Render the next fixture details in the sidebar
         st.sidebar.markdown(
             f"""
             <div style="
-                background-color: #fff0f0; /* Light blue background */
-                border: 2px solid #0047AB; /* Arsenal blue border */
+                background-color: #FAF3F3;
+                border: 2px solid #E41B17;
                 border-radius: 12px;
                 padding: 15px;
                 margin-bottom: 20px;
                 text-align: center;
                 font-family: Arial, sans-serif;
-                border: 1px solid #E41B17; /* Red border */
             ">
-                <h4 style="color: #0047AB; font-size: 24px; font-weight: bold;">🏟️ Next Fixture</h4>
-                <p style="font-size: 18px; color: #E41B17; font-weight: bold;">{fixture_display}</p>
+                <h4 style="color: #E41B17; font-size: 20px; font-weight: bold;">🏟️ Next Fixture</h4>
+                <p style="font-size: 16px; color: #0047AB; font-weight: bold;">{fixture_name}</p>
                 <p style="font-size: 16px; color: #0047AB;">⏳ Days to Fixture:</p>
-                <p style="font-size: 22px; color: #E41B17; font-weight: bold;">{days_to_fixture} days</p>
+                <p style="font-size: 18px; color: #0047AB; font-weight: bold;">{days_to_fixture} days</p>
                 <p style="font-size: 16px; color: #0047AB;">🎯 Budget Target Achieved:</p>
-                <p style="font-size: 22px; color: #E41B17; font-weight: bold;">{budget_achieved}%</p>
+                <p style="font-size: 18px; color: #0047AB; font-weight: bold;">{budget_achieved}%</p>
             </div>
             """,
             unsafe_allow_html=True
@@ -477,6 +464,7 @@ def run_dashboard():
             "<div style='color: #E41B17; font-weight: bold; font-family: Arial, sans-serif;'>⚠️ No upcoming fixtures found.</div>",
             unsafe_allow_html=True
         )
+
 
 
         

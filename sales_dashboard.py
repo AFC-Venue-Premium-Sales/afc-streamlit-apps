@@ -222,4 +222,5 @@ def run_dashboard():
         st.warning("No upcoming fixtures found.")
 
 if __name__ == "__main__":
-    run_dashboard()
+    run_dashboard() 
+    
