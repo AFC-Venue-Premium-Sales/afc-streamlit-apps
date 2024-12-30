@@ -288,7 +288,7 @@ def generate_scrolling_messages(data, budget_df):
         top_executive = exec_sales_today.groupby("CreatedBy")["Price"].sum().idxmax()
         top_executive_revenue = exec_sales_today.groupby("CreatedBy")["Price"].sum().max()
         top_executive_message = (
-            f"🤵‍♀️ Top Selling Exec Today: {top_executive} with £{top_executive_revenue:,.2f} generated"
+            f"🤵‍♀️ Top Selling Exec Today: 🌟{top_executive} with £{top_executive_revenue:,.2f} generated"
         )
     else:
         # If no sales by the specified executives, display a no-sales message
@@ -335,7 +335,6 @@ def auto_refresh():
     return refresh_time
 
 
-# Run dashboard
 def run_dashboard():
     st.set_page_config(page_title="Hospitality Leadership Board", layout="wide")
     
@@ -513,7 +512,3 @@ def run_dashboard():
         """,
         unsafe_allow_html=True
     )
-
-
-if __name__ == "__main__":
-    run_dashboard()
