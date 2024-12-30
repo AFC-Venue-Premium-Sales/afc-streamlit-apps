@@ -191,7 +191,7 @@ else:
         "📊 Sales Performance": sales_performance.run_app,
         "📈 User Performance": user_performance_api.run_app,
         "📄 Ticket Exchange Report": ticket_exchange_report.run_app,
-        "📊 Live Sales Dashboard": sales_dashboard.run_dashboard,  # Add your new dashboard here
+        "📊 Live Sales Dashboard": sales_dashboard.run_app,  # Add your new dashboard here
     }
 
     app_function = app_registry.get(app_choice)

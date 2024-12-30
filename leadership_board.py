@@ -288,7 +288,7 @@ def generate_scrolling_messages(data, budget_df):
         top_executive = exec_sales_today.groupby("CreatedBy")["Price"].sum().idxmax()
         top_executive_revenue = exec_sales_today.groupby("CreatedBy")["Price"].sum().max()
         top_executive_message = (
-            f"🤵‍♀️ Top Selling Exec Today: 🌟{top_executive} with £{top_executive_revenue:,.2f} generated"
+            f"🤵‍♀️ Top Selling Exec Today: 🌟{top_executive}🌟 with £{top_executive_revenue:,.2f} generated.."
         )
     else:
         # If no sales by the specified executives, display a no-sales message
@@ -335,6 +335,7 @@ def auto_refresh():
     return refresh_time
 
 
+# Run dashboard
 def run_dashboard():
     st.set_page_config(page_title="Hospitality Leadership Board", layout="wide")
     
@@ -380,9 +381,9 @@ def run_dashboard():
     st.sidebar.markdown(
         f"""
         <div style="
-            background-color: #fff0f0; /* Light blue background */
-            border: 3px solid #E41B17; /* Arsenal red solid border */
-            border-radius: 12px;
+            background-color: #fff0f0; /* Light pastel pink background */
+            border: 2px solid #E41B17; /* Arsenal red solid border */
+            border-radius: 15px; /* Rounded edges for consistency */
             padding: 15px;
             margin-bottom: 20px;
             text-align: center;
@@ -407,9 +408,9 @@ def run_dashboard():
         st.sidebar.markdown(
             f"""
             <div style="
-                background-color: #fff0f0; /* Light blue background */
-                border: 3px solid #E41B17; /* Arsenal red solid border */
-                border-radius: 12px;
+                background-color: #fff0f0; /* Light pastel pink background */
+                border: 2px solid #E41B17; /* Arsenal red solid border */
+                border-radius: 15px; /* Rounded edges for consistency */
                 padding: 15px;
                 margin-bottom: 20px;
                 text-align: center;
@@ -439,9 +440,9 @@ def run_dashboard():
         st.sidebar.markdown(
             f"""
             <div style="
-                background-color: #fff0f0; /* Light blue background */
-                border: 3px solid #E41B17; /* Arsenal red solid border */
-                border-radius: 12px;
+                background-color: #fff0f0; /* Light pastel pink background */
+                border: 2px solid #E41B17; /* Arsenal red solid border */
+                border-radius: 15px; /* Rounded edges for consistency */
                 padding: 15px;
                 margin-bottom: 20px;
                 text-align: center;
@@ -501,7 +502,7 @@ def run_dashboard():
                 font-size: 25px; /* Extra-large font size */
                 font-weight: bold; /* Extra-bold text */
                 text-align: center; /* Center-aligned text */
-                border: 1px solid #E41B17; /* Red border */
+                border: 2px solid #E41B17; /* Red border */
             }}
         </style>
         <div class="custom-scroll-box">
@@ -512,6 +513,7 @@ def run_dashboard():
         """,
         unsafe_allow_html=True
     )
+
 
 if __name__ == "__main__":
     run_dashboard()
