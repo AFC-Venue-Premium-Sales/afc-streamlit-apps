@@ -389,8 +389,8 @@ def run_dashboard():
             color: #E41B17; /* Match font color */
         ">
             🛒 Total Sales <br>
-            <span style="font-size: 22px; color: #0047AB; font-weight: bold;">Overall Sales Since Go Live:</span><br>
-            <span style="font-size: 24px; color: #E41B17; font-weight: bold;">£{total_sales:,.0f}</span>
+            <span style="font-size: 22px; color: #E41B17; text-align: center; font-weight: bold;">Since Go Live:</span><br>
+            <span style="font-size: 24px; color: #E41B17; text-align: center; font-weight: bold;">£{total_sales:,.0f}</span>
         </div>
         """,
         unsafe_allow_html=True
@@ -435,7 +435,7 @@ def run_dashboard():
                 font-weight: bold;
                 color: #E41B17;
             ">
-                📊 Premium Monthly Progress <br>
+                📊 Monthly Progress <br>
                 <span style="font-size: 22px; color: #0047AB;">Total Revenue ({start_date.strftime("%B")}):</span><br>
                 <span style="font-size: 24px; color: #E41B17;">£{total_revenue:,.0f}</span><br>
                 <span style="font-size: 22px; color: #0047AB;">Total Target:</span><br>
@@ -516,7 +516,7 @@ def run_dashboard():
                 font-weight: bold; 
                 color: #E41B17; 
                 text-align: center;">
-                Monthly Premium Leaderboard
+                MONTHLY PREMIUM LEADERBOARD
             </div>
             """,
             unsafe_allow_html=True,
