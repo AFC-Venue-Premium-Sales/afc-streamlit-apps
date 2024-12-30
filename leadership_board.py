@@ -375,7 +375,7 @@ def run_dashboard():
     start_date = col1.date_input("Start Date", value=datetime.now().replace(day=1), label_visibility="collapsed")
     end_date = col2.date_input("End Date", value=datetime.now(), label_visibility="collapsed")
 
-    # Total Sales Section
+   # Total Sales Section
     total_sales = calculate_total_sales(filtered_df_without_seats)
     st.sidebar.markdown(
         f"""
@@ -383,21 +383,19 @@ def run_dashboard():
             background-color: #fff0f0; /* Light pastel pink background */
             border: 2px solid #E41B17; /* Arsenal red solid border */
             border-radius: 15px; /* Rounded edges for consistency */
-            padding: 20px 15px; /* Match padding of the leaderboard */
-            margin-bottom: 20px;
-            text-align: center; /* Center-align text */
-            font-family: Impact, Arial, sans-serif; /* Match leaderboard font */
-            font-size: 28px; /* Match leaderboard font size */
-            font-weight: bold; /* Extra-bold text */
-            color: #E41B17;
+            padding: 15px 20px; /* Match padding of the other widgets */
+            margin-bottom: 20px; /* Space between widgets */
+            text-align: center;
+            font-family: Arial, sans-serif;
         ">
-            🛒 Total Sales <br>
-            <span style="font-size: 22px; color: #0047AB;">Overall Sales Since Go Live:</span><br>
-            <span style="font-size: 24px; color: #E41B17;">£{total_sales:,.0f}</span>
+            <h4 style="color: #E41B17; font-size: 24px; font-weight: bold;">🛒 Total Sales</h4>
+            <p style="font-size: 16px; color: #0047AB; font-weight: bold;">Overall Sales Since Go Live:</p>
+            <p style="font-size: 20px; color: #E41B17; font-weight: bold;">£{total_sales:,.0f}</p>
         </div>
         """,
         unsafe_allow_html=True
     )
+
 
     
     # Premium Monthly Progress Section
@@ -410,6 +408,7 @@ def run_dashboard():
                 border: 2px solid #E41B17;
                 border-radius: 15px;
                 padding: 20px 15px;
+                margin-bottom: 20px;
                 text-align: center;
                 font-family: Impact, Arial, sans-serif;
                 font-size: 28px;
@@ -509,7 +508,6 @@ def run_dashboard():
         st.markdown(
             """
             <div style="
-                background-color: #fff0f0; 
                 padding: 15px; 
                 font-family: Impact, Arial, sans-serif; 
                 font-size: 28px; 
