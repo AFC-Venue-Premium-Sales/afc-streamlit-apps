@@ -486,6 +486,46 @@ def run_dashboard():
             """,
             unsafe_allow_html=True
         )
+        
+        
+    # Monthly Progress Table
+    monthly_progress, sales_made = calculate_monthly_progress(filtered_df_without_seats, start_date, end_date)
+
+    if monthly_progress is not None:
+        st.markdown(
+            """
+            <div style="
+                background-color: #fff0f0; 
+                border: 2px solid #E41B17; 
+                border-radius: 15px; 
+                padding: 15px; 
+                font-family: Impact, Arial, sans-serif; 
+                font-size: 28px; 
+                font-weight: bold; 
+                color: #E41B17; 
+                text-align: center;">
+                Monthly Premium Leaderboard
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f"""
+            <div style="
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                margin-top: 20px;
+                margin-bottom: 20px;
+            ">
+                {monthly_progress.to_html(escape=False, index=False)}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        st.warning("Monthly Progress data not available for the selected date range.")
+        
 
     # Scrolling Message Section
     scrolling_message = generate_scrolling_messages(filtered_df_without_seats, budget_df)
