@@ -168,26 +168,29 @@ def generate_scrolling_messages(data, budget_df):
     else:
         latest_sale_message = "No recent sales to display."
 
-    # Next Fixture
-    fixture_name, fixture_date, budget_target = get_next_fixture(data, budget_df)
+    # Next Fixture Section
+    fixture_name, fixture_date, budget_target = get_next_fixture(filtered_df_without_seats, budget_df)
 
     if fixture_name:
         # Calculate days to fixture
         days_to_fixture = (fixture_date - datetime.now()).days
 
-        # Aggregate fixture revenue by summing 'Price' for the specific fixture
-        fixture_revenue = data[data["Fixture Name"] == fixture_name]["Price"].sum()
+        # Calculate total revenue for the selected fixture
+        fixture_revenue = filtered_df_without_seats[
+            filtered_df_without_seats["Fixture Name"] == fixture_name
+        ]["Price"].sum()
 
-        # Calculate remaining budget
-        remaining_budget = budget_target - fixture_revenue
+        # Calculate budget achieved
+        budget_achieved = round((fixture_revenue / budget_target) * 100, 2) if budget_target > 0 else 0
 
-        # Generate the next fixture message
+        # Generate next fixture message
         next_fixture_message = (
             f"Next Fixture: {fixture_name} in {days_to_fixture} days. "
-            f"Remaining Budget: £{remaining_budget:,.2f}."
+            f"Budget Target Achieved: {budget_achieved}%."
         )
     else:
         next_fixture_message = "No upcoming fixtures to display."
+
 
 
     # Top Fixture of the Day
@@ -388,6 +391,7 @@ def run_dashboard():
             (filtered_df_without_seats["KickOffEventStart"] == fixture_date)
         ]["Price"].sum()
         budget_achieved = round((fixture_revenue / budget_target) * 100, 2)
+        
 
         st.sidebar.markdown(
             f"""
@@ -469,58 +473,6 @@ def run_dashboard():
     """,
     unsafe_allow_html=True
 )
-
-
-
-
-# # Latest Sale Information
-#     latest_sale = get_latest_sale(filtered_df_without_seats)
-#     if latest_sale:
-#         if latest_sale["source"].lower() == "hospitality website":
-#             st.markdown(
-#                 f"""
-#                 <div style="
-#                     background-color: #fff0f0;
-#                     border: 1px solid #cfe2ff;
-#                     border-radius: 8px;
-#                     padding: 15px;
-#                     margin-top: 20px;
-#                     font-family: Arial, sans-serif;
-#                     font-size: 16px;
-#                     color: #084298;
-#                     text-align: center;
-#                 ">
-#                     <strong>Latest Sale:</strong> Via Website - <strong>{latest_sale["seats"]} Seats Sold</strong> 
-#                     x <strong>{latest_sale["package"]}</strong> for <strong>{latest_sale["fixture"]}</strong> 
-#                     @ <strong>£{latest_sale["price"]:,.2f}</strong> on <strong>{latest_sale["date"]}</strong>.
-#                 </div>
-#                 """,
-#                 unsafe_allow_html=True
-#             )
-#         else:
-#             st.markdown(
-#                 f"""
-#                 <div style="
-#                     background-color: #fff0f0;
-#                     border: 1px solid #cfe2ff;
-#                     border-radius: 8px;
-#                     padding: 15px;
-#                     margin-top: 20px;
-#                     font-family: Arial, sans-serif;
-#                     font-size: 16px;
-#                     color: #084298;
-#                     text-align: center;
-#                 ">
-#                     <strong>Latest Sale:</strong> Moto sale made by <strong>{latest_sale["created_by"]}</strong> 
-#                     for <strong>{latest_sale["package"]}</strong> in <strong>{latest_sale["fixture"]}</strong> 
-#                     totaling <strong>£{latest_sale["price"]:,.2f}</strong> with <strong>{latest_sale["seats"]}</strong> seats 
-#                     on <strong>{latest_sale["date"]}</strong>.
-#                 </div>
-#                 """,
-#                 unsafe_allow_html=True
-#             )
-#     else:
-#         st.warning("No new sales recorded.")
 
 if __name__ == "__main__":
     run_dashboard()
