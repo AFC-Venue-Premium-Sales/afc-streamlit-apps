@@ -203,29 +203,22 @@ def generate_scrolling_messages(data, budget_df):
 
 
 def get_next_fixture(data, budget_df):
-    # Convert KickOffEventStart to datetime
     data["KickOffEventStart"] = pd.to_datetime(data["KickOffEventStart"], errors="coerce")
-    
-    # Filter for future fixtures
     today = datetime.now()
-    future_fixtures = data[data["KickOffEventStart"] > today].sort_values("KickOffEventStart")
-    st.write("Future Fixtures (Debug):", future_fixtures)  # Debugging step
+    next_fixture = data[data["KickOffEventStart"] > today].sort_values("KickOffEventStart").head(1)
 
-    # Check if there are any future fixtures
-    if future_fixtures.empty:
+    if next_fixture.empty:
         return None, None, None
 
-    # Get the next fixture
-    next_fixture = future_fixtures.head(1)
     fixture_name = next_fixture["Fixture Name"].iloc[0]
     fixture_date = next_fixture["KickOffEventStart"].iloc[0]
-    
-    # Retrieve budget target from budget_df
     budget_target = budget_df.loc[budget_df["Fixture Name"] == fixture_name, "Budget Target"].values
-    budget_target = budget_target[0] if len(budget_target) > 0 else 0
 
-    return fixture_name, fixture_date, budget_target
-
+    return (
+        fixture_name,
+        fixture_date,
+        budget_target[0] if len(budget_target) > 0 else 0,
+    )
 
 # Get the latest sale made
 def get_latest_sale(data):
