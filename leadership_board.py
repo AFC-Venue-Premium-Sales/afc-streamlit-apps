@@ -84,7 +84,6 @@ def calculate_total_sales(data):
     return total_sales
 
 # Calculate monthly progress
-# Calculate monthly progress
 def calculate_monthly_progress(data, start_date, end_date):
     data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], errors="coerce", dayfirst=True)
     filtered_data = data[
@@ -98,15 +97,8 @@ def calculate_monthly_progress(data, start_date, end_date):
     if (current_month, current_year) not in targets_data.index:
         return None, []
 
-    # Logic for "Today's Sales"
-    if start_date == end_date and start_date == datetime.now().date():
-        # Default state: Show sales for the browsing day only
-        today_sales_data = data[data["CreatedOn"].dt.date == datetime.now().date()]
-    else:
-        # Filtered state: Show sales for the selected range
-        today_sales_data = filtered_data
-
-    # Calculate the sales count for "Today's Sales"
+    # Today's sales
+    today_sales_data = data[data["CreatedOn"].dt.date == datetime.now().date()]
     today_sales_count = (
         today_sales_data.groupby("CreatedBy")["Price"]
         .count()
@@ -118,7 +110,6 @@ def calculate_monthly_progress(data, start_date, end_date):
         lambda x: f"{'💰' * x} ({x})" if x > 0 else "0"
     )
 
-    # Calculate progress for the entire filtered date range
     progress = (
         filtered_data.groupby("CreatedBy")["Price"]
         .sum()
@@ -127,7 +118,6 @@ def calculate_monthly_progress(data, start_date, end_date):
 
     monthly_targets = targets_data.loc[(current_month, current_year)]
 
-    # Create the progress data table
     progress_data = pd.DataFrame({
         "Premium Executive": progress.index,
         "Current Revenue": progress.values,
@@ -163,8 +153,7 @@ def calculate_monthly_progress(data, start_date, end_date):
     # Extract unique sales made for the second return value
     sales_made = filtered_data["CreatedBy"].unique()
 
-    return progress_data, sales_made
-
+    return progress_data, sales_made 
 
 
 
@@ -400,6 +389,7 @@ def run_dashboard():
             margin-bottom: 20px;
             text-align: center;
             font-family: Arial, sans-serif;
+            border: 1px solid #E41B17; /* Red border */
         ">
             <h4 style="color: #0047AB; font-size: 24px; font-weight: bold;">🛒 Total Sales</h4>
             <p style="font-size: 16px; color: #E41B17; font-weight: bold;">Overall Sales Since Go Live:</p>
@@ -427,6 +417,7 @@ def run_dashboard():
                 margin-bottom: 20px;
                 text-align: center;
                 font-family: Arial, sans-serif;
+                border: 1px solid #E41B17; /* Red border */
             ">
                 <h4 style="color: #0047AB; font-size: 24px; font-weight: bold;">📊 Premium Monthly Progress</h4>
                 <p style="font-size: 16px; color: #0047AB;">Total Revenue ({start_date.strftime("%B")}):</p>
@@ -469,6 +460,7 @@ def run_dashboard():
                 margin-bottom: 20px;
                 text-align: center;
                 font-family: Arial, sans-serif;
+                border: 1px solid #E41B17; /* Red border */
             ">
                 <h4 style="color: #0047AB; font-size: 24px; font-weight: bold;">🏟️ Next Fixture</h4>
                 <p style="font-size: 18px; color: #E41B17; font-weight: bold;">{fixture_display}</p>
