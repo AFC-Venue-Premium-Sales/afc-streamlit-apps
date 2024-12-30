@@ -38,6 +38,12 @@ targets_data = pd.DataFrame({
     "ayildirim": [19000, 19000, 16500, 14000, 11000, 8500],
 }).set_index(["Month", "Year"])
 
+# Specify your list of executives
+valid_executives = ["dcoppin", "BethNW", "bgardiner", "MeganS", "dmontague", 
+                    "jedwards", "HayleyA", "MillieS", "BenT", "ayildirim", "jmurphy"]
+
+
+
 # Load budget targets
 def load_budget_targets():
     file_path = os.path.join(os.path.dirname(__file__), 'budget_target_2425.xlsx')
@@ -271,12 +277,22 @@ def generate_scrolling_messages(data, budget_df):
     else:
         top_fixture_message = "📉 No sales recorded today."
 
-    # Top Premium Executive of the Day
-    if not today_sales.empty:
-        top_executive = today_sales.groupby("CreatedBy")["Price"].sum().idxmax()
-        top_executive_revenue = today_sales.groupby("CreatedBy")["Price"].sum().max()
-        top_executive_message = f"🤵‍♀️ Top Selling Exec Today: {top_executive} with £{top_executive_revenue:,.2f} generated."
+# Specify Execs
+    valid_executives = ["dcoppin", "BethNW", "bgardiner", "MeganS", "dmontague", 
+                        "jedwards", "HayleyA", "MillieS", "BenT", "ayildirim", "jmurphy"]
+
+    # Filter today’s sales to include only valid executives
+    exec_sales_today = today_sales[today_sales["CreatedBy"].isin(valid_executives)]
+
+    if not exec_sales_today.empty:
+        # Calculate the top-selling executive among the specified list
+        top_executive = exec_sales_today.groupby("CreatedBy")["Price"].sum().idxmax()
+        top_executive_revenue = exec_sales_today.groupby("CreatedBy")["Price"].sum().max()
+        top_executive_message = (
+            f"🤵‍♀️ Top Selling Exec Today: {top_executive} with £{top_executive_revenue:,.2f} generated"
+        )
     else:
+        # If no sales by the specified executives, display a no-sales message
         top_executive_message = "🚫 No Premium Executive sales recorded today."
 
     # Combine all messages
@@ -367,17 +383,17 @@ def run_dashboard():
     st.sidebar.markdown(
         f"""
         <div style="
-            background-color: #FAF3F3;
-            border: 2px solid #E41B17;
+            background-color: #E1EFFF; /* Light blue background */
+            border: 2px solid #0047AB; /* Arsenal blue border */
             border-radius: 12px;
             padding: 15px;
             margin-bottom: 20px;
             text-align: center;
             font-family: Arial, sans-serif;
         ">
-            <h4 style="color: #E41B17; font-size: 20px; font-weight: bold;">🛒 Total Sales</h4>
-            <p style="font-size: 16px; color: #0047AB; font-weight: bold;">Overall Sales Since Go Live:</p>
-            <p style="font-size: 18px; color: #0047AB; font-weight: bold;">£{total_sales:,.0f}</p>
+            <h4 style="color: #0047AB; font-size: 24px; font-weight: bold;">🛒 Total Sales</h4>
+            <p style="font-size: 16px; color: #E41B17; font-weight: bold;">Overall Sales Since Go Live:</p>
+            <p style="font-size: 22px; color: #E41B17; font-weight: bold;">£{total_sales:,.0f}</p>
         </div>
         """,
         unsafe_allow_html=True
@@ -394,21 +410,21 @@ def run_dashboard():
         st.sidebar.markdown(
             f"""
             <div style="
-                background-color: #FAF3F3;
-                border: 2px solid #E41B17;
+                background-color: #E1EFFF; /* Light blue background */
+                border: 2px solid #0047AB; /* Arsenal blue border */
                 border-radius: 12px;
                 padding: 15px;
                 margin-bottom: 20px;
                 text-align: center;
                 font-family: Arial, sans-serif;
             ">
-                <h4 style="color: #E41B17; font-size: 20px; font-weight: bold;">📊 Premium Monthly Progress</h4>
+                <h4 style="color: #0047AB; font-size: 24px; font-weight: bold;">📊 Premium Monthly Progress</h4>
                 <p style="font-size: 16px; color: #0047AB;">Total Revenue ({start_date.strftime("%B")}):</p>
-                <p style="font-size: 18px; color: #0047AB; font-weight: bold;">£{total_revenue:,.0f}</p>
+                <p style="font-size: 22px; color: #E41B17; font-weight: bold;">£{total_revenue:,.0f}</p>
                 <p style="font-size: 16px; color: #0047AB;">Total Target:</p>
-                <p style="font-size: 18px; color: #0047AB; font-weight: bold;">£{total_target:,.0f}</p>
+                <p style="font-size: 22px; color: #E41B17; font-weight: bold;">£{total_target:,.0f}</p>
                 <p style="font-size: 16px; color: #0047AB;">🌟 Progress Achieved:</p>
-                <p style="font-size: 18px; color: #0047AB; font-weight: bold;">{progress_percentage:.0f}%</p>
+                <p style="font-size: 22px; color: #E41B17; font-weight: bold;">{progress_percentage:.0f}%</p>
             </div>
             """,
             unsafe_allow_html=True
@@ -436,20 +452,20 @@ def run_dashboard():
         st.sidebar.markdown(
             f"""
             <div style="
-                background-color: #FAF3F3;
-                border: 2px solid #E41B17;
+                background-color: #E1EFFF; /* Light blue background */
+                border: 2px solid #0047AB; /* Arsenal blue border */
                 border-radius: 12px;
                 padding: 15px;
                 margin-bottom: 20px;
                 text-align: center;
                 font-family: Arial, sans-serif;
             ">
-                <h4 style="color: #E41B17; font-size: 20px; font-weight: bold;">🏟️ Next Fixture</h4>
-                <p style="font-size: 16px; color: #0047AB; font-weight: bold;">{fixture_display}</p>
+                <h4 style="color: #0047AB; font-size: 24px; font-weight: bold;">🏟️ Next Fixture</h4>
+                <p style="font-size: 18px; color: #E41B17; font-weight: bold;">{fixture_display}</p>
                 <p style="font-size: 16px; color: #0047AB;">⏳ Days to Fixture:</p>
-                <p style="font-size: 18px; color: #0047AB; font-weight: bold;">{days_to_fixture} days</p>
+                <p style="font-size: 22px; color: #E41B17; font-weight: bold;">{days_to_fixture} days</p>
                 <p style="font-size: 16px; color: #0047AB;">🎯 Budget Target Achieved:</p>
-                <p style="font-size: 18px; color: #0047AB; font-weight: bold;">{budget_achieved}%</p>
+                <p style="font-size: 22px; color: #E41B17; font-weight: bold;">{budget_achieved}%</p>
             </div>
             """,
             unsafe_allow_html=True
@@ -459,6 +475,7 @@ def run_dashboard():
             "<div style='color: #E41B17; font-weight: bold; font-family: Arial, sans-serif;'>⚠️ No upcoming fixtures found.</div>",
             unsafe_allow_html=True
         )
+
 
         
     # Monthly Progress Table
