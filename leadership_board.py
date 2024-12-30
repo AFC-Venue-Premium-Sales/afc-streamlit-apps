@@ -334,24 +334,23 @@ def auto_refresh():
     st.sidebar.text(f"Refresh Count: {st.session_state['refresh_count']}")
     return refresh_time
 
-# Main dashboard
+
+# Run dashboard
 def run_dashboard():
     st.set_page_config(page_title="Hospitality Leadership Board", layout="wide")
+    
+    # Dashboard Title
     st.markdown(
-    """
-    <div style="text-align: center; margin-top: 20px;">
-        <h1 style="color: #2c3e50;">💎 Arsenal Premium Sales 💎</h1>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+        """
+        <div style="text-align: center; margin-top: 20px;">
+            <h1 style="color: #2c3e50;">💎 Arsenal Premium Sales 💎</h1>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
-
-    # Sidebar
-    # Auto-refresh
-    refresh_time = auto_refresh()  # Auto-refreshes every 2 minutes
-
-    # Display refresh message in the sidebar
+    # Sidebar: Auto-refresh
+    refresh_time = auto_refresh()
     st.sidebar.markdown(
         f"""
         <div style="
@@ -369,9 +368,9 @@ def run_dashboard():
         </div>
         """,
         unsafe_allow_html=True
-)
-    
-    # Date Range Filter
+    )
+
+    # Sidebar: Date Range Filter
     st.sidebar.markdown("### Date Range Filter")
     col1, col2 = st.sidebar.columns(2)
     start_date = col1.date_input("Start Date", value=datetime.now().replace(day=1), label_visibility="collapsed")
@@ -431,23 +430,13 @@ def run_dashboard():
 
     # Next Fixture Section
     fixture_name, fixture_date, budget_target, event_competition = get_next_fixture(filtered_df_without_seats, budget_df)
-
     if fixture_name:
-        # Calculate days to fixture
         days_to_fixture = (fixture_date - datetime.now()).days
-
-        # Calculate total revenue for the selected fixture
         fixture_revenue = filtered_df_without_seats[
             filtered_df_without_seats["Fixture Name"] == fixture_name
         ]["Price"].sum()
-
-        # Calculate budget achieved
         budget_achieved = round((fixture_revenue / budget_target) * 100, 2) if budget_target > 0 else 0
-
-        # Combine Fixture Name and Event Competition
         fixture_display = f"{fixture_name} ({event_competition})"
-
-        # Render the next fixture details in the sidebar
         st.sidebar.markdown(
             f"""
             <div style="
@@ -458,7 +447,6 @@ def run_dashboard():
                 margin-bottom: 20px;
                 text-align: center;
                 font-family: Arial, sans-serif;
-                
             ">
                 <h4 style="color: #0047AB; font-size: 24px; font-weight: bold;">🏟️ Next Fixture</h4>
                 <p style="font-size: 18px; color: #E41B17; font-weight: bold;">{fixture_display}</p>
@@ -476,11 +464,8 @@ def run_dashboard():
             unsafe_allow_html=True
         )
 
-
-        
     # Monthly Progress Table
     monthly_progress, sales_made = calculate_monthly_progress(filtered_df_without_seats, start_date, end_date)
-
     if monthly_progress is not None:
         st.markdown("<h3 style='color:#E41B17; text-align:center;'>Monthly Premium Leaderboard</h3>", unsafe_allow_html=True)
         st.markdown(
@@ -500,36 +485,35 @@ def run_dashboard():
     else:
         st.warning("Monthly Progress data not available for the selected date range.")
 
-
-# Scrolling message section
+    # Scrolling Message Section
     scrolling_message = generate_scrolling_messages(filtered_df_without_seats, budget_df)
-
     st.markdown(
-    f"""
-    <style>
-        .custom-scroll-box {{
-            overflow: hidden;
-            white-space: nowrap;
-            width: 100%;
-            background-color: #fff0f0; /* Soft pastel pink background */
-            color: #E41B17; /* Arsenal red font color */
-            padding: 15px 20px; /* Padding for spacing */
-            border-radius: 15px; /* Curved edges */
-            font-family: Impact, Arial, sans-serif; /* Bold, blocky font */
-            font-size: 25px; /* Extra-large font size */
-            font-weight: bold; /* Extra-bold text */
-            text-align: center; /* Center-aligned text */
-            border: 1px solid #E41B17; /* Red border */
-        }}
-    </style>
-    <div class="custom-scroll-box">
-        <marquee behavior="scroll" direction="left" scrollamount="4">
-            {scrolling_message}
-        </marquee>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+        f"""
+        <style>
+            .custom-scroll-box {{
+                overflow: hidden;
+                white-space: nowrap;
+                width: 100%;
+                background-color: #fff0f0; /* Soft pastel pink background */
+                color: #E41B17; /* Arsenal red font color */
+                padding: 15px 20px; /* Padding for spacing */
+                border-radius: 15px; /* Curved edges */
+                font-family: Impact, Arial, sans-serif; /* Bold, blocky font */
+                font-size: 25px; /* Extra-large font size */
+                font-weight: bold; /* Extra-bold text */
+                text-align: center; /* Center-aligned text */
+                border: 1px solid #E41B17; /* Red border */
+            }}
+        </style>
+        <div class="custom-scroll-box">
+            <marquee behavior="scroll" direction="left" scrollamount="4">
+                {scrolling_message}
+            </marquee>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
 
 if __name__ == "__main__":
     run_dashboard()
