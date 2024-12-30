@@ -140,20 +140,46 @@ def get_next_fixture(data, budget_df):
     # Ensure KickOffEventStart is a proper datetime
     data["KickOffEventStart"] = pd.to_datetime(data["KickOffEventStart"], errors="coerce")
 
+    # Debug: Unique Fixtures
+    print("Unique Fixtures in Raw Data:")
+    print(data["Fixture Name"].unique())
+
+    # Debug: Check for invalid dates
+    invalid_dates = data[data["KickOffEventStart"].isna()]
+    if not invalid_dates.empty:
+        print("Rows with Invalid KickOffEventStart:")
+        print(invalid_dates)
+
     # Remove rows with invalid or past KickOffEventStart
     today = datetime.now()
     valid_data = data[data["KickOffEventStart"] > today]
+
+    # Debug: Valid Data
+    print("Valid Data (Future Fixtures Only):")
+    print(valid_data[["Fixture Name", "KickOffEventStart", "Price"]])
+
+    # Debug: Check for missing fixtures
+    missing_fixtures = set(budget_df["Fixture Name"]) - set(data["Fixture Name"])
+    if missing_fixtures:
+        print("Missing Fixtures in Data:")
+        print(missing_fixtures)
 
     # Aggregate at the fixture level
     aggregated_data = valid_data.groupby("Fixture Name", as_index=False).agg({
         "KickOffEventStart": "min",  # Take the earliest valid kickoff time
         "Price": "sum"              # Sum the price (total revenue)
     })
-    print("Aggregated Data (Debug):", aggregated_data)
+
+    # Debug: Aggregated Data
+    print("Aggregated Data (After Grouping):")
+    print(aggregated_data)
 
     # Filter for future fixtures and sort by KickOffEventStart
     future_fixtures = aggregated_data.sort_values("KickOffEventStart")
-    print("Filtered Future Fixtures (Debug):", future_fixtures)
+    
+    # Debug: Filtered Future Fixtures
+    print("Filtered Future Fixtures (Debug):")
+    print(future_fixtures)
 
     # Check if there are any future fixtures
     if future_fixtures.empty:
@@ -171,6 +197,8 @@ def get_next_fixture(data, budget_df):
     print("Budget Target for Fixture:", fixture_name, budget_target)
 
     return fixture_name, fixture_date, budget_target
+
+
 
 
 
@@ -428,7 +456,6 @@ def run_dashboard():
                 display: flex;
                 justify-content: center;
                 align-items: center;
-                border: 1px solid #E41B17;
                 margin-top: 20px;
                 margin-bottom: 20px;
             ">
