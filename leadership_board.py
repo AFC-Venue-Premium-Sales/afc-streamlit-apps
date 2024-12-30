@@ -381,23 +381,28 @@ def run_dashboard():
         f"""
         <div style="
             background-color: #fff0f0; /* Light pastel pink background */
-            border: 2px solid #E41B17; /* Arsenal red solid border */
-            border-radius: 15px; /* Rounded edges */
-            padding: 20px; /* Consistent padding */
-            margin-bottom: 20px; /* Consistent spacing */
-            text-align: center; /* Center align text */
-            font-family: Arial, sans-serif;
+            border: 3px solid #E41B17; /* Arsenal red solid border */
+            border-radius: 15px; /* Rounded edges for consistency */
+            padding: 20px 15px; /* Match padding of the other widgets */
+            margin-bottom: 30px; /* Space between widgets */
+            text-align: center; /* Center align all text */
+            font-family: Impact, Arial, sans-serif; /* Match the font style */
+            font-size: 28px; /* Match font size */
+            font-weight: bold; /* Match weight */
+            color: #E41B17; /* Match font color */
         ">
-            <h4 style="color: #E41B17; font-size: 24px; font-weight: bold;">🛒 Total Sales</h4>
-            <p style="font-size: 18px; color: #0047AB; font-weight: bold;">Since Go Live:</p>
-            <p style="font-size: 28px; color: #E41B17; font-weight: bold;">£{total_sales:,.0f}</p>
+            🛒 Total Sales <br>
+            <span style="font-size: 22px; color: #0047AB; font-weight: bold;">Overall Sales Since Go Live:</span><br>
+            <span style="font-size: 24px; color: #E41B17; font-weight: bold;">£{total_sales:,.0f}</span>
         </div>
         """,
         unsafe_allow_html=True
     )
 
+
+
     
-  # Premium Monthly Progress Section
+    # Premium Monthly Progress Section
     total_revenue, total_target, progress_percentage = calculate_overall_progress(filtered_df_without_seats, start_date, end_date)
     if total_target == 0:
         st.sidebar.markdown(
@@ -407,7 +412,7 @@ def run_dashboard():
                 border: 2px solid #E41B17;
                 border-radius: 15px;
                 padding: 20px 15px;
-                margin-bottom: 20px;
+                margin-bottom: 30px;
                 text-align: center;
                 font-family: Impact, Arial, sans-serif;
                 font-size: 28px;
@@ -427,7 +432,6 @@ def run_dashboard():
                 border: 2px solid #E41B17;
                 border-radius: 15px;
                 padding: 20px 15px;
-                margin-bottom: 30px; /* Add extra space below this section */
                 text-align: center;
                 font-family: Impact, Arial, sans-serif;
                 font-size: 28px;
@@ -446,6 +450,7 @@ def run_dashboard():
             unsafe_allow_html=True
         )
 
+
     # Next Fixture Section
     fixture_name, fixture_date, budget_target, event_competition = get_next_fixture(filtered_df_without_seats, budget_df)
     if fixture_name:
@@ -462,7 +467,6 @@ def run_dashboard():
                 border: 2px solid #E41B17;
                 border-radius: 15px;
                 padding: 20px 15px;
-                margin-top: 10px; /* Add a small space above this section */
                 text-align: center;
                 font-family: Impact, Arial, sans-serif;
                 font-size: 28px;
@@ -487,7 +491,6 @@ def run_dashboard():
                 border: 2px solid #E41B17;
                 border-radius: 15px;
                 padding: 20px 15px;
-                margin-top: 10px; /* Add a small space above this section */
                 text-align: center;
                 font-family: Impact, Arial, sans-serif;
                 font-size: 28px;
