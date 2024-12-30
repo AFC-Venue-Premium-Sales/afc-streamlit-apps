@@ -382,25 +382,19 @@ def run_dashboard():
         <div style="
             background-color: #fff0f0; /* Light pastel pink background */
             border: 2px solid #E41B17; /* Arsenal red solid border */
-            border-radius: 15px; /* Rounded edges for consistency */
-            padding: 20px 15px; /* Match padding of the other widgets */
-            margin-bottom: 30px; /* Space between widgets */
-            text-align: center; /* Center align all text */
-            font-family: Impact, Arial, sans-serif; /* Match the font style */
-            font-size: 28px; /* Match font size */
-            font-weight: bold; /* Match weight */
-            color: #E41B17; /* Match font color */
+            border-radius: 15px; /* Rounded edges */
+            padding: 20px; /* Consistent padding */
+            margin-bottom: 20px; /* Consistent spacing */
+            text-align: center; /* Center align text */
+            font-family: Arial, sans-serif;
         ">
-            🛒 Total Sales <br>
-            <span style="font-size: 22px; color: #0047AB; font-weight: bold;">Since Go Live:</span><br>
-            <span style="font-size: 24px; color: #E41B17; font-weight: bold;">£{total_sales:,.0f}</span>
+            <h4 style="color: #E41B17; font-size: 24px; font-weight: bold;">🛒 Total Sales</h4>
+            <p style="font-size: 18px; color: #0047AB; font-weight: bold;">Since Go Live:</p>
+            <p style="font-size: 28px; color: #E41B17; font-weight: bold;">£{total_sales:,.0f}</p>
         </div>
         """,
         unsafe_allow_html=True
     )
-
-
-
 
     
   # Premium Monthly Progress Section
@@ -505,6 +499,7 @@ def run_dashboard():
             """,
             unsafe_allow_html=True
         )
+
         
         
     # Monthly Progress Table
