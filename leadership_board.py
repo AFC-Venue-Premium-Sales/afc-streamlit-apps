@@ -91,18 +91,18 @@ def calculate_monthly_progress(data, start_date, end_date):
     if (current_month, current_year) not in targets_data.index:
         return None, []
 
-    # Count sales for each executive
-    sales_count = (
-        filtered_data.groupby("CreatedBy")["Price"]
-        .count()  # Count number of sales
+    # Today's sales
+    today_sales_data = data[data["CreatedOn"].dt.date == datetime.now().date()]
+    today_sales_count = (
+        today_sales_data.groupby("CreatedBy")["Price"]
+        .count()
         .reindex(targets_data.columns, fill_value=0)
     )
 
-    # Add 💰 symbols for each sale
-    sales_indicators = {
-        name: " ".join(["💰"] * count) if count > 0 else ""
-        for name, count in sales_count.items()
-    }
+    # Add money bags to represent sales visually
+    today_sales_visual = today_sales_count.apply(
+        lambda x: f"{'💰' * x} ({x})" if x > 0 else "0"
+    )
 
     progress = (
         filtered_data.groupby("CreatedBy")["Price"]
@@ -113,13 +113,12 @@ def calculate_monthly_progress(data, start_date, end_date):
     monthly_targets = targets_data.loc[(current_month, current_year)]
 
     progress_data = pd.DataFrame({
-        "Premium Executive": [
-            f"{name} {sales_indicators[name]}" for name in progress.index
-        ],
+        "Premium Executive": progress.index,
         "Current Revenue": progress.values,
         "Target": monthly_targets.values,
         "Variance": (progress - monthly_targets).values,
         "% Sold (Numeric)": (progress / monthly_targets * 100).round(0),
+        "Today's Sales": today_sales_visual.values,  # Use the visual sales representation
     }).reset_index(drop=True)
 
     # Format columns for display
@@ -148,7 +147,9 @@ def calculate_monthly_progress(data, start_date, end_date):
     # Extract unique sales made for the second return value
     sales_made = filtered_data["CreatedBy"].unique()
 
-    return progress_data, sales_made
+    return progress_data, sales_made 
+
+
 
 
 def get_next_fixture(data, budget_df):
