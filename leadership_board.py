@@ -380,37 +380,43 @@ def run_dashboard():
     st.sidebar.markdown(
         f"""
         <div style="
-            background-color: #fff0f0; /* Soft pastel pink background */
+            background-color: #fff0f0; /* Light pastel pink background */
             border: 2px solid #E41B17; /* Arsenal red solid border */
-            border-radius: 15px; /* Match the scroll message's curved edges */
-            padding: 20px; /* Center the text vertically and horizontally */
+            border-radius: 15px; /* Rounded edges for consistency */
+            padding: 20px 15px; /* Match padding of the leaderboard */
             margin-bottom: 20px;
-            font-family: Arial, sans-serif;
-            text-align: center; /* Center align all content */
+            text-align: center; /* Center-align text */
+            font-family: Impact, Arial, sans-serif; /* Match leaderboard font */
+            font-size: 28px; /* Match leaderboard font size */
+            font-weight: bold; /* Extra-bold text */
+            color: #E41B17;
         ">
-            <h4 style="color: #0047AB; font-size: 24px; font-weight: bold;">🛒 Total Sales</h4>
-            <p style="font-size: 18px; color: #E41B17; font-weight: bold;">Overall Sales Since Go Live:</p>
-            <p style="font-size: 26px; color: #E41B17; font-weight: bold;">£{total_sales:,.0f}</p>
+            🛒 Total Sales <br>
+            <span style="font-size: 22px; color: #0047AB;">Overall Sales Since Go Live:</span><br>
+            <span style="font-size: 24px; color: #E41B17;">£{total_sales:,.0f}</span>
         </div>
         """,
         unsafe_allow_html=True
     )
 
+    
     # Premium Monthly Progress Section
     total_revenue, total_target, progress_percentage = calculate_overall_progress(filtered_df_without_seats, start_date, end_date)
     if total_target == 0:
         st.sidebar.markdown(
             """
             <div style="
-                background-color: #fff0f0; /* Light pastel pink background */
-                border: 2px solid #E41B17; /* Arsenal red solid border */
-                border-radius: 15px; /* Rounded edges */
-                padding: 20px; /* Center the text vertically and horizontally */
-                margin-bottom: 20px;
-                font-family: Arial, sans-serif;
-                text-align: center; /* Center align all content */
+                background-color: #fff0f0;
+                border: 2px solid #E41B17;
+                border-radius: 15px;
+                padding: 20px 15px;
+                text-align: center;
+                font-family: Impact, Arial, sans-serif;
+                font-size: 28px;
+                font-weight: bold;
+                color: #E41B17;
             ">
-                <p style="color: #E41B17; font-size: 18px; font-weight: bold;">⚠️ Selected date range is out of bounds for available targets.</p>
+                ⚠️ Selected date range is out of bounds for available targets.
             </div>
             """,
             unsafe_allow_html=True
@@ -419,25 +425,28 @@ def run_dashboard():
         st.sidebar.markdown(
             f"""
             <div style="
-                background-color: #fff0f0; /* Light pastel pink background */
-                border: 2px solid #E41B17; /* Arsenal red solid border */
-                border-radius: 15px; /* Rounded edges for consistency */
-                padding: 20px; /* Center the text vertically and horizontally */
-                margin-bottom: 20px;
-                font-family: Arial, sans-serif;
-                text-align: center; /* Center align all content */
+                background-color: #fff0f0;
+                border: 2px solid #E41B17;
+                border-radius: 15px;
+                padding: 20px 15px;
+                text-align: center;
+                font-family: Impact, Arial, sans-serif;
+                font-size: 28px;
+                font-weight: bold;
+                color: #E41B17;
             ">
-                <h4 style="color: #0047AB; font-size: 24px; font-weight: bold;">📊 Premium Monthly Progress</h4>
-                <p style="font-size: 18px; color: #0047AB;">Total Revenue ({start_date.strftime("%B")}):</p>
-                <p style="font-size: 26px; color: #E41B17; font-weight: bold;">£{total_revenue:,.0f}</p>
-                <p style="font-size: 18px; color: #0047AB;">Total Target:</p>
-                <p style="font-size: 26px; color: #E41B17; font-weight: bold;">£{total_target:,.0f}</p>
-                <p style="font-size: 18px; color: #0047AB;">🌟 Progress Achieved:</p>
-                <p style="font-size: 26px; color: #E41B17; font-weight: bold;">{progress_percentage:.0f}%</p>
+                📊 Premium Monthly Progress <br>
+                <span style="font-size: 22px; color: #0047AB;">Total Revenue ({start_date.strftime("%B")}):</span><br>
+                <span style="font-size: 24px; color: #E41B17;">£{total_revenue:,.0f}</span><br>
+                <span style="font-size: 22px; color: #0047AB;">Total Target:</span><br>
+                <span style="font-size: 24px; color: #E41B17;">£{total_target:,.0f}</span><br>
+                <span style="font-size: 22px; color: #0047AB;">🌟 Progress Achieved:</span><br>
+                <span style="font-size: 24px; color: #E41B17;">{progress_percentage:.0f}%</span>
             </div>
             """,
             unsafe_allow_html=True
         )
+
 
     # Next Fixture Section
     fixture_name, fixture_date, budget_target, event_competition = get_next_fixture(filtered_df_without_seats, budget_df)
@@ -451,20 +460,22 @@ def run_dashboard():
         st.sidebar.markdown(
             f"""
             <div style="
-                background-color: #fff0f0; /* Light pastel pink background */
-                border: 2px solid #E41B17; /* Arsenal red solid border */
-                border-radius: 15px; /* Rounded edges for consistency */
-                padding: 20px; /* Center the text vertically and horizontally */
-                margin-bottom: 20px;
-                font-family: Arial, sans-serif;
-                text-align: center; /* Center align all content */
+                background-color: #fff0f0;
+                border: 2px solid #E41B17;
+                border-radius: 15px;
+                padding: 20px 15px;
+                text-align: center;
+                font-family: Impact, Arial, sans-serif;
+                font-size: 28px;
+                font-weight: bold;
+                color: #E41B17;
             ">
-                <h4 style="color: #0047AB; font-size: 24px; font-weight: bold;">🏟️ Next Fixture</h4>
-                <p style="font-size: 18px; color: #E41B17; font-weight: bold;">{fixture_display}</p>
-                <p style="font-size: 18px; color: #0047AB;">⏳ Days to Fixture:</p>
-                <p style="font-size: 26px; color: #E41B17; font-weight: bold;">{days_to_fixture} days</p>
-                <p style="font-size: 18px; color: #0047AB;">🎯 Budget Target Achieved:</p>
-                <p style="font-size: 26px; color: #E41B17; font-weight: bold;">{budget_achieved}%</p>
+                🏟️ Next Fixture <br>
+                <span style="font-size: 22px; color: #E41B17;">{fixture_display}</span><br>
+                <span style="font-size: 22px; color: #0047AB;">⏳ Days to Fixture:</span><br>
+                <span style="font-size: 24px; color: #E41B17;">{days_to_fixture} days</span><br>
+                <span style="font-size: 22px; color: #0047AB;">🎯 Budget Target Achieved:</span><br>
+                <span style="font-size: 24px; color: #E41B17;">{budget_achieved}%</span>
             </div>
             """,
             unsafe_allow_html=True
@@ -473,19 +484,22 @@ def run_dashboard():
         st.sidebar.markdown(
             """
             <div style="
-                background-color: #fff0f0; /* Light pastel pink background */
-                border: 2px solid #E41B17; /* Arsenal red solid border */
-                border-radius: 15px; /* Rounded edges for consistency */
-                padding: 20px; /* Center the text vertically and horizontally */
-                margin-bottom: 20px;
-                font-family: Arial, sans-serif;
-                text-align: center; /* Center align all content */
+                background-color: #fff0f0;
+                border: 2px solid #E41B17;
+                border-radius: 15px;
+                padding: 20px 15px;
+                text-align: center;
+                font-family: Impact, Arial, sans-serif;
+                font-size: 28px;
+                font-weight: bold;
+                color: #E41B17;
             ">
-                <p style="font-size: 18px; color: #E41B17; font-weight: bold;">⚠️ No upcoming fixtures found.</p>
+                ⚠️ No upcoming fixtures found.
             </div>
             """,
             unsafe_allow_html=True
         )
+
         
         
     # Monthly Progress Table
@@ -496,8 +510,6 @@ def run_dashboard():
             """
             <div style="
                 background-color: #fff0f0; 
-                border: 2px solid #E41B17; 
-                border-radius: 15px; 
                 padding: 15px; 
                 font-family: Impact, Arial, sans-serif; 
                 font-size: 28px; 
