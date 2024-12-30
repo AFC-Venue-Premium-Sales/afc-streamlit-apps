@@ -136,6 +136,45 @@ def calculate_monthly_progress(data, start_date, end_date):
     return progress_data, sales_made
 
 
+def get_next_fixture(data, budget_df):
+    # Ensure KickOffEventStart is a proper datetime
+    data["KickOffEventStart"] = pd.to_datetime(data["KickOffEventStart"], errors="coerce")
+
+    # Remove rows with invalid or past KickOffEventStart
+    today = datetime.now()
+    valid_data = data[data["KickOffEventStart"] > today]
+
+    # Aggregate at the fixture level
+    aggregated_data = valid_data.groupby("Fixture Name", as_index=False).agg({
+        "KickOffEventStart": "min",  # Take the earliest valid kickoff time
+        "Price": "sum"              # Sum the price (total revenue)
+    })
+    print("Aggregated Data (Debug):", aggregated_data)
+
+    # Filter for future fixtures and sort by KickOffEventStart
+    future_fixtures = aggregated_data.sort_values("KickOffEventStart")
+    print("Filtered Future Fixtures (Debug):", future_fixtures)
+
+    # Check if there are any future fixtures
+    if future_fixtures.empty:
+        return None, None, None
+
+    # Get the next fixture
+    next_fixture = future_fixtures.head(1)
+    fixture_name = next_fixture["Fixture Name"].iloc[0]
+    fixture_date = next_fixture["KickOffEventStart"].iloc[0]
+    print("Next Fixture Selected:", fixture_name, fixture_date)
+
+    # Retrieve budget target
+    budget_target = budget_df.loc[budget_df["Fixture Name"] == fixture_name, "Budget Target"].values
+    budget_target = budget_target[0] if len(budget_target) > 0 else 0
+    print("Budget Target for Fixture:", fixture_name, budget_target)
+
+    return fixture_name, fixture_date, budget_target
+
+
+
+
 def generate_scrolling_messages(data, budget_df):
     # Ensure CreatedOn is a proper datetime
     data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], errors="coerce", dayfirst=True)
@@ -199,42 +238,6 @@ def generate_scrolling_messages(data, budget_df):
 
     # Combine all messages
     return f"{latest_sale_message} | {next_fixture_message} | {top_fixture_message} | {top_executive_message}"
-
-
-def get_next_fixture(data, budget_df):
-    # Ensure KickOffEventStart is a proper datetime
-    data["KickOffEventStart"] = pd.to_datetime(data["KickOffEventStart"], errors="coerce")
-
-    # Aggregate at the fixture level, taking the earliest KickOffEventStart
-    aggregated_data = data.groupby("Fixture Name", as_index=False).agg({
-        "KickOffEventStart": "min",  # Take the earliest kickoff time
-        "Price": "sum"              # Sum the price (total revenue)
-    })
-    print("Aggregated Data (Debug):", aggregated_data)
-
-    # Get today's date
-    today = datetime.now()
-
-    # Filter for future fixtures
-    future_fixtures = aggregated_data[aggregated_data["KickOffEventStart"] > today].sort_values("KickOffEventStart")
-    print("Filtered Future Fixtures (Debug):", future_fixtures)
-
-    # Check if there are any future fixtures
-    if future_fixtures.empty:
-        return None, None, None
-
-    # Get the next fixture
-    next_fixture = future_fixtures.head(1)
-    fixture_name = next_fixture["Fixture Name"].iloc[0]
-    fixture_date = next_fixture["KickOffEventStart"].iloc[0]
-    print("Next Fixture Selected:", fixture_name, fixture_date)
-
-    # Retrieve budget target
-    budget_target = budget_df.loc[budget_df["Fixture Name"] == fixture_name, "Budget Target"].values
-    budget_target = budget_target[0] if len(budget_target) > 0 else 0
-    print("Budget Target for Fixture:", fixture_name, budget_target)
-
-    return fixture_name, fixture_date, budget_target
 
 
 
@@ -418,13 +421,14 @@ def run_dashboard():
     monthly_progress, sales_made = calculate_monthly_progress(filtered_df_without_seats, start_date, end_date)
 
     if monthly_progress is not None:
-        st.markdown("<h3 style='color:#b22222; text-align:center;'>Monthly Premium Leaderboard</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color:#E41B17; text-align:center;'>Monthly Premium Leaderboard</h3>", unsafe_allow_html=True)
         st.markdown(
             f"""
             <div style="
                 display: flex;
                 justify-content: center;
                 align-items: center;
+                border: 1px solid #E41B17;
                 margin-top: 20px;
                 margin-bottom: 20px;
             ">
@@ -452,7 +456,7 @@ def run_dashboard():
             padding: 15px 20px; /* Padding for spacing */
             border-radius: 15px; /* Curved edges */
             font-family: Impact, Arial, sans-serif; /* Bold, blocky font */
-            font-size: 20px; /* Extra-large font size */
+            font-size: 25px; /* Extra-large font size */
             font-weight: bold; /* Extra-bold text */
             text-align: center; /* Center-aligned text */
             border: 1px solid #E41B17; /* Red border */
