@@ -140,63 +140,55 @@ def get_next_fixture(data, budget_df):
     # Ensure KickOffEventStart is a proper datetime
     data["KickOffEventStart"] = pd.to_datetime(data["KickOffEventStart"], errors="coerce")
 
-    # Debug: Unique Fixtures
-    print("Unique Fixtures in Raw Data:")
-    print(data["Fixture Name"].unique())
+    # Debug: Raw data before filtering
+    print("Raw Data (Before Filtering):")
+    print(data[["Fixture Name", "KickOffEventStart", "Price"]])
 
-    # Debug: Check for invalid dates
-    invalid_dates = data[data["KickOffEventStart"].isna()]
-    if not invalid_dates.empty:
-        print("Rows with Invalid KickOffEventStart:")
-        print(invalid_dates)
-
-    # Remove rows with invalid or past KickOffEventStart
+    # Filter for future fixtures
     today = datetime.now()
-    valid_data = data[data["KickOffEventStart"] > today]
+    future_data = data[data["KickOffEventStart"] > today]
 
-    # Debug: Valid Data
-    print("Valid Data (Future Fixtures Only):")
-    print(valid_data[["Fixture Name", "KickOffEventStart", "Price"]])
+    # Debug: Future fixtures after filtering
+    print("Future Data (After Filtering):")
+    print(future_data[["Fixture Name", "KickOffEventStart", "Price"]])
 
-    # Debug: Check for missing fixtures
-    missing_fixtures = set(budget_df["Fixture Name"]) - set(data["Fixture Name"])
-    if missing_fixtures:
-        print("Missing Fixtures in Data:")
-        print(missing_fixtures)
-
-    # Aggregate at the fixture level
-    aggregated_data = valid_data.groupby("Fixture Name", as_index=False).agg({
-        "KickOffEventStart": "min",  # Take the earliest valid kickoff time
+    # Aggregate data to get the earliest kickoff time and total price
+    aggregated_data = future_data.groupby("Fixture Name", as_index=False).agg({
+        "KickOffEventStart": "min",  # Take the earliest kickoff time
         "Price": "sum"              # Sum the price (total revenue)
     })
 
-    # Debug: Aggregated Data
-    print("Aggregated Data (After Grouping):")
+    # Debug: Aggregated data after grouping
+    print("Aggregated Data:")
     print(aggregated_data)
 
-    # Filter for future fixtures and sort by KickOffEventStart
-    future_fixtures = aggregated_data.sort_values("KickOffEventStart")
-    
-    # Debug: Filtered Future Fixtures
-    print("Filtered Future Fixtures (Debug):")
-    print(future_fixtures)
+    # Sort by the earliest kickoff time
+    aggregated_data = aggregated_data.sort_values(by="KickOffEventStart", ascending=True)
 
-    # Check if there are any future fixtures
-    if future_fixtures.empty:
-        return None, None, None
+    # Debug: Sorted fixtures
+    print("Sorted Fixtures:")
+    print(aggregated_data)
 
-    # Get the next fixture
-    next_fixture = future_fixtures.head(1)
-    fixture_name = next_fixture["Fixture Name"].iloc[0]
-    fixture_date = next_fixture["KickOffEventStart"].iloc[0]
-    print("Next Fixture Selected:", fixture_name, fixture_date)
+    # Select the next fixture
+    if not aggregated_data.empty:
+        next_fixture = aggregated_data.iloc[0]
+        fixture_name = next_fixture["Fixture Name"]
+        fixture_date = next_fixture["KickOffEventStart"]
 
-    # Retrieve budget target
-    budget_target = budget_df.loc[budget_df["Fixture Name"] == fixture_name, "Budget Target"].values
-    budget_target = budget_target[0] if len(budget_target) > 0 else 0
-    print("Budget Target for Fixture:", fixture_name, budget_target)
+        # Retrieve budget target
+        budget_target = budget_df.loc[budget_df["Fixture Name"] == fixture_name, "Budget Target"].values
+        budget_target = budget_target[0] if len(budget_target) > 0 else 0
 
-    return fixture_name, fixture_date, budget_target
+        # Debug: Selected fixture and budget target
+        print("Next Fixture Selected:", fixture_name, fixture_date)
+        print("Budget Target for Fixture:", budget_target)
+
+        return fixture_name, fixture_date, budget_target
+
+    # If no future fixtures are found
+    return None, None, None
+
+
 
 
 
@@ -318,11 +310,6 @@ def run_dashboard():
 
 
     # Sidebar
-    st.sidebar.markdown("### Date Range Filter")
-    col1, col2 = st.sidebar.columns(2)
-    start_date = col1.date_input("Start Date", value=datetime.now().replace(day=1), label_visibility="collapsed")
-    end_date = col2.date_input("End Date", value=datetime.now(), label_visibility="collapsed")
-
     # Auto-refresh
     refresh_time = auto_refresh()  # Auto-refreshes every 2 minutes
 
@@ -345,9 +332,13 @@ def run_dashboard():
         """,
         unsafe_allow_html=True
 )
-
-
     
+    # Date Range Filter
+    st.sidebar.markdown("### Date Range Filter")
+    col1, col2 = st.sidebar.columns(2)
+    start_date = col1.date_input("Start Date", value=datetime.now().replace(day=1), label_visibility="collapsed")
+    end_date = col2.date_input("End Date", value=datetime.now(), label_visibility="collapsed")
+
     # Total Sales Section
     total_sales = calculate_total_sales(filtered_df_without_seats)
     st.sidebar.markdown(
@@ -443,8 +434,7 @@ def run_dashboard():
             "<div style='color: #E41B17; font-weight: bold; font-family: Arial, sans-serif;'>⚠️ No upcoming fixtures found.</div>",
             unsafe_allow_html=True
         )
-
-
+        
     # Monthly Progress Table
     monthly_progress, sales_made = calculate_monthly_progress(filtered_df_without_seats, start_date, end_date)
 
