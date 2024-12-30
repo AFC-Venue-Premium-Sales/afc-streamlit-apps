@@ -216,8 +216,11 @@ def get_next_fixture(data, budget_df):
     # Ensure KickOffEventStart is a proper datetime
     data["KickOffEventStart"] = pd.to_datetime(data["KickOffEventStart"], errors="coerce")
 
-    # Aggregate at the fixture level
-    aggregated_data = data.groupby(["Fixture Name", "KickOffEventStart"], as_index=False).agg({"Price": "sum"})
+    # Aggregate at the fixture level, taking the earliest KickOffEventStart
+    aggregated_data = data.groupby("Fixture Name", as_index=False).agg({
+        "KickOffEventStart": "min",  # Take the earliest kickoff time
+        "Price": "sum"              # Sum the price (total revenue)
+    })
     print("Aggregated Data (Debug):", aggregated_data)
 
     # Get today's date
@@ -243,6 +246,7 @@ def get_next_fixture(data, budget_df):
     print("Budget Target for Fixture:", fixture_name, budget_target)
 
     return fixture_name, fixture_date, budget_target
+
 
 
 # Get the latest sale made
