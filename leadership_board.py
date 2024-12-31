@@ -353,26 +353,6 @@ def run_dashboard():
         """,
         unsafe_allow_html=True,
 )
-    # # Sidebar: Auto-refresh
-    # refresh_time = auto_refresh()
-    # st.sidebar.markdown(
-    #     f"""
-    #     <div style="
-    #         background-color: #d4edda; /* Soft green */
-    #         border: 1px solid #c3e6cb; /* Light green border */
-    #         border-radius: 8px; /* Rounded corners */
-    #         padding: 10px;
-    #         margin-bottom: 20px; /* Add spacing below the widget */
-    #         font-family: Arial, sans-serif;
-    #         font-size: 14px;
-    #         color: #155724; /* Dark green text */
-    #         text-align: center;
-    #     ">
-    #         <strong>Latest Data Update:</strong> {refresh_time}
-    #     </div>
-    #     """,
-    #     unsafe_allow_html=True
-    # )
 
    # Sidebar: Date Range Filter
     st.sidebar.markdown(
@@ -597,7 +577,7 @@ def run_dashboard():
                 display: flex;
                 justify-content: center;
                 align-items: center;
-                margin-top: 20px;
+                margin-top: 5px;
                 margin-bottom: 20px;
             ">
                 {monthly_progress.to_html(escape=False, index=False)}
