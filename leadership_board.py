@@ -553,21 +553,24 @@ def run_dashboard():
     st.sidebar.markdown(
         f"""
         <div style="
-            background-color: #d4edda; /* Soft green */
-            border: 1px solid #c3e6cb; /* Light green border */
-            border-radius: 8px; /* Rounded corners */
-            padding: 10px;
-            margin-bottom: 20px; /* Add spacing below the widget */
-            font-family: Arial, sans-serif;
-            font-size: 14px;
-            color: #155724; /* Dark green text */
+            background-color: #fff0f0; /* Soft pastel pink background */
+            border: 2px solid #E41B17; /* Arsenal red border */
+            border-radius: 15px; /* Rounded corners */
+            padding: 20px; /* Add extra padding for better spacing */
+            margin-bottom: 20px; /* Space below widget */
+            font-family: Impact, Arial, sans-serif; /* Bold and blocky font */
+            font-size: 20px; /* Larger font size for visibility */
+            color: #E41B17; /* Arsenal red text */
             text-align: center;
+            font-weight: bold; /* Make text bold */
         ">
-            <strong>Latest Data Update:</strong> {refresh_time}
+            <span>🔄 Latest Data Update:</span><br>
+            <span style="font-size: 24px;">{refresh_time}</span>
         </div>
         """,
         unsafe_allow_html=True
     )
+
         
     # Monthly Progress Table
     monthly_progress, sales_made = calculate_monthly_progress(filtered_df_without_seats, start_date, end_date)
@@ -593,14 +596,17 @@ def run_dashboard():
                 display: flex;
                 justify-content: center;
                 align-items: center;
-                margin-top: 20px;
-                margin-bottom: 20px;
+          
+                width: 90%; /* Adjust the width to occupy more space */
+                margin-left: auto; /* Center align horizontally */
+                margin-right: auto;
             ">
                 {monthly_progress.to_html(escape=False, index=False)}
             </div>
             """,
             unsafe_allow_html=True,
         )
+
     else:
         st.warning("Monthly Progress data not available for the selected date range.")
         
