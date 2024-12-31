@@ -546,7 +546,7 @@ def run_dashboard():
             font-weight: bold; /* Make text bold */
         ">
             <span>🔄 Latest Data Update:</span><br>
-            <span style="font-size: 28px;">{refresh_time}</span>
+            <span style="font-size: 20px; font-weight: bold;">{refresh_time}</span>
         </div>
         """,
         unsafe_allow_html=True
