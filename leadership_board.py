@@ -341,13 +341,18 @@ def run_dashboard():
     # Dashboard Title
     st.markdown(
         """
-        <div style="text-align: center; margin-top: 20px;">
-            <h1 style="color: #2c3e50;">💎 Arsenal Premium Sales 💎</h1>
+        <div style="
+            padding: 20px; 
+            font-family: Impact, Arial, sans-serif; 
+            font-size: 50px; 
+            font-weight: bold; 
+            color: #E41B17; 
+            text-align: center;">
+            💎 ARSENAL PREMIUM SALES 💎
         </div>
         """,
-        unsafe_allow_html=True
-    )
-
+        unsafe_allow_html=True,
+)
     # # Sidebar: Auto-refresh
     # refresh_time = auto_refresh()
     # st.sidebar.markdown(
