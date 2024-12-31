@@ -407,9 +407,40 @@ def run_dashboard():
         """,
         unsafe_allow_html=True
     )
-    
     # Premium Monthly Progress Section
-    total_revenue, total_target, progress_percentage = calculate_overall_progress(filtered_df_without_seats, start_date, end_date)
+    valid_executives = ["dcoppin", "BethNW", "bgardiner", "MeganS", "dmontague", 
+                        "jedwards", "HayleyA", "MillieS", "BenT", "ayildirim", "jmurphy"]
+
+    # Filter the data for valid executives
+    filtered_executive_data = filtered_df_without_seats[filtered_df_without_seats["CreatedBy"].isin(valid_executives)]
+
+    # Convert the CreatedOn column to datetime format
+    filtered_executive_data["CreatedOn"] = pd.to_datetime(
+        filtered_executive_data["CreatedOn"], errors="coerce", dayfirst=True
+    )
+
+    # Calculate total revenue for the specified date range and valid executives
+    total_revenue = filtered_executive_data[
+        (filtered_executive_data["CreatedOn"] >= pd.to_datetime(start_date)) &
+        (filtered_executive_data["CreatedOn"] <= pd.to_datetime(end_date))
+    ]["Price"].sum()
+
+    # Extract the current month and year to find the matching targets
+    current_month = start_date.strftime("%B")
+    current_year = start_date.year
+
+    # Retrieve monthly targets for the valid executives
+    if (current_month, current_year) in targets_data.index:
+        monthly_targets = targets_data.loc[(current_month, current_year), valid_executives]
+        total_target = monthly_targets.sum()
+    else:
+        monthly_targets = None
+        total_target = 0
+
+    # Calculate progress percentage
+    progress_percentage = (total_revenue / total_target * 100) if total_target > 0 else 0
+
+    # Render the widget
     if total_target == 0:
         st.sidebar.markdown(
             """
@@ -444,7 +475,7 @@ def run_dashboard():
                 font-weight: bold;
                 color: #E41B17;
             ">
-                📊 Monthly Progress <br>
+                📊 Monthly Progress Budget Target <br>
                 <span style="font-size: 22px; color: #0047AB;">Total Revenue ({start_date.strftime("%B")}):</span><br>
                 <span style="font-size: 24px; color: #E41B17;">£{total_revenue:,.0f}</span><br>
                 <span style="font-size: 22px; color: #0047AB;">Total Target:</span><br>
@@ -455,6 +486,7 @@ def run_dashboard():
             """,
             unsafe_allow_html=True
         )
+
 
 
     # Next Fixture Section
