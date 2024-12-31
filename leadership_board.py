@@ -549,6 +549,7 @@ def run_dashboard():
         
         
     # Sidebar: Auto-refresh
+    # Sidebar: Auto-refresh
     refresh_time = auto_refresh()
     st.sidebar.markdown(
         f"""
@@ -559,13 +560,13 @@ def run_dashboard():
             padding: 20px; /* Add extra padding for better spacing */
             margin-bottom: 20px; /* Space below widget */
             font-family: Impact, Arial, sans-serif; /* Bold and blocky font */
-            font-size: 20px; /* Larger font size for visibility */
+            font-size: 28px; /* Larger font size for visibility */
             color: #E41B17; /* Arsenal red text */
-            text-align: center;
+            text-align: center; /* Center-align text */
             font-weight: bold; /* Make text bold */
         ">
             <span>🔄 Latest Data Update:</span><br>
-            <span style="font-size: 24px;">{refresh_time}</span>
+            <span style="font-size: 28px;">{refresh_time}</span>
         </div>
         """,
         unsafe_allow_html=True
@@ -596,17 +597,14 @@ def run_dashboard():
                 display: flex;
                 justify-content: center;
                 align-items: center;
-          
-                width: 90%; /* Adjust the width to occupy more space */
-                margin-left: auto; /* Center align horizontally */
-                margin-right: auto;
+                margin-top: 20px;
+                margin-bottom: 20px;
             ">
                 {monthly_progress.to_html(escape=False, index=False)}
             </div>
             """,
             unsafe_allow_html=True,
         )
-
     else:
         st.warning("Monthly Progress data not available for the selected date range.")
         
