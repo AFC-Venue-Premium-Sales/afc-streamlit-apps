@@ -562,7 +562,7 @@ def run_dashboard():
             <div style="
                 padding: 15px; 
                 font-family: Impact, Arial, sans-serif; 
-                font-size: 36px; 
+                font-size: 40px; 
                 font-weight: bold; 
                 color: #E41B17; 
                 text-align: center;">
@@ -577,8 +577,7 @@ def run_dashboard():
                 display: flex;
                 justify-content: center;
                 align-items: center;
-                margin-top: 5px;
-                margin-bottom: 20px;
+            
             ">
                 {monthly_progress.to_html(escape=False, index=False)}
             </div>
