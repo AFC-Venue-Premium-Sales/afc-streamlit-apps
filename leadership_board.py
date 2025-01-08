@@ -245,13 +245,17 @@ def generate_scrolling_messages(data, budget_df):
     fixture_name, fixture_date, budget_target, event_competition = get_next_fixture(filtered_df_without_seats, budget_df)
 
     if fixture_name:
-        # Calculate days to fixture
-        days_to_fixture = (fixture_date - datetime.now()).days
+        # Filter data by both Fixture Name and EventCompetition
+        fixture_data = filtered_df_without_seats[
+            (filtered_df_without_seats["Fixture Name"] == fixture_name) &
+            (filtered_df_without_seats["EventCompetition"] == event_competition)
+        ]
 
         # Calculate total revenue for the selected fixture
-        fixture_revenue = filtered_df_without_seats[
-            filtered_df_without_seats["Fixture Name"] == fixture_name
-        ]["Price"].sum()
+        fixture_revenue = fixture_data["Price"].sum()
+
+        # Calculate days to fixture
+        days_to_fixture = (fixture_date - datetime.now()).days
 
         # Calculate budget achieved
         budget_achieved = round((fixture_revenue / budget_target) * 100, 2) if budget_target > 0 else 0
@@ -266,6 +270,7 @@ def generate_scrolling_messages(data, budget_df):
         )
     else:
         next_fixture_message = "⚠️ No upcoming fixtures to display."
+
 
     # Top Fixture of the Day
     today_sales = data[data["CreatedOn"].dt.date == datetime.now().date()]
@@ -476,13 +481,27 @@ def run_dashboard():
 
     # Next Fixture Section
     fixture_name, fixture_date, budget_target, event_competition = get_next_fixture(filtered_df_without_seats, budget_df)
+
     if fixture_name:
+        # Filter data based on both Fixture Name and Event Competition
+        filtered_fixture_data = filtered_df_without_seats[
+            (filtered_df_without_seats["Fixture Name"] == fixture_name) &
+            (filtered_df_without_seats["EventCompetition"] == event_competition)
+        ]
+        
+        # Calculate days to fixture
         days_to_fixture = (fixture_date - datetime.now()).days
-        fixture_revenue = filtered_df_without_seats[
-            filtered_df_without_seats["Fixture Name"] == fixture_name
-        ]["Price"].sum()
+        
+        # Calculate total revenue for the selected fixture
+        fixture_revenue = filtered_fixture_data["Price"].sum()
+        
+        # Calculate budget achieved
         budget_achieved = round((fixture_revenue / budget_target) * 100, 2) if budget_target > 0 else 0
+        
+        # Display fixture with event competition
         fixture_display = f"{fixture_name} ({event_competition})"
+        
+        # Render the fixture details
         st.sidebar.markdown(
             f"""
             <div style="
@@ -526,31 +545,30 @@ def run_dashboard():
             """,
             unsafe_allow_html=True
         )
-        
-        
-    # Sidebar: Auto-refresh
-    # Sidebar: Auto-refresh
-    refresh_time = auto_refresh()
-    st.sidebar.markdown(
-        f"""
-        <div style="
-            background-color: #fff0f0; /* Soft pastel pink background */
-            border: 2px solid #E41B17; /* Arsenal red border */
-            border-radius: 15px; /* Rounded corners */
-            padding: 20px; /* Add extra padding for better spacing */
-            margin-bottom: 20px; /* Space below widget */
-            font-family: Impact, Arial, sans-serif; /* Bold and blocky font */
-            font-size: 28px; /* Larger font size for visibility */
-            color: #E41B17; /* Arsenal red text */
-            text-align: center; /* Center-align text */
-            font-weight: bold; /* Make text bold */
-        ">
-            <span>🔄 Latest Data Update:</span><br>
-            <span style="font-size: 20px; font-weight: bold;">{refresh_time}</span>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+
+            
+        # Sidebar: Auto-refresh
+        refresh_time = auto_refresh()
+        st.sidebar.markdown(
+            f"""
+            <div style="
+                background-color: #fff0f0;
+                border: 2px solid #E41B17;
+                border-radius: 10px;
+                padding: 20px; /* Add extra padding for better spacing */
+                margin-bottom: 20px; /* Space below widget */
+                font-family: Impact, Arial, sans-serif; /* Bold and blocky font */
+                font-size: 28px; /* Larger font size for visibility */
+                color: #E41B17; /* Arsenal red text */
+                text-align: center; /* Center-align text */
+                font-weight: bold; /* Make text bold */
+            ">
+                <span>🔄 Latest Data Update:</span><br>
+                <span style="font-size: 20px; font-weight: bold; color: #E41B17;">{refresh_time}</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
         
     # Monthly Progress Table
