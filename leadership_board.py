@@ -343,6 +343,7 @@ def run_dashboard():
     st.set_page_config(page_title="Hospitality Leadership Board", layout="wide")
     
     # Dashboard Title
+    st.image("assets/crestARS001(Transparent)(Small).png", width=300)  # Display the crest image (adjust width as needed)
     st.markdown(
         """
         <div style="
@@ -352,13 +353,13 @@ def run_dashboard():
             font-weight: bold; 
             color: #E41B17; 
             text-align: center;">
-            <img src="assets/arsenal_crest_gold.png" alt="Arsenal Crest" style="height: 50px; vertical-align: middle; margin-right: 10px;">
             ARSENAL PREMIUM SALES
-            <img src="assets/arsenal_crest_gold.png" alt="Arsenal Crest" style="height: 50px; vertical-align: middle; margin-left: 10px;">
         </div>
         """,
         unsafe_allow_html=True,
     )
+
+
 
 
    # Sidebar: Date Range Filter
