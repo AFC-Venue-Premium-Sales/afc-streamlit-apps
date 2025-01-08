@@ -282,7 +282,7 @@ def generate_scrolling_messages(data, budget_df):
 
 # Specify Execs
     valid_executives = ["dcoppin", "BethNW", "bgardiner", "MeganS", "dmontague", 
-                        "jedwards", "HayleyA", "MillieS", "BenT", "ayildirim", "jmurphy"]
+                        "jedwards", "HayleyA", "MillieS", "BenT", "jmurphy"]
 
     # Filter today’s sales to include only valid executives
     exec_sales_today = today_sales[today_sales["CreatedBy"].isin(valid_executives)]
@@ -398,7 +398,7 @@ def run_dashboard():
     )
     # Premium Monthly Progress Section
     valid_executives = ["dcoppin", "BethNW", "bgardiner", "MeganS", "dmontague", 
-                        "jedwards", "HayleyA", "MillieS", "BenT", "ayildirim", "jmurphy"]
+                        "jedwards", "HayleyA", "MillieS", "BenT", "jmurphy"]
 
     # Filter the data for valid executives
     filtered_executive_data = filtered_df_without_seats[filtered_df_without_seats["CreatedBy"].isin(valid_executives)]
