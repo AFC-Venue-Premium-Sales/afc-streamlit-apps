@@ -35,12 +35,11 @@ targets_data = pd.DataFrame({
     "HayleyA": [42500, 42500, 36500, 30500, 24500, 18500],
     "jmurphy": [35000, 35000, 30000, 25000, 20000, 15000],
     "BenT": [35000, 35000, 30000, 25000, 20000, 15000],
-    "ayildirim": [19000, 19000, 16500, 14000, 11000, 8500],
 }).set_index(["Month", "Year"])
 
 # Specify your list of executives
 valid_executives = ["dcoppin", "BethNW", "bgardiner", "MeganS", "dmontague", 
-                    "jedwards", "HayleyA", "MillieS", "BenT", "ayildirim", "jmurphy"]
+                    "jedwards", "HayleyA", "MillieS", "BenT", "jmurphy"]
 
 
 
@@ -639,3 +638,5 @@ def run_dashboard():
 
 if __name__ == "__main__":
     run_dashboard()
+
+
