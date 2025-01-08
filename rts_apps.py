@@ -107,7 +107,7 @@ def reload_data():
 
 
 # App Header with a logo
-st.image("assets/assets/arsenal_colour-banner.png", width=250)  # Placeholder for the logo
+st.image("assets/arsenal_colour-banner.png", width=250)  # Placeholder for the logo
 st.title("🏟️ AFC Venue - MBM Hospitality")
 st.markdown("---")  # A horizontal line for better UI
 
