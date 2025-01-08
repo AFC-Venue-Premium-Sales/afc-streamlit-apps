@@ -352,11 +352,14 @@ def run_dashboard():
             font-weight: bold; 
             color: #E41B17; 
             text-align: center;">
-            💎 ARSENAL PREMIUM SALES 💎
+            <img src="assets/arsenal_crest_gold.png" alt="Arsenal Crest" style="height: 50px; vertical-align: middle; margin-right: 10px;">
+            ARSENAL PREMIUM SALES
+            <img src="assets/arsenal_crest_gold.png" alt="Arsenal Crest" style="height: 50px; vertical-align: middle; margin-left: 10px;">
         </div>
         """,
         unsafe_allow_html=True,
-)
+    )
+
 
    # Sidebar: Date Range Filter
     st.sidebar.markdown(
@@ -546,9 +549,9 @@ def run_dashboard():
         )
 
             
-        # Sidebar: Auto-refresh
-        refresh_time = auto_refresh()
-        st.sidebar.markdown(
+    # Sidebar: Auto-refresh
+    refresh_time = auto_refresh()
+    st.sidebar.markdown(
             f"""
             <div style="
                 background-color: #fff0f0;
@@ -567,7 +570,7 @@ def run_dashboard():
             </div>
             """,
             unsafe_allow_html=True
-        )
+    )
 
         
     # Monthly Progress Table
