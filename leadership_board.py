@@ -472,18 +472,25 @@ def run_dashboard():
     if total_target == 0:
         st.sidebar.markdown(
             """
-            <div style="
-                background-color: #fff0f0;
-                border: 2px solid #E41B17;
-                border-radius: 15px;
-                padding: 20px 15px;
-                margin-bottom: 30px;
-                text-align: center;
-                font-family: Impact, Arial, sans-serif;
-                font-size: 28px;
-                font-weight: bold;
-                color: #E41B17;
-            ">
+            <style>
+                @font-face {
+                    font-family: 'Chapman-Bold';
+                    src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
+                }
+                .custom-out-of-bounds {
+                    background-color: #fff0f0;
+                    border: 2px solid #E41B17;
+                    border-radius: 15px;
+                    padding: 20px 15px;
+                    margin-bottom: 30px;
+                    text-align: center;
+                    font-family: 'Chapman-Bold';
+                    font-size: 28px;
+                    font-weight: bold;
+                    color: #E41B17;
+                }
+            </style>
+            <div class="custom-out-of-bounds">
                 ⚠️ Selected date range is out of bounds for available targets.
             </div>
             """,
@@ -492,24 +499,39 @@ def run_dashboard():
     else:
         st.sidebar.markdown(
             f"""
-            <div style="
-                background-color: #fff0f0;
-                border: 2px solid #E41B17;
-                border-radius: 15px;
-                padding: 20px 15px;
-                text-align: center;
-                font-family: Impact, Arial, sans-serif;
-                font-size: 28px;
-                font-weight: bold;
-                color: #E41B17;
-            ">
+            <style>
+                @font-face {{
+                    font-family: 'Chapman-Bold';
+                    src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
+                }}
+                .custom-progress-widget {{
+                    background-color: #fff0f0;
+                    border: 2px solid #E41B17;
+                    border-radius: 15px;
+                    padding: 20px 15px;
+                    text-align: center;
+                    font-family: 'Chapman-Bold';
+                    font-size: 28px;
+                    font-weight: bold;
+                    color: #E41B17;
+                }}
+                .custom-progress-widget span {{
+                    font-size: 22px;
+                    color: #0047AB;
+                }}
+                .custom-progress-widget .highlight {{
+                    font-size: 24px;
+                    color: #E41B17;
+                }}
+            </style>
+            <div class="custom-progress-widget">
                 📊 Monthly Progress Budget Target <br>
-                <span style="font-size: 22px; color: #0047AB;">Total Revenue ({start_date.strftime("%B")}):</span><br>
-                <span style="font-size: 24px; color: #E41B17;">£{total_revenue:,.0f}</span><br>
-                <span style="font-size: 22px; color: #0047AB;">Total Target:</span><br>
-                <span style="font-size: 24px; color: #E41B17;">£{total_target:,.0f}</span><br>
-                <span style="font-size: 22px; color: #0047AB;">🌟 Progress Achieved:</span><br>
-                <span style="font-size: 24px; color: #E41B17;">{progress_percentage:.0f}%</span>
+                <span>Total Revenue ({start_date.strftime("%B")}):</span><br>
+                <span class="highlight">£{total_revenue:,.0f}</span><br>
+                <span>Total Target:</span><br>
+                <span class="highlight">£{total_target:,.0f}</span><br>
+                <span>🌟 Progress Achieved:</span><br>
+                <span class="highlight">{progress_percentage:.0f}%</span>
             </div>
             """,
             unsafe_allow_html=True
