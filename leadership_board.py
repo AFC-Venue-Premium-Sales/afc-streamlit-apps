@@ -343,23 +343,29 @@ def run_dashboard():
     st.set_page_config(page_title="Hospitality Leadership Board", layout="wide")
     
     # Dashboard Title
-    st.image("assets/crestARS001(Transparent)(Small).png", width=300)  # Display the crest image (adjust width as needed)
+    st.image("assets/crestARS001(Transparent)(Small).png", width=100)  # Display the crest image (adjust width as needed)
     st.markdown(
         """
-        <div style="
-            padding: 20px; 
-            font-family: Impact, Arial, sans-serif; 
-            font-size: 50px; 
-            font-weight: bold; 
-            color: #E41B17; 
-            text-align: center;">
+        <style>
+        @font-face {
+            font-family: 'Northbank-N5Bold';
+            src: url('fonts/Northbank-N5Bold_4107562472.ttf') format('truetype');
+        }
+        .custom-title {
+            font-family: 'Northbank-N5Bold';
+            font-size: 50px;
+            font-weight: bold;
+            color: #E41B17;
+            text-align: center;
+            padding: 20px;
+        }
+        </style>
+        <div class="custom-title">
             ARSENAL PREMIUM SALES
         </div>
         """,
         unsafe_allow_html=True,
     )
-
-
 
 
    # Sidebar: Date Range Filter
@@ -580,25 +586,34 @@ def run_dashboard():
     if monthly_progress is not None:
         st.markdown(
             """
-            <div style="
-                padding: 15px; 
-                font-family: Impact, Arial, sans-serif; 
-                font-size: 40px; 
-                font-weight: bold; 
-                color: #E41B17; 
-                text-align: center;">
+            <style>
+            @font-face {
+                font-family: 'Northbank-N5Bold';
+                src: url('fonts/Northbank-N5Bold_4107562472.ttf') format('truetype');
+            }
+            .custom-leaderboard-title {
+                font-family: 'Northbank-N5Bold';
+                font-size: 40px;
+                font-weight: bold;
+                color: #E41B17;
+                text-align: center;
+                padding: 15px;
+            }
+            </style>
+            <div class="custom-leaderboard-title">
                 MONTHLY PREMIUM LEADERBOARD
             </div>
             """,
             unsafe_allow_html=True,
         )
+        
         st.markdown(
             f"""
             <div style="
                 display: flex;
                 justify-content: center;
                 align-items: center;
-                margin-top: 5px;
+                margin-top: 20x
                 margin-bottom: 20px;
             ">
                 {monthly_progress.to_html(escape=False, index=False)}

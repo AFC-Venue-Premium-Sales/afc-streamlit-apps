@@ -265,7 +265,7 @@ def run_app():
         # Display results
         if not filtered_data.empty:
             st.write("### 💼 Total Accumulated Sales")
-            st.write(f"Total Accumulated Sales (Static) since June 18th (stripe confirmed): **£{static_total:,.2f}** ")
+            st.write(f"Total Accumulated Sales (Static) since June 18th (stripe): **£{static_total:,.2f}** ")
 
             st.write("### 💼 Filtered Accumulated Sales")
             st.write(f"Total Accumulated Sales (Filtered): **£{dynamic_total:,.2f}** ")
