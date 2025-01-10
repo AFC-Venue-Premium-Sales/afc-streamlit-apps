@@ -264,7 +264,7 @@ def generate_scrolling_messages(data, budget_df):
 
         # Generate the message
         next_fixture_message = (
-            f"🏟️ Next Fixture: {fixture_display} in {days_to_fixture} days "
+            f"🏟️ Next Fixture: {fixture_display} in {days_to_fixture} day(s) "
             f"🎯 Budget Target Achieved: {budget_achieved}%."
         )
     else:
@@ -559,25 +559,38 @@ def run_dashboard():
     # Sidebar: Auto-refresh
     refresh_time = auto_refresh()
     st.sidebar.markdown(
-            f"""
-            <div style="
+        f"""
+        <style>
+            @font-face {{
+                font-family: 'Northbank-N5';
+                src: url('fonts/Northbank-N5_2789720163.ttf') format('truetype');
+            }}
+            .custom-refresh-box {{
                 background-color: #fff0f0;
                 border: 2px solid #E41B17;
                 border-radius: 10px;
                 padding: 20px; /* Add extra padding for better spacing */
                 margin-bottom: 20px; /* Space below widget */
-                font-family: Impact, Arial, sans-serif; /* Bold and blocky font */
+                font-family: 'Northbank-N5'; /* Custom font applied */
                 font-size: 28px; /* Larger font size for visibility */
                 color: #E41B17; /* Arsenal red text */
                 text-align: center; /* Center-align text */
                 font-weight: bold; /* Make text bold */
-            ">
-                <span>🔄 Latest Data Update:</span><br>
-                <span style="font-size: 20px; font-weight: bold; color: #E41B17;">{refresh_time}</span>
-            </div>
-            """,
-            unsafe_allow_html=True
+            }}
+            .custom-refresh-time {{
+                font-size: 20px;
+                font-weight: bold;
+                color: #E41B17;
+            }}
+        </style>
+        <div class="custom-refresh-box">
+            <span>🔄 Latest Data Update:</span><br>
+            <span class="custom-refresh-time">{refresh_time}</span>
+        </div>
+        """,
+        unsafe_allow_html=True
     )
+
 
         
     # Monthly Progress Table
@@ -598,6 +611,7 @@ def run_dashboard():
                 color: #E41B17;
                 text-align: center;
                 padding: 5px;
+                margin-top: -25px
                 
             }
             </style>
@@ -626,35 +640,7 @@ def run_dashboard():
     else:
         st.warning("Monthly Progress data not available for the selected date range.")
         
-
-    # # Scrolling Message Section
-    # scrolling_message = generate_scrolling_messages(filtered_df_without_seats, budget_df)
-    # st.markdown(
-    #     f"""
-    #     <style>
-    #         .custom-scroll-box {{
-    #             overflow: hidden;
-    #             white-space: nowrap;
-    #             width: 100%;
-    #             background-color: #fff0f0; /* Soft pastel pink background */
-    #             color: #E41B17; /* Arsenal red font color */
-    #             padding: 15px 20px; /* Padding for spacing */
-    #             border-radius: 15px; /* Curved edges */
-    #             font-family: Impact, Arial, sans-serif; /* Bold, blocky font */
-    #             font-size: 25px; /* Extra-large font size */
-    #             font-weight: bold; /* Extra-bold text */
-    #             text-align: center; /* Center-aligned text */
-    #             border: 2px solid #E41B17; /* Red border */
-    #         }}
-    #     </style>
-    #     <div class="custom-scroll-box">
-    #         <marquee behavior="scroll" direction="left" scrollamount="4">
-    #             {scrolling_message}
-    #         </marquee>
-    #     </div>
-    #     """,
-    #     unsafe_allow_html=True
-    # )
+        
 
     scrolling_message = generate_scrolling_messages(filtered_df_without_seats, budget_df)
     st.markdown(
