@@ -597,7 +597,8 @@ def run_dashboard():
                 font-weight: bold;
                 color: #E41B17;
                 text-align: center;
-                padding: 15px;
+                padding: 5px;
+                margin-top: -20px
             }
             </style>
             <div class="custom-leaderboard-title">
