@@ -414,20 +414,20 @@ def run_dashboard():
                 color: #E41B17; /* Match font color */
             }}
             .custom-sales-header {{
-                font-size: 22px;
+                font-size: 25px;
                 color: #E41B17;
                 text-align: center;
                 font-weight: bold;
             }}
             .custom-sales-value {{
-                font-size: 24px;
+                font-size: 28px;
                 color: #E41B17;
                 text-align: center;
                 font-weight: bold;
             }}
         </style>
         <div class="custom-sales-box">
-            <span class="custom-sales-header">🛒 Sales To Date:</span><br>
+            <span class="custom-sales-header"> 🍯 Sales To Date:</span><br>
             <span class="custom-sales-value">£{total_sales:,.0f}</span>
         </div>
         """,
