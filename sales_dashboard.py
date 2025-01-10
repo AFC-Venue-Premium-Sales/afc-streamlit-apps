@@ -628,33 +628,37 @@ def run_dashboard():
         
 
     # Scrolling Message Section
-    scrolling_message = generate_scrolling_messages(filtered_df_without_seats, budget_df)
-    st.markdown(
-        f"""
-        <style>
-            .custom-scroll-box {{
-                overflow: hidden;
-                white-space: nowrap;
-                width: 100%;
-                background-color: #fff0f0; /* Soft pastel pink background */
-                color: #E41B17; /* Arsenal red font color */
-                padding: 15px 20px; /* Padding for spacing */
-                border-radius: 15px; /* Curved edges */
-                font-family: Impact, Arial, sans-serif; /* Bold, blocky font */
-                font-size: 25px; /* Extra-large font size */
-                font-weight: bold; /* Extra-bold text */
-                text-align: center; /* Center-aligned text */
-                border: 2px solid #E41B17; /* Red border */
-            }}
-        </style>
-        <div class="custom-scroll-box">
-            <marquee behavior="scroll" direction="left" scrollamount="4">
-                {scrolling_message}
-            </marquee>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+        scrolling_message = generate_scrolling_messages(filtered_df_without_seats, budget_df)
+        st.markdown(
+            f"""
+            <style>
+                @font-face {{
+                    font-family: 'Northbank-N5';
+                    src: url('fonts/Northbank-N5_2789720163.ttf') format('truetype');
+                }}
+                .custom-scroll-box {{
+                    overflow: hidden;
+                    white-space: nowrap;
+                    width: 100%;
+                    background-color: #fff0f0; /* Soft pastel pink background */
+                    color: #E41B17; /* Arsenal red font color */
+                    padding: 15px 20px; /* Padding for spacing */
+                    border-radius: 15px; /* Curved edges */
+                    font-family: 'Northbank-N5'; /* Apply the custom font */
+                    font-size: 25px; /* Extra-large font size */
+                    font-weight: bold; /* Extra-bold text */
+                    text-align: center; /* Center-aligned text */
+                    border: 2px solid #E41B17; /* Red border */
+                }}
+            </style>
+            <div class="custom-scroll-box">
+                <marquee behavior="scroll" direction="left" scrollamount="4">
+                    {scrolling_message}
+                </marquee>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
 
 if __name__ == "__main__":
