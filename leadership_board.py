@@ -371,13 +371,21 @@ def run_dashboard():
    # Sidebar: Date Range Filter
     st.sidebar.markdown(
         """
-        <div style="
-            text-align: center; 
-            font-family: Arial, sans-serif; 
-            font-size: 18px; 
-            font-weight: bold; 
-            color: #2c3e50; 
-            margin-bottom: 10px;">
+        <style>
+            @font-face {
+                font-family: 'Northbank-N5';
+                src: url('fonts/Northbank-N5_2789720163.ttf') format('truetype');
+            }
+            .custom-date-range-title {
+                text-align: center; 
+                font-family: 'Northbank-N5'; /* Apply the custom font */
+                font-size: 18px; 
+                font-weight: bold; 
+                color: #2c3e50; 
+                margin-bottom: 10px;
+            }
+        </style>
+        <div class="custom-date-range-title">
             Date Range Filter
         </div>
         """,
@@ -391,21 +399,42 @@ def run_dashboard():
     total_sales = calculate_total_sales(filtered_df_without_seats)
     st.sidebar.markdown(
         f"""
-        <div style="
-            padding: 20px 15px; /* Match padding of the other widgets */
-            margin-bottom: 30px; /* Space between widgets */
-            text-align: center; /* Center align all text */
-            font-family: Impact, Arial, sans-serif; /* Match the font style */
-            font-size: 28px; /* Match font size */
-            font-weight: bold; /* Match weight */
-            color: #E41B17; /* Match font color */
-        ">
-            <span style="font-size: 22px; color: #E41B17; text-align: center; font-weight: bold;">🛒 Sales To Date:</span><br>
-            <span style="font-size: 24px; color: #E41B17; text-align: center; font-weight: bold;">£{total_sales:,.0f}</span>
+        <style>
+            @font-face {{
+                font-family: 'Northbank-N5';
+                src: url('fonts/Northbank-N5_2789720163.ttf') format('truetype');
+            }}
+            .custom-sales-box {{
+                padding: 20px 15px; /* Match padding of the other widgets */
+                margin-bottom: 30px; /* Space between widgets */
+                text-align: center; /* Center align all text */
+                font-family: 'Northbank-N5'; /* Apply the custom font */
+                font-size: 28px; /* Match font size */
+                font-weight: bold; /* Match weight */
+                color: #E41B17; /* Match font color */
+            }}
+            .custom-sales-header {{
+                font-size: 22px;
+                color: #E41B17;
+                text-align: center;
+                font-weight: bold;
+            }}
+            .custom-sales-value {{
+                font-size: 24px;
+                color: #E41B17;
+                text-align: center;
+                font-weight: bold;
+            }}
+        </style>
+        <div class="custom-sales-box">
+            <span class="custom-sales-header">🛒 Sales To Date:</span><br>
+            <span class="custom-sales-value">£{total_sales:,.0f}</span>
         </div>
         """,
         unsafe_allow_html=True
     )
+
+    
     # Premium Monthly Progress Section
     valid_executives = ["dcoppin", "BethNW", "bgardiner", "MeganS", "dmontague", 
                         "jedwards", "HayleyA", "MillieS", "BenT", "jmurphy"]
