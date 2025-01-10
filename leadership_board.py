@@ -744,6 +744,7 @@ def run_dashboard():
                 font-weight: bold; /* Extra-bold text */
                 text-align: center; /* Center-aligned text */
                 border: 2px solid #E41B17; /* Red border */
+                border-top: 20;
             }}
         </style>
         <div class="custom-scroll-box">
