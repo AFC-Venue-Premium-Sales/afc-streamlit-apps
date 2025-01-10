@@ -343,7 +343,7 @@ def run_dashboard():
     st.set_page_config(page_title="Hospitality Leadership Board", layout="wide")
     
     # Dashboard Title
-    st.image("assets/crestARS001(Transparent)(Small).png", width=100)  # Display the crest image (adjust width as needed)
+    st.image("assets/arsenal_crest_gold.png", width=200)  # Display the crest image (adjust width as needed)
     st.markdown(
         """
         <style>
