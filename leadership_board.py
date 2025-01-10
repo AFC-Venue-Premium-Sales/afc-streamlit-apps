@@ -540,73 +540,102 @@ def run_dashboard():
 
 
     # Next Fixture Section
-    fixture_name, fixture_date, budget_target, event_competition = get_next_fixture(filtered_df_without_seats, budget_df)
+fixture_name, fixture_date, budget_target, event_competition = get_next_fixture(filtered_df_without_seats, budget_df)
 
-    if fixture_name:
-        # Filter data based on both Fixture Name and Event Competition
-        filtered_fixture_data = filtered_df_without_seats[
-            (filtered_df_without_seats["Fixture Name"] == fixture_name) &
-            (filtered_df_without_seats["EventCompetition"] == event_competition)
-        ]
-        
-        # Calculate days to fixture
-        days_to_fixture = (fixture_date - datetime.now()).days
-        
-        # Calculate total revenue for the selected fixture
-        fixture_revenue = filtered_fixture_data["Price"].sum()
-        
-        # Calculate budget achieved
-        budget_achieved = round((fixture_revenue / budget_target) * 100, 2) if budget_target > 0 else 0
-        
-        # Display fixture with event competition
-        fixture_display = f"{fixture_name} ({event_competition})"
-        
-        # Render the fixture details
-        st.sidebar.markdown(
-            f"""
-            <div style="
-                background-color: #fff0f0;
-                border: 2px solid #E41B17;
-                border-radius: 15px;
-                margin-top: 10px;
-                padding: 20px 15px;
-                text-align: center;
-                font-family: Impact, Arial, sans-serif;
-                font-size: 28px;
-                font-weight: bold;
-                color: #E41B17;
-            ">
-                🏟️ Next Fixture <br>
-                <span style="font-size: 22px; color: #E41B17;">{fixture_display}</span><br>
-                <span style="font-size: 22px; color: #0047AB;">⏳ Days to Fixture:</span><br>
-                <span style="font-size: 24px; color: #E41B17;">{days_to_fixture} days</span><br>
-                <span style="font-size: 22px; color: #0047AB;">🎯 Budget Target Achieved:</span><br>
-                <span style="font-size: 24px; color: #E41B17;">{budget_achieved}%</span>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-    else:
-        st.sidebar.markdown(
-            """
-            <div style="
-                background-color: #fff0f0;
-                border: 2px solid #E41B17;
-                border-radius: 15px;
-                padding: 20px 15px;
-                text-align: center;
-                font-family: Impact, Arial, sans-serif;
-                font-size: 28px;
-                font-weight: bold;
-                color: #E41B17;
-            ">
-                ⚠️ No upcoming fixtures found.
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+if fixture_name:
+    # Filter data based on both Fixture Name and Event Competition
+    filtered_fixture_data = filtered_df_without_seats[
+        (filtered_df_without_seats["Fixture Name"] == fixture_name) &
+        (filtered_df_without_seats["EventCompetition"] == event_competition)
+    ]
 
-            
+    # Calculate days to fixture
+    days_to_fixture = (fixture_date - datetime.now()).days
+
+    # Calculate total revenue for the selected fixture
+    fixture_revenue = filtered_fixture_data["Price"].sum()
+
+    # Calculate budget achieved
+    budget_achieved = round((fixture_revenue / budget_target) * 100, 2) if budget_target > 0 else 0
+
+    # Display fixture with event competition
+    fixture_display = f"{fixture_name} ({event_competition})"
+
+    # Render the fixture details
+    st.sidebar.markdown(
+        f"""
+        <style>
+        @font-face {{
+            font-family: 'Chapman-Bold';
+            src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
+        }}
+        .next-fixture-widget {{
+            background-color: #fff0f0;
+            border: 2px solid #E41B17;
+            border-radius: 15px;
+            margin-top: 10px;
+            padding: 20px 15px;
+            text-align: center;
+            font-family: 'Chapman-Bold';
+            font-size: 28px;
+            font-weight: bold;
+            color: #E41B17;
+        }}
+        .next-fixture-widget span {{
+            display: block;
+            margin-bottom: 10px;
+        }}
+        .next-fixture-widget .fixture-title {{
+            font-size: 22px;
+            color: #E41B17;
+        }}
+        .next-fixture-widget .fixture-info {{
+            font-size: 22px;
+            color: #0047AB;
+        }}
+        .next-fixture-widget .fixture-days {{
+            font-size: 24px;
+            color: #E41B17;
+        }}
+        </style>
+        <div class="next-fixture-widget">
+            🏟️ Next Fixture <br>
+            <span class="fixture-title">{fixture_display}</span>
+            <span class="fixture-info">⏳ Days to Fixture:</span>
+            <span class="fixture-days">{days_to_fixture} days</span>
+            <span class="fixture-info">🎯 Budget Target Achieved:</span>
+            <span class="fixture-days">{budget_achieved}%</span>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+else:
+    st.sidebar.markdown(
+        """
+        <style>
+        @font-face {{
+            font-family: 'Chapman-Bold';
+            src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
+        }}
+        .no-fixture-widget {{
+            background-color: #fff0f0;
+            border: 2px solid #E41B17;
+            border-radius: 15px;
+            padding: 20px 15px;
+            text-align: center;
+            font-family: 'Chapman-Bold';
+            font-size: 28px;
+            font-weight: bold;
+            color: #E41B17;
+        }}
+        </style>
+        <div class="no-fixture-widget">
+            ⚠️ No upcoming fixtures found.
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
     # Sidebar: Auto-refresh
     refresh_time = auto_refresh()
     st.sidebar.markdown(
@@ -641,9 +670,7 @@ def run_dashboard():
         """,
         unsafe_allow_html=True
     )
-
-
-        
+    
     # Monthly Progress Table
     monthly_progress, sales_made = calculate_monthly_progress(filtered_df_without_seats, start_date, end_date)
 
@@ -724,12 +751,6 @@ def run_dashboard():
         """,
         unsafe_allow_html=True
     )
-
-
-
-
-
-
 
 
 if __name__ == "__main__":
