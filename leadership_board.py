@@ -348,12 +348,12 @@ def run_dashboard():
         """
         <style>
         @font-face {
-            font-family: 'Northbank-N5Bold';
-            src: url('fonts/Northbank-N5Bold_4107562472.ttf') format('truetype');
+            font-family: 'Northbank-N7';
+            src: url('fonts/Northbank-N7_2789728357.ttf') format('truetype');
         }
         .custom-title {
-            font-family: 'Northbank-N5Bold';
-            font-size: 50px;
+            font-family: 'Northbank-N7';
+            font-size: 60px;
             font-weight: bold;
             color: #E41B17;
             text-align: center;
@@ -606,6 +606,7 @@ def run_dashboard():
             """,
             unsafe_allow_html=True,
         )
+
         
         st.markdown(
             f"""
