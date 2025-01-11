@@ -77,6 +77,11 @@ def calculate_overall_progress(data, start_date, end_date):
 
     return total_revenue, total_target, progress_percentage
 
+# Calculate total sales (including website)
+def calculate_total_sales(data):
+    total_sales = data["TotalPrice"].sum()
+    return total_sales
+
 def calculate_monthly_progress(data, start_date, end_date):
     data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], errors="coerce", dayfirst=True)
 
