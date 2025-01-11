@@ -5,6 +5,7 @@ from datetime import datetime
 import os
 import importlib
 from streamlit_autorefresh import st_autorefresh
+import base64
 
 # Import live data and reload the module
 def load_live_data():
@@ -178,9 +179,6 @@ def calculate_monthly_progress(data, start_date, end_date):
     sales_made = filtered_data["CreatedBy"].unique()
 
     return progress_data, sales_made
-
-
-
 
 
 
@@ -366,39 +364,47 @@ def auto_refresh():
     st.sidebar.text(f"Refresh Count: {st.session_state['refresh_count']}")
     return refresh_time
 
+
+def get_base64_image(image_path):
+    with open(image_path, "rb") as img_file:
+        return base64.b64encode(img_file.read()).decode("utf-8")
+
+# Get the base64 string of the image
+crest_base64 = get_base64_image("assets/arsenal_crest_gold.png")
+
 # Run dashboard
 def run_dashboard():
     st.set_page_config(page_title="Hospitality Leadership Board", layout="wide")
     
     # Dashboard Title
     st.markdown(
-        """
+        f"""
         <style>
-        @font-face {
+        @font-face {{
             font-family: 'Northbank-N7';
             src: url('fonts/Northbank-N7_2789728357.ttf') format('truetype');
-        }
-        .custom-title-container {
+        }}
+        .custom-title-container {{
             display: flex;
             align-items: center;
             justify-content: center;
             margin-top: -50px; /* Adjusts the position of the crest and title */
-        }
-        .custom-title {
+        }}
+        .custom-title {{
             font-family: 'Northbank-N7';
             font-size: 60px;
             font-weight: bold;
             color: #E41B17;
             text-align: left; /* Aligns with the crest */
             margin-left: 15px; /* Adjust spacing between the crest and the title */
-        }
-        .custom-crest {
+        }}
+        .custom-crest {{
             width: 80px; /* Adjust crest size */
             margin-right: 15px; /* Adjust spacing between the crest and the title */
-        }
+        }}
         </style>
         <div class="custom-title-container">
-            <img src="assets/arsenal_crest_gold.png" class="custom-crest"/>
+            <img src="data:image/png;base64,{crest_base64}" class="custom-crest"/>
             <div class="custom-title">
                 ARSENAL PREMIUM SALES
             </div>
