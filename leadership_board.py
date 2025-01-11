@@ -155,17 +155,20 @@ def calculate_monthly_progress(data, start_date, end_date):
 
     # Sort by Progress To Monthly Target (Numeric) before formatting
     progress_data = progress_data.sort_values(by="Progress To Monthly Target (Numeric)", ascending=False)
-
-    # Define a function to style table cells
+    
+    # Define a function to style table cells with consistent fonts and spacing
     def style_cell(value, color="black"):
-        return f"<div style='color: {color}; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>{value}</div>"
+        return f"<div style='color: {color}; font-family: Chapman-Bold; font-size: 24px; padding: 10px; text-align: center;'>{value}</div>"
 
     # Apply consistent styling to all columns
+    progress_data["Sales Exec"] = progress_data["Sales Exec"].apply(
+        lambda x: style_cell(x)
+    )
     progress_data["Today's Sales"] = progress_data["Today's Sales"].apply(
-        lambda x: style_cell(f"\u00a3{x:,.0f}")
+        lambda x: style_cell(f"£{x:,.0f}")
     )
     progress_data["Weekly Sales"] = progress_data["Weekly Sales"].apply(
-        lambda x: style_cell(f"\u00a3{x:,.0f}")
+        lambda x: style_cell(f"£{x:,.0f}")
     )
     progress_data["Progress To Monthly Target"] = progress_data["Progress To Monthly Target (Numeric)"].apply(
         lambda x: style_cell(f"{x:.0f}%", "green" if x >= expected_pace else "orange" if x >= 0.5 * expected_pace else "red")
@@ -174,11 +177,27 @@ def calculate_monthly_progress(data, start_date, end_date):
     # Drop numeric column after styling
     progress_data = progress_data.drop(columns=["Progress To Monthly Target (Numeric)"])
 
-    # Extract unique sales made for the second return value
-    sales_made = filtered_data["CreatedBy"].unique()
+    # Adjust column headers for consistent styling
+    styled_columns = {
+        "Sales Exec": "Sales Exec",
+        "Today's Sales": "Today's Sales",
+        "Weekly Sales": "Weekly Sales",
+        "Progress To Monthly Target": "Progress To Monthly Target"
+    }
+    progress_data.columns = [
+        f"<div style='font-family: Chapman-Bold; font-size: 24px; text-align: center;'>{col}</div>"
+        for col in styled_columns.values()
+    ]
 
-    return progress_data, sales_made
+    # Ensure all rows have uniform padding and spacing
+    styled_table = progress_data.to_html(
+        classes="big-table",
+        escape=False,
+        index=False
+    )
 
+    # Return the styled table
+    return styled_table
 
 
 
@@ -440,6 +459,9 @@ def run_dashboard():
                 src: url('fonts/Northbank-N5_2789720163.ttf') format('truetype');
             }}
             .custom-sales-box {{
+                background-color: #fff0f0;
+                border: 2px solid #E41B17;
+                border-radius: 10px;
                 padding: 20px 15px; /* Match padding of the other widgets */
                 margin-bottom: 30px; /* Space between widgets */
                 text-align: center; /* Center align all text */
@@ -681,19 +703,16 @@ def run_dashboard():
                 src: url('fonts/Northbank-N5_2789720163.ttf') format('truetype');
             }}
             .custom-refresh-box {{
-                background-color: #fff0f0;
-                border: 2px solid #E41B17;
-                border-radius: 10px;
                 padding: 20px; /* Add extra padding for better spacing */
                 margin-bottom: 20px; /* Space below widget */
                 font-family: 'Northbank-N5'; /* Custom font applied */
-                font-size: 28px; /* Larger font size for visibility */
+                font-size: 12px; /* Larger font size for visibility */
                 color: #E41B17; /* Arsenal red text */
                 text-align: center; /* Center-align text */
                 font-weight: bold; /* Make text bold */
             }}
             .custom-refresh-time {{
-                font-size: 20px;
+                font-size: 12px;
                 font-weight: bold;
                 color: #E41B17;
             }}
@@ -765,7 +784,7 @@ def run_dashboard():
             .custom-scroll-box {{
                 overflow: hidden;
                 white-space: nowrap;
-                width: 80%; /* Adjust width to fit in the center */
+                width: 80%; /* Adjust width to center */
                 margin: 0 auto; /* Center the bar horizontally */
                 background-color: #fff0f0; /* Soft pastel pink background */
                 color: #E41B17; /* Arsenal red font color */
@@ -777,11 +796,13 @@ def run_dashboard():
                 text-align: center; /* Center-aligned text */
                 border: 2px solid #E41B17; /* Red border */
                 position: fixed; /* Keep the bar fixed on the screen */
-                bottom: 40px; /* Move it slightly above the bottom */
+                left: 10%; /* Center horizontally by adding space on the left */
+                right: 10%; /* Balance space on the right */
+                bottom: 50px; /* Adjust the height above the bottom of the page */
                 z-index: 1000; /* Ensure it stays above other elements */
             }}
             body {{
-                padding-bottom: 100px; /* Add space at the bottom for the scroll box */
+                padding-bottom: 120px; /* Add space at the bottom for the scroll box */
             }}
         </style>
         <div class="custom-scroll-box">
@@ -796,7 +817,8 @@ def run_dashboard():
 
 
 
-if __name__ == "__main__":
-    run_dashboard()
+
+    if __name__ == "__main__":
+        run_dashboard()
 
 
