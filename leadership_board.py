@@ -157,15 +157,15 @@ def calculate_monthly_progress(data, start_date, end_date):
     progress_data = progress_data.sort_values(by="Progress To Monthly Target (Numeric)", ascending=False)
 
     # Define a function to style table cells
-    def style_cell(value, font_color="black"):
-        return f"<div style='color: {font_color}; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>{value}</div>"
+    def style_cell(value, color="black"):
+        return f"<div style='color: {color}; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>{value}</div>"
 
     # Apply consistent styling to all columns
     progress_data["Today's Sales"] = progress_data["Today's Sales"].apply(
-        lambda x: style_cell(f"£{x:,.0f}")
+        lambda x: style_cell(f"\u00a3{x:,.0f}")
     )
     progress_data["Weekly Sales"] = progress_data["Weekly Sales"].apply(
-        lambda x: style_cell(f"£{x:,.0f}")
+        lambda x: style_cell(f"\u00a3{x:,.0f}")
     )
     progress_data["Progress To Monthly Target"] = progress_data["Progress To Monthly Target (Numeric)"].apply(
         lambda x: style_cell(f"{x:.0f}%", "green" if x >= expected_pace else "orange" if x >= 0.5 * expected_pace else "red")
@@ -399,7 +399,7 @@ def run_dashboard():
             margin-left: 20px; /* Spacing between crest and title */
         }
         .custom-crest {
-            width: 100px; /* Adjust crest size */
+            width: 150px; /* Adjust crest size */
         }
         </style>
         <div class="custom-title-container">
@@ -731,12 +731,12 @@ def run_dashboard():
                 src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
             }
             .custom-leaderboard-title {
-                font-family: 'Northbank-N5Bold';
+                font-family: 'Chapman-Bold';
                 font-size: 40px;
                 font-weight: bold;
                 color: #E41B17;
                 text-align: center;
-                margin-top: -30px; /* Moves the leaderboard title closer to the ARSENAL PREMIUM SALES title */
+                margin-top: -10px; /* Moves the leaderboard title closer to ARSENAL PREMIUM SALES */
             }
             </style>
             <div class="custom-leaderboard-title">
@@ -760,6 +760,7 @@ def run_dashboard():
             """,
             unsafe_allow_html=True,
         )
+
     else:
         st.warning("Monthly Progress data not available for the selected date range.")
 
