@@ -151,6 +151,21 @@ def calculate_monthly_progress(data, start_date, end_date):
         "Progress To Monthly Target (Numeric)": progress_percentage.values,
     }).reset_index(drop=True)
 
+    # Map usernames to full names
+    user_mapping = {
+        "dmontague": "Dan",
+        "BethNW": "Beth",
+        "jmurphy": "James",
+        "bgardiner": "Bobby",
+        "dcoppin": "Coppin",
+        "MeganS": "Megs",
+        "HayleyA": "Hayley",
+        "BenT": "Ben",
+        "jedwards": "Joey",
+        "MillieS": "Millie"
+    }
+    progress_data["Sales Exec"] = progress_data["Sales Exec"].map(user_mapping).fillna(progress_data["Sales Exec"])
+
     # Format columns for display (add £ sign)
     progress_data["Today's Sales"] = progress_data["Today's Sales"].apply(lambda x: f"£{x:,.0f}")
     progress_data["Weekly Sales"] = progress_data["Weekly Sales"].apply(lambda x: f"£{x:,.0f}")
@@ -162,12 +177,13 @@ def calculate_monthly_progress(data, start_date, end_date):
     progress_data = progress_data.drop(columns=["Progress To Monthly Target (Numeric)"])
 
     # Sort by Progress To Monthly Target (highest to lowest)
-    progress_data = progress_data.sort_values(by="Progress To Monthly Target", ascending=True)
+    progress_data = progress_data.sort_values(by="Progress To Monthly Target", ascending=False)
 
     # Extract unique sales made for the second return value
     sales_made = filtered_data["CreatedBy"].unique()
 
     return progress_data, sales_made
+
 
 
 

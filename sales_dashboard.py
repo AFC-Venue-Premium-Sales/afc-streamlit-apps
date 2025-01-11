@@ -83,6 +83,20 @@ def calculate_total_sales(data):
     return total_sales
 
 def calculate_monthly_progress(data, start_date, end_date):
+    # Map usernames to actual names
+    user_name_mapping = {
+        "dmontague": "Dan",
+        "BethNW": "Beth",
+        "jmurphy": "James",
+        "bgardiner": "Bobby",
+        "dcoppin": "Coppin",
+        "MeganS": "Megs",
+        "HayleyA": "Hayley",
+        "BenT": "Ben",
+        "jedwards": "Joey",
+        "MillieS": "Millie"
+    }
+
     data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], errors="coerce", dayfirst=True)
     filtered_data = data[
         (data["CreatedOn"] >= pd.to_datetime(start_date)) &
@@ -126,7 +140,7 @@ def calculate_monthly_progress(data, start_date, end_date):
     monthly_targets = targets_data.loc[(current_month, current_year)]
 
     progress_data = pd.DataFrame({
-        "Sales Exec": progress.index,
+        "Sales Exec": progress.index.map(user_name_mapping),
         "Today's Sales Count": today_sales_count.values,
         "Today's Sales": today_sales_total.values,
         "Weekly Sales": weekly_sales_total.values,
@@ -137,22 +151,14 @@ def calculate_monthly_progress(data, start_date, end_date):
     }).reset_index(drop=True)
 
     # Format columns for display
-    progress_data["Today's Sales"] = progress_data["Today's Sales"].apply(lambda x: f"£{x:,.0f}")
-    progress_data["Weekly Sales"] = progress_data["Weekly Sales"].apply(lambda x: f"£{x:,.0f}")
-    progress_data["Current Revenue"] = progress_data["Current Revenue"].apply(lambda x: f"£{x:,.0f}")
-    progress_data["Target"] = progress_data["Target"].apply(lambda x: f"£{x:,.0f}")
+    progress_data["Today's Sales"] = progress_data["Today's Sales"].apply(lambda x: f"\u00a3{x:,.0f}")
+    progress_data["Weekly Sales"] = progress_data["Weekly Sales"].apply(lambda x: f"\u00a3{x:,.0f}")
+    progress_data["Current Revenue"] = progress_data["Current Revenue"].apply(lambda x: f"\u00a3{x:,.0f}")
+    progress_data["Target"] = progress_data["Target"].apply(lambda x: f"\u00a3{x:,.0f}")
     progress_data["Variance"] = progress_data["Variance"].apply(lambda x: f"({abs(x):,.0f})" if x < 0 else f"{x:,.0f}")
 
-    # % Sold color coding
-    def style_box_color(value):
-        if value >= 80:
-            return f"<div style='background-color: green; color: white; padding: 5px;'>{value:.0f}%</div>"
-        elif 50 <= value < 80:
-            return f"<div style='background-color: orange; color: white; padding: 5px;'>{value:.0f}%</div>"
-        else:
-            return f"<div style='background-color: red; color: white; padding: 5px;'>{value:.0f}%</div>"
-
-    progress_data["% Sold"] = progress_data["% Sold (Numeric)"].apply(style_box_color)
+    # Remove color coding for % Sold
+    progress_data["% Sold"] = progress_data["% Sold (Numeric)"]
 
     # Progress to Monthly Target with new logic
     days_in_month = pd.Period(datetime.now().strftime('%Y-%m')).days_in_month
