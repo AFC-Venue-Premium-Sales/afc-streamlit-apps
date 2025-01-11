@@ -719,7 +719,7 @@ def run_dashboard():
             }
             .custom-leaderboard-title {
                 font-family: 'Northbank-N5Bold';
-                font-size: 40px;
+                font-size: 28px;
                 font-weight: bold;
                 color: #E41B17;
                 text-align: center;
@@ -791,9 +791,6 @@ def run_dashboard():
                 font-weight: bold; /* Extra-bold text */
                 text-align: center; /* Center-aligned text */
                 border: 2px solid #E41B17; /* Red border */
-                margin-top: 50px; /* Add space between the table and the bar */
-                position: fixed; /* Keep the bar at the bottom of the screen */
-                z-index: 1000; /* Ensure it stays above other elements */
             }}
         </style>
         <div class="custom-scroll-box">
