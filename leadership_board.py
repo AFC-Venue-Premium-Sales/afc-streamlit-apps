@@ -757,6 +757,7 @@ def run_dashboard():
             unsafe_allow_html=True,
         )
 
+        # Directly render the HTML table
         st.markdown(
             f"""
             <div style="
@@ -766,7 +767,7 @@ def run_dashboard():
                 margin-top: 20px;
                 margin-bottom: 20px;
             ">
-                {monthly_progress.to_html(classes='big-table', escape=False, index=False)}
+                {monthly_progress}
             </div>
             """,
             unsafe_allow_html=True,
