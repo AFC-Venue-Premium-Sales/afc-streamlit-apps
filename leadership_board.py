@@ -146,10 +146,14 @@ def calculate_monthly_progress(data, start_date, end_date):
     # Build the progress table
     progress_data = pd.DataFrame({
         "Sales Exec": progress.index,
-        "Today's Sales": end_date_sales.values.round(0).astype(int),
-        "Weekly Sales": weekly_sales.values.round(0).astype(int),
+        "Today's Sales": end_date_sales.values,
+        "Weekly Sales": weekly_sales.values,
         "Progress To Monthly Target (Numeric)": progress_percentage.values,
     }).reset_index(drop=True)
+
+    # Format columns for display (add £ sign)
+    progress_data["Today's Sales"] = progress_data["Today's Sales"].apply(lambda x: f"£{x:,.0f}")
+    progress_data["Weekly Sales"] = progress_data["Weekly Sales"].apply(lambda x: f"£{x:,.0f}")
 
     # Apply color-coding to Progress To Monthly Target
     progress_data["Progress To Monthly Target"] = progress_data["Progress To Monthly Target (Numeric)"].apply(style_progress)
@@ -157,14 +161,13 @@ def calculate_monthly_progress(data, start_date, end_date):
     # Drop numeric column after styling
     progress_data = progress_data.drop(columns=["Progress To Monthly Target (Numeric)"])
 
-    # Sort by Progress To Monthly Target
+    # Sort by Progress To Monthly Target (highest to lowest)
     progress_data = progress_data.sort_values(by="Progress To Monthly Target", ascending=False)
 
     # Extract unique sales made for the second return value
     sales_made = filtered_data["CreatedBy"].unique()
 
     return progress_data, sales_made
-
 
 
 

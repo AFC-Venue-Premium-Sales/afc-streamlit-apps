@@ -167,15 +167,17 @@ def calculate_monthly_progress(data, start_date, end_date):
         else:
             return f"<div style='background-color: red; color: white; padding: 5px;'>{value:.0f}%</div>"
 
+    # Use Progress To Monthly Target logic
     progress_data["Progress to Monthly Target"] = progress_data["% Sold (Numeric)"].apply(style_progress)
 
-    # Drop numeric % Sold column after sorting and styling
+    # Drop numeric % Sold column after styling
     progress_data = progress_data.drop(columns=["% Sold (Numeric)"])
 
     # Extract unique sales made for the second return value
     sales_made = filtered_data["CreatedBy"].unique()
 
     return progress_data, sales_made
+
 
 
 
