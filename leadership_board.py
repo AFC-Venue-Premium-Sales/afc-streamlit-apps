@@ -713,8 +713,8 @@ def run_dashboard():
             """
             <style>
             @font-face {
-                font-family: 'Northbank-N5Bold';
-                src: url('fonts/Northbank-N5Bold_4107562472.ttf') format('truetype');
+                font-family: 'Chapman-Bold';
+                src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
             }
             .custom-leaderboard-title {
                 font-family: 'Northbank-N5Bold';
@@ -723,8 +723,24 @@ def run_dashboard():
                 color: #E41B17;
                 text-align: center;
                 padding: 5px;
-                margin-top: -25px
-                
+                margin-top: -25px;
+            }
+            .big-table {
+                font-family: 'Chapman-Bold', sans-serif;
+                font-size: 24px; /* Adjust for screen display size */
+                border-collapse: collapse;
+                width: 100%;
+            }
+            .big-table th, .big-table td {
+                border: 1px solid #ddd;
+                padding: 12px;
+            }
+            .big-table th {
+                background-color: #f2f2f2;
+                text-align: center;
+            }
+            .big-table td {
+                text-align: center;
             }
             </style>
             <div class="custom-leaderboard-title">
@@ -734,26 +750,25 @@ def run_dashboard():
             unsafe_allow_html=True,
         )
 
-        
         st.markdown(
             f"""
             <div style="
                 display: flex;
                 justify-content: center;
                 align-items: center;
-                margin-top: 20x
+                margin-top: 20px;
                 margin-bottom: 20px;
             ">
-                {monthly_progress.to_html(escape=False, index=False)}
+                {monthly_progress.to_html(classes='big-table', escape=False, index=False)}
             </div>
             """,
             unsafe_allow_html=True,
         )
     else:
         st.warning("Monthly Progress data not available for the selected date range.")
-        
-        
 
+        
+    # Scrolling Message
     scrolling_message = generate_scrolling_messages(filtered_df_without_seats, budget_df)
     st.markdown(
         f"""
@@ -775,7 +790,12 @@ def run_dashboard():
                 font-weight: bold; /* Extra-bold text */
                 text-align: center; /* Center-aligned text */
                 border: 2px solid #E41B17; /* Red border */
-                border-top: 20;
+                margin-top: 50px; /* Add space between the table and the bar */
+                position: fixed; /* Keep the bar at the bottom of the screen */
+                bottom: 0; /* Position it at the very bottom */
+                left: 0; /* Align it to the left edge */
+                right: 0; /* Stretch it to the right edge */
+                z-index: 1000; /* Ensure it stays above other elements */
             }}
         </style>
         <div class="custom-scroll-box">
@@ -786,6 +806,7 @@ def run_dashboard():
         """,
         unsafe_allow_html=True
     )
+
 
 
 if __name__ == "__main__":
