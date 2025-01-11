@@ -196,8 +196,12 @@ def calculate_monthly_progress(data, start_date, end_date):
         index=False
     )
 
-    # Return the styled table
-    return styled_table
+    # Extract unique sales made for the second return value
+    sales_made = filtered_data["CreatedBy"].unique()
+
+    # Return the styled table and sales_made list
+    return styled_table, sales_made
+
 
 
 
