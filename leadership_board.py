@@ -77,11 +77,6 @@ def calculate_overall_progress(data, start_date, end_date):
 
     return total_revenue, total_target, progress_percentage
 
-# Calculate total sales (including website)
-def calculate_total_sales(data):
-    total_sales = data["TotalPrice"].sum()
-    return total_sales
-
 def calculate_monthly_progress(data, start_date, end_date):
     data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], errors="coerce", dayfirst=True)
 
@@ -134,15 +129,6 @@ def calculate_monthly_progress(data, start_date, end_date):
     days_elapsed = (pd.to_datetime(end_date) - pd.Timestamp(f"{current_year}-{start_date.month}-01")).days + 1
     expected_pace = (days_elapsed / total_days_in_month) * 100
 
-    # Define color-coding logic based on monthly pace
-    def style_progress(value):
-        if value >= expected_pace:
-            return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>{value:.0f}%</div>"
-        elif value >= 0.5 * expected_pace:
-            return f"<div style='background-color: orange; color: white; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>{value:.0f}%</div>"
-        else:
-            return f"<div style='background-color: red; color: white; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>{value:.0f}%</div>"
-
     # Build the progress table
     progress_data = pd.DataFrame({
         "Sales Exec": progress.index,
@@ -154,21 +140,28 @@ def calculate_monthly_progress(data, start_date, end_date):
     # Map usernames to full names
     user_mapping = {
         "dmontague": "Dan",
-        # "BethNW": "Beth",
-        # "jmurphy": "James",
         "bgardiner": "Bobby",
         "dcoppin": "Coppin",
-        # "MeganS": "Megs",
-        # "HayleyA": "Hayley",
-        # "BenT": "Ben",
         "jedwards": "Joey",
         "MillieS": "Millie"
     }
     progress_data["Sales Exec"] = progress_data["Sales Exec"].map(user_mapping).fillna(progress_data["Sales Exec"])
 
+    # Sort by Progress To Monthly Target (Numeric) before formatting
+    progress_data = progress_data.sort_values(by="Progress To Monthly Target (Numeric)", ascending=False)
+
     # Format columns for display (add £ sign)
     progress_data["Today's Sales"] = progress_data["Today's Sales"].apply(lambda x: f"£{x:,.0f}")
     progress_data["Weekly Sales"] = progress_data["Weekly Sales"].apply(lambda x: f"£{x:,.0f}")
+
+    # Define color-coding logic based on monthly pace
+    def style_progress(value):
+        if value >= expected_pace:
+            return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>{value:.0f}%</div>"
+        elif value >= 0.5 * expected_pace:
+            return f"<div style='background-color: orange; color: white; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>{value:.0f}%</div>"
+        else:
+            return f"<div style='background-color: red; color: white; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>{value:.0f}%</div>"
 
     # Apply color-coding to Progress To Monthly Target
     progress_data["Progress To Monthly Target"] = progress_data["Progress To Monthly Target (Numeric)"].apply(style_progress)
@@ -176,13 +169,11 @@ def calculate_monthly_progress(data, start_date, end_date):
     # Drop numeric column after styling
     progress_data = progress_data.drop(columns=["Progress To Monthly Target (Numeric)"])
 
-    # Sort by Progress To Monthly Target (highest to lowest)
-    progress_data = progress_data.sort_values(by="Progress To Monthly Target", ascending=True)
-
     # Extract unique sales made for the second return value
     sales_made = filtered_data["CreatedBy"].unique()
 
     return progress_data, sales_made
+
 
 
 
@@ -375,7 +366,6 @@ def run_dashboard():
     st.set_page_config(page_title="Hospitality Leadership Board", layout="wide")
     
     # Dashboard Title
-    st.image("assets/arsenal_crest_gold.png", width=200)  # Display the crest image (adjust width as needed)
     st.markdown(
         """
         <style>
@@ -383,22 +373,35 @@ def run_dashboard():
             font-family: 'Northbank-N7';
             src: url('fonts/Northbank-N7_2789728357.ttf') format('truetype');
         }
+        .custom-title-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: -50px; /* Adjusts the position of the crest and title */
+        }
         .custom-title {
             font-family: 'Northbank-N7';
             font-size: 60px;
             font-weight: bold;
             color: #E41B17;
-            text-align: center;
-            padding: 5px;
-            margin-top: -40px
+            text-align: left; /* Aligns with the crest */
+            margin-left: 15px; /* Adjust spacing between the crest and the title */
+        }
+        .custom-crest {
+            width: 80px; /* Adjust crest size */
+            margin-right: 15px; /* Adjust spacing between the crest and the title */
         }
         </style>
-        <div class="custom-title">
-            ARSENAL PREMIUM SALES
+        <div class="custom-title-container">
+            <img src="assets/arsenal_crest_gold.png" class="custom-crest"/>
+            <div class="custom-title">
+                ARSENAL PREMIUM SALES
+            </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
+
 
 
    # Sidebar: Date Range Filter
@@ -722,25 +725,7 @@ def run_dashboard():
                 font-weight: bold;
                 color: #E41B17;
                 text-align: center;
-                padding: 5px;
-                margin-top: -25px;
-            }
-            .big-table {
-                font-family: 'Chapman-Bold', sans-serif;
-                font-size: 24px; /* Adjust for screen display size */
-                border-collapse: collapse;
-                width: 100%;
-            }
-            .big-table th, .big-table td {
-                border: 1px solid #ddd;
-                padding: 12px;
-            }
-            .big-table th {
-                background-color: #f2f2f2;
-                text-align: center;
-            }
-            .big-table td {
-                text-align: center;
+                margin-top: -30px; /* Moves the leaderboard title closer to the ARSENAL PREMIUM SALES title */
             }
             </style>
             <div class="custom-leaderboard-title">

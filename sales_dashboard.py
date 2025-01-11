@@ -376,7 +376,7 @@ def run_dashboard():
     st.set_page_config(page_title="Hospitality Leadership Board", layout="wide")
     
     # Dashboard Title
-    st.image("assets/arsenal_crest_gold.png", width=200)  # Display the crest image (adjust width as needed)
+    # Dashboard Title
     st.markdown(
         """
         <style>
@@ -384,22 +384,35 @@ def run_dashboard():
             font-family: 'Northbank-N7';
             src: url('fonts/Northbank-N7_2789728357.ttf') format('truetype');
         }
+        .custom-title-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: -50px; /* Adjusts the position of the crest and title */
+        }
         .custom-title {
             font-family: 'Northbank-N7';
             font-size: 60px;
             font-weight: bold;
             color: #E41B17;
-            text-align: center;
-            padding: 5px;
-            margin-top: -40px
+            text-align: left; /* Aligns with the crest */
+            margin-left: 15px; /* Adjust spacing between the crest and the title */
+        }
+        .custom-crest {
+            width: 80px; /* Adjust crest size */
+            margin-right: 15px; /* Adjust spacing between the crest and the title */
         }
         </style>
-        <div class="custom-title">
-            ARSENAL PREMIUM SALES
+        <div class="custom-title-container">
+            <img src="assets/arsenal_crest_gold.png" class="custom-crest"/>
+            <div class="custom-title">
+                ARSENAL PREMIUM SALES
+            </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
+
 
 
    # Sidebar: Date Range Filter
@@ -723,25 +736,7 @@ def run_dashboard():
                 font-weight: bold;
                 color: #E41B17;
                 text-align: center;
-                padding: 5px;
-                margin-top: -25px;
-            }
-            .big-table {
-                font-family: 'Chapman-Bold', sans-serif;
-                font-size: 24px; /* Adjust for screen display size */
-                border-collapse: collapse;
-                width: 100%;
-            }
-            .big-table th, .big-table td {
-                border: 1px solid #ddd;
-                padding: 12px;
-            }
-            .big-table th {
-                background-color: #f2f2f2;
-                text-align: center;
-            }
-            .big-table td {
-                text-align: center;
+                margin-top: -30px; /* Moves the leaderboard title closer to the ARSENAL PREMIUM SALES title */
             }
             </style>
             <div class="custom-leaderboard-title">
@@ -750,6 +745,7 @@ def run_dashboard():
             """,
             unsafe_allow_html=True,
         )
+
 
         st.markdown(
             f"""
