@@ -719,7 +719,7 @@ def run_dashboard():
             }
             .custom-leaderboard-title {
                 font-family: 'Northbank-N5Bold';
-                font-size: 28px;
+                font-size: 40px;
                 font-weight: bold;
                 color: #E41B17;
                 text-align: center;
@@ -779,10 +779,10 @@ def run_dashboard():
                 src: url('fonts/Northbank-N5_2789720163.ttf') format('truetype');
             }}
             .custom-scroll-box {{
-                position: fixed; /* Fix the position at the bottom of the viewport */
-                bottom: 0; /* Align to the bottom */
-                left: 0; /* Align to the left edge */
-                width: 100%; /* Full-width */
+                overflow: hidden;
+                white-space: nowrap;
+                width: 80%; /* Adjust width to fit in the center */
+                margin: 0 auto; /* Center the bar horizontally */
                 background-color: #fff0f0; /* Soft pastel pink background */
                 color: #E41B17; /* Arsenal red font color */
                 padding: 15px 20px; /* Padding for spacing */
@@ -792,10 +792,12 @@ def run_dashboard():
                 font-weight: bold; /* Extra-bold text */
                 text-align: center; /* Center-aligned text */
                 border: 2px solid #E41B17; /* Red border */
+                position: fixed; /* Keep the bar fixed on the screen */
+                bottom: 40px; /* Move it slightly above the bottom */
                 z-index: 1000; /* Ensure it stays above other elements */
             }}
             body {{
-                padding-bottom: 70px; /* Add space at the bottom for the scroll box */
+                padding-bottom: 100px; /* Add space at the bottom for the scroll box */
             }}
         </style>
         <div class="custom-scroll-box">
@@ -806,10 +808,6 @@ def run_dashboard():
         """,
         unsafe_allow_html=True
     )
-
-
-
-
 
 if __name__ == "__main__":
     run_dashboard()

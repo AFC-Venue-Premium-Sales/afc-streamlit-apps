@@ -177,7 +177,7 @@ def calculate_monthly_progress(data, start_date, end_date):
     progress_data = progress_data.drop(columns=["Progress To Monthly Target (Numeric)"])
 
     # Sort by Progress To Monthly Target (highest to lowest)
-    progress_data = progress_data.sort_values(by="Progress To Monthly Target", ascending=False)
+    progress_data = progress_data.sort_values(by="Progress To Monthly Target", ascending=True)
 
     # Extract unique sales made for the second return value
     sales_made = filtered_data["CreatedBy"].unique()
@@ -780,7 +780,8 @@ def run_dashboard():
             .custom-scroll-box {{
                 overflow: hidden;
                 white-space: nowrap;
-                width: 100%;
+                width: 80%; /* Adjust width to fit in the center */
+                margin: 0 auto; /* Center the bar horizontally */
                 background-color: #fff0f0; /* Soft pastel pink background */
                 color: #E41B17; /* Arsenal red font color */
                 padding: 15px 20px; /* Padding for spacing */
@@ -790,10 +791,12 @@ def run_dashboard():
                 font-weight: bold; /* Extra-bold text */
                 text-align: center; /* Center-aligned text */
                 border: 2px solid #E41B17; /* Red border */
-                margin-top: 50px; /* Add space between the table and the bar */
-                position: fixed; /* Keep the bar at the bottom of the screen */
-                bottom: 0; /* Position it at the very bottom */
+                position: fixed; /* Keep the bar fixed on the screen */
+                bottom: 40px; /* Move it slightly above the bottom */
                 z-index: 1000; /* Ensure it stays above other elements */
+            }}
+            body {{
+                padding-bottom: 100px; /* Add space at the bottom for the scroll box */
             }}
         </style>
         <div class="custom-scroll-box">
@@ -804,6 +807,7 @@ def run_dashboard():
         """,
         unsafe_allow_html=True
     )
+
 
 
 
