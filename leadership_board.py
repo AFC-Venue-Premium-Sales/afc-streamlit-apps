@@ -38,8 +38,8 @@ targets_data = pd.DataFrame({
 }).set_index(["Month", "Year"])
 
 # Specify your list of executives
-valid_executives = ["dcoppin", "BethNW", "bgardiner", "dmontague", "jedwards"]
-                    # "jedwards", "HayleyA", "MillieS", "BenT", "jmurphy", "MeganS"]
+valid_executives = ["dcoppin", "MillieS", "bgardiner", "dmontague", "jedwards"]
+                    # "jedwards", "HayleyA", "BethNW", "BenT", "jmurphy", "MeganS"]
 
 
 
@@ -313,8 +313,8 @@ def generate_scrolling_messages(data, budget_df):
         top_fixture_message = "📉 No sales recorded today."
 
 # Specify Execs
-    valid_executives = ["dcoppin", "BethNW", "bgardiner", "dmontague", 'jedwards']
-                        # "jedwards", "HayleyA", "MillieS", "BenT", "jmurphy", "MeganS"]
+    valid_executives = ["dcoppin", "MillieS", "bgardiner", "dmontague", 'jedwards']
+                        # "jedwards", "HayleyA", "BethNW", "BenT", "jmurphy", "MeganS"]
 
     # Filter today’s sales to include only valid executives
     exec_sales_today = today_sales[today_sales["CreatedBy"].isin(valid_executives)]
@@ -469,8 +469,8 @@ def run_dashboard():
 
     
     # Premium Monthly Progress Section
-    valid_executives = ["dcoppin", "BethNW", "bgardiner", "dmontague", "jedwards"]
-                        # "jedwards", "HayleyA", "MillieS", "BenT", "jmurphy", "MeganS"]
+    valid_executives = ["dcoppin", "MillieS", "bgardiner", "dmontague", "jedwards"]
+                        # "jedwards", "HayleyA", "BethNW", "BenT", "jmurphy", "MeganS"]
 
     # Filter the data for valid executives
     filtered_executive_data = filtered_df_without_seats[filtered_df_without_seats["CreatedBy"].isin(valid_executives)]
