@@ -137,11 +137,11 @@ def calculate_monthly_progress(data, start_date, end_date):
     # Define color-coding logic based on monthly pace
     def style_progress(value):
         if value >= expected_pace:
-            return f"<div style='background-color: green; color: white; padding: 5px;'>{value:.0f}%</div>"
+            return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>{value:.0f}%</div>"
         elif value >= 0.5 * expected_pace:
-            return f"<div style='background-color: orange; color: white; padding: 5px;'>{value:.0f}%</div>"
+            return f"<div style='background-color: orange; color: white; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>{value:.0f}%</div>"
         else:
-            return f"<div style='background-color: red; color: white; padding: 5px;'>{value:.0f}%</div>"
+            return f"<div style='background-color: red; color: white; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>{value:.0f}%</div>"
 
     # Build the progress table
     progress_data = pd.DataFrame({
@@ -177,12 +177,13 @@ def calculate_monthly_progress(data, start_date, end_date):
     progress_data = progress_data.drop(columns=["Progress To Monthly Target (Numeric)"])
 
     # Sort by Progress To Monthly Target (highest to lowest)
-    progress_data = progress_data.sort_values(by="Progress To Monthly Target", ascending=True)
+    progress_data = progress_data.sort_values(by="Progress To Monthly Target", ascending=False)
 
     # Extract unique sales made for the second return value
     sales_made = filtered_data["CreatedBy"].unique()
 
     return progress_data, sales_made
+
 
 
 
