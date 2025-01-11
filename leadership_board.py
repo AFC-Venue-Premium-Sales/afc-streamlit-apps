@@ -177,7 +177,7 @@ def calculate_monthly_progress(data, start_date, end_date):
     progress_data = progress_data.drop(columns=["Progress To Monthly Target (Numeric)"])
 
     # Sort by Progress To Monthly Target (highest to lowest)
-    progress_data = progress_data.sort_values(by="Progress To Monthly Target", ascending=False)
+    progress_data = progress_data.sort_values(by="Progress To Monthly Target", ascending=True)
 
     # Extract unique sales made for the second return value
     sales_made = filtered_data["CreatedBy"].unique()
