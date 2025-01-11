@@ -83,6 +83,7 @@ def calculate_total_sales(data):
     total_sales = data["TotalPrice"].sum()
     return total_sales
 
+
 def calculate_monthly_progress(data, start_date, end_date):
     data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], errors="coerce", dayfirst=True)
 
@@ -156,15 +157,15 @@ def calculate_monthly_progress(data, start_date, end_date):
     progress_data = progress_data.sort_values(by="Progress To Monthly Target (Numeric)", ascending=False)
 
     # Define a function to style table cells
-    def style_cell(value, color):
-        return f"<div style='background-color: {color}; color: white; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>{value}</div>"
+    def style_cell(value, font_color="black"):
+        return f"<div style='color: {font_color}; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>{value}</div>"
 
     # Apply consistent styling to all columns
     progress_data["Today's Sales"] = progress_data["Today's Sales"].apply(
-        lambda x: style_cell(f"£{x:,.0f}", "#0047AB")  # Blue for sales
+        lambda x: style_cell(f"£{x:,.0f}")
     )
     progress_data["Weekly Sales"] = progress_data["Weekly Sales"].apply(
-        lambda x: style_cell(f"£{x:,.0f}", "#0047AB")  # Blue for weekly sales
+        lambda x: style_cell(f"£{x:,.0f}")
     )
     progress_data["Progress To Monthly Target"] = progress_data["Progress To Monthly Target (Numeric)"].apply(
         lambda x: style_cell(f"{x:.0f}%", "green" if x >= expected_pace else "orange" if x >= 0.5 * expected_pace else "red")
@@ -177,6 +178,9 @@ def calculate_monthly_progress(data, start_date, end_date):
     sales_made = filtered_data["CreatedBy"].unique()
 
     return progress_data, sales_made
+
+
+
 
 
 def get_next_fixture(data, budget_df):
@@ -375,33 +379,31 @@ def run_dashboard():
     
     # Dashboard Title
     st.markdown(
-        f"""
+        """
         <style>
-        @font-face {{
+        @font-face {
             font-family: 'Northbank-N7';
             src: url('fonts/Northbank-N7_2789728357.ttf') format('truetype');
-        }}
-        .custom-title-container {{
+        }
+        .custom-title-container {
             display: flex;
             align-items: center;
-            justify-content: center;
-            margin-top: -50px; /* Adjusts the position of the crest and title */
-        }}
-        .custom-title {{
+            justify-content: flex-start; /* Move crest to the left */
+            padding-left: 50px; /* Add left padding for alignment */
+        }
+        .custom-title {
             font-family: 'Northbank-N7';
             font-size: 60px;
             font-weight: bold;
             color: #E41B17;
-            text-align: left; /* Aligns with the crest */
-            margin-left: 15px; /* Adjust spacing between the crest and the title */
-        }}
-        .custom-crest {{
-            width: 200px; /* Adjust crest size */
-            margin-right: 15px; /* Adjust spacing between the crest and the title */
-        }}
+            margin-left: 20px; /* Spacing between crest and title */
+        }
+        .custom-crest {
+            width: 100px; /* Adjust crest size */
+        }
         </style>
         <div class="custom-title-container">
-            <img src="data:image/png;base64,{crest_base64}" class="custom-crest"/>
+            <img src="assets/arsenal_crest_gold.png" class="custom-crest"/>
             <div class="custom-title">
                 ARSENAL PREMIUM SALES
             </div>
@@ -409,6 +411,7 @@ def run_dashboard():
         """,
         unsafe_allow_html=True,
     )
+
 
 
 
