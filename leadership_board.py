@@ -313,8 +313,8 @@ def generate_scrolling_messages(data, budget_df):
         top_fixture_message = "📉 No sales recorded today."
 
 # Specify Execs
-    valid_executives = ["dcoppin", "BethNW", "bgardiner", "MeganS", "dmontague", 
-                        "jedwards", "HayleyA", "MillieS", "BenT", "jmurphy"]
+    valid_executives = ["dcoppin", "BethNW", "bgardiner", "MeganS", "dmontague", 'jedwards']
+                        # "jedwards", "HayleyA", "MillieS", "BenT", "jmurphy"]
 
     # Filter today’s sales to include only valid executives
     exec_sales_today = today_sales[today_sales["CreatedBy"].isin(valid_executives)]
