@@ -82,9 +82,10 @@ def calculate_total_sales(data):
     total_sales = data["TotalPrice"].sum()
     return total_sales
 
-# Calculate monthly progress
 def calculate_monthly_progress(data, start_date, end_date):
     data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], errors="coerce", dayfirst=True)
+
+    # Filter data within the date range
     filtered_data = data[
         (data["CreatedOn"] >= pd.to_datetime(start_date)) &
         (data["CreatedOn"] <= pd.to_datetime(end_date))
@@ -96,19 +97,27 @@ def calculate_monthly_progress(data, start_date, end_date):
     if (current_month, current_year) not in targets_data.index:
         return None, []
 
-    # Today's sales
-    today_sales_data = data[data["CreatedOn"].dt.date == datetime.now().date()]
-    today_sales_count = (
-        today_sales_data.groupby("CreatedBy")["Price"]
-        .count()
+    # Today's sales (based on the end_date of the range)
+    end_date_sales_data = data[data["CreatedOn"].dt.date == pd.to_datetime(end_date).date()]
+    end_date_sales = (
+        end_date_sales_data.groupby("CreatedBy")["Price"]
+        .sum()
         .reindex(targets_data.columns, fill_value=0)
     )
 
-    # Add money bags to represent sales visually
-    today_sales_visual = today_sales_count.apply(
-        lambda x: f"{'💰' * x} ({x})" if x > 0 else "0"
+    # Weekly sales (from Monday to end_date)
+    start_of_week = pd.to_datetime(end_date) - pd.Timedelta(days=pd.to_datetime(end_date).weekday())  # Get Monday of the current week
+    weekly_sales_data = data[
+        (data["CreatedOn"] >= start_of_week) &
+        (data["CreatedOn"] <= pd.to_datetime(end_date))
+    ]
+    weekly_sales = (
+        weekly_sales_data.groupby("CreatedBy")["Price"]
+        .sum()
+        .reindex(targets_data.columns, fill_value=0)
     )
 
+    # Progress to monthly target
     progress = (
         filtered_data.groupby("CreatedBy")["Price"]
         .sum()
@@ -117,42 +126,45 @@ def calculate_monthly_progress(data, start_date, end_date):
 
     monthly_targets = targets_data.loc[(current_month, current_year)]
 
-    progress_data = pd.DataFrame({
-        "Premium Executive": progress.index,
-        "Current Revenue": progress.values,
-        "Target": monthly_targets.values,
-        "Variance": (progress - monthly_targets).values,
-        "% Sold (Numeric)": (progress / monthly_targets * 100).round(0),
-        "Today's Sales": today_sales_visual.values,  # Use the visual sales representation
-    }).reset_index(drop=True)
+    # Calculate Progress To Monthly Target percentage
+    progress_percentage = (progress / monthly_targets * 100).round(0)
 
-    # Format columns for display
-    progress_data["Current Revenue"] = progress_data["Current Revenue"].apply(lambda x: f"£{x:,.0f}")
-    progress_data["Target"] = progress_data["Target"].apply(lambda x: f"£{x:,.0f}")
-    progress_data["Variance"] = progress_data["Variance"].apply(lambda x: f"({abs(x):,.0f})" if x < 0 else f"{x:,.0f}")
+    # Calculate the expected pace based on elapsed days in the month
+    total_days_in_month = pd.Period(f"{current_year}-{start_date.month}").days_in_month
+    days_elapsed = (pd.to_datetime(end_date) - pd.Timestamp(f"{current_year}-{start_date.month}-01")).days + 1
+    expected_pace = (days_elapsed / total_days_in_month) * 100
 
-    # Sort by % Sold (numeric) before styling
-    progress_data = progress_data.sort_values(by="% Sold (Numeric)", ascending=False)
-
-    # Add conditional box colors to % Sold
-    def style_box_color(value):
-        if value >= 80:
+    # Define color-coding logic based on monthly pace
+    def style_progress(value):
+        if value >= expected_pace:
             return f"<div style='background-color: green; color: white; padding: 5px;'>{value:.0f}%</div>"
-        elif 50 <= value < 80:
+        elif value >= 0.5 * expected_pace:
             return f"<div style='background-color: orange; color: white; padding: 5px;'>{value:.0f}%</div>"
         else:
             return f"<div style='background-color: red; color: white; padding: 5px;'>{value:.0f}%</div>"
 
-    # Apply styling to the sorted data
-    progress_data["% Sold"] = progress_data["% Sold (Numeric)"].apply(style_box_color)
+    # Build the progress table
+    progress_data = pd.DataFrame({
+        "Sales Exec": progress.index,
+        "Today's Sales": end_date_sales.values.round(0).astype(int),
+        "Weekly Sales": weekly_sales.values.round(0).astype(int),
+        "Progress To Monthly Target (Numeric)": progress_percentage.values,
+    }).reset_index(drop=True)
 
-    # Drop numeric % Sold column after sorting and styling
-    progress_data = progress_data.drop(columns=["% Sold (Numeric)"])
+    # Apply color-coding to Progress To Monthly Target
+    progress_data["Progress To Monthly Target"] = progress_data["Progress To Monthly Target (Numeric)"].apply(style_progress)
+
+    # Drop numeric column after styling
+    progress_data = progress_data.drop(columns=["Progress To Monthly Target (Numeric)"])
+
+    # Sort by Progress To Monthly Target
+    progress_data = progress_data.sort_values(by="Progress To Monthly Target", ascending=False)
 
     # Extract unique sales made for the second return value
     sales_made = filtered_data["CreatedBy"].unique()
 
-    return progress_data, sales_made 
+    return progress_data, sales_made
+
 
 
 
@@ -537,7 +549,6 @@ def run_dashboard():
             """,
             unsafe_allow_html=True
         )
-
 
 
     # Next Fixture Section

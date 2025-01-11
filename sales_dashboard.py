@@ -82,7 +82,6 @@ def calculate_total_sales(data):
     total_sales = data["TotalPrice"].sum()
     return total_sales
 
-# Calculate monthly progress
 def calculate_monthly_progress(data, start_date, end_date):
     data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], errors="coerce", dayfirst=True)
     filtered_data = data[
@@ -96,45 +95,55 @@ def calculate_monthly_progress(data, start_date, end_date):
     if (current_month, current_year) not in targets_data.index:
         return None, []
 
-    # Today's sales
+    # Today's sales count and revenue
     today_sales_data = data[data["CreatedOn"].dt.date == datetime.now().date()]
     today_sales_count = (
         today_sales_data.groupby("CreatedBy")["Price"]
         .count()
         .reindex(targets_data.columns, fill_value=0)
     )
-
-    # Add money bags to represent sales visually
-    today_sales_visual = today_sales_count.apply(
-        lambda x: f"{'💰' * x} ({x})" if x > 0 else "0"
+    today_sales_total = (
+        today_sales_data.groupby("CreatedBy")["Price"]
+        .sum()
+        .reindex(targets_data.columns, fill_value=0)
     )
 
+    # Weekly sales (Monday to today)
+    current_week_start = datetime.now() - pd.to_timedelta(datetime.now().weekday(), unit="D")
+    weekly_sales_data = data[data["CreatedOn"] >= current_week_start]
+    weekly_sales_total = (
+        weekly_sales_data.groupby("CreatedBy")["Price"]
+        .sum()
+        .reindex(targets_data.columns, fill_value=0)
+    )
+
+    # Progress calculation
     progress = (
         filtered_data.groupby("CreatedBy")["Price"]
         .sum()
         .reindex(targets_data.columns, fill_value=0)
     )
-
     monthly_targets = targets_data.loc[(current_month, current_year)]
 
     progress_data = pd.DataFrame({
-        "Premium Executive": progress.index,
+        "Sales Exec": progress.index,
+        "Today's Sales Count": today_sales_count.values,
+        "Today's Sales": today_sales_total.values,
+        "Weekly Sales": weekly_sales_total.values,
         "Current Revenue": progress.values,
         "Target": monthly_targets.values,
         "Variance": (progress - monthly_targets).values,
         "% Sold (Numeric)": (progress / monthly_targets * 100).round(0),
-        "Today's Sales": today_sales_visual.values,  # Use the visual sales representation
     }).reset_index(drop=True)
 
     # Format columns for display
+    progress_data["Today's Sales"] = progress_data["Today's Sales"].apply(lambda x: f"£{x:,.0f}")
+    progress_data["Weekly Sales"] = progress_data["Weekly Sales"].apply(lambda x: f"£{x:,.0f}")
     progress_data["Current Revenue"] = progress_data["Current Revenue"].apply(lambda x: f"£{x:,.0f}")
     progress_data["Target"] = progress_data["Target"].apply(lambda x: f"£{x:,.0f}")
     progress_data["Variance"] = progress_data["Variance"].apply(lambda x: f"({abs(x):,.0f})" if x < 0 else f"{x:,.0f}")
 
-    # Sort by % Sold (numeric) before styling
-    progress_data = progress_data.sort_values(by="% Sold (Numeric)", ascending=False)
-
-    # Add conditional box colors to % Sold
+    # % Sold color coding
     def style_box_color(value):
         if value >= 80:
             return f"<div style='background-color: green; color: white; padding: 5px;'>{value:.0f}%</div>"
@@ -143,8 +152,22 @@ def calculate_monthly_progress(data, start_date, end_date):
         else:
             return f"<div style='background-color: red; color: white; padding: 5px;'>{value:.0f}%</div>"
 
-    # Apply styling to the sorted data
     progress_data["% Sold"] = progress_data["% Sold (Numeric)"].apply(style_box_color)
+
+    # Progress to Monthly Target with new logic
+    days_in_month = pd.Period(datetime.now().strftime('%Y-%m')).days_in_month
+    days_elapsed = datetime.now().day
+    pace_percentage = (days_elapsed / days_in_month) * 100
+
+    def style_progress(value):
+        if value >= pace_percentage:
+            return f"<div style='background-color: green; color: white; padding: 5px;'>{value:.0f}%</div>"
+        elif value >= 0.5 * pace_percentage:
+            return f"<div style='background-color: orange; color: white; padding: 5px;'>{value:.0f}%</div>"
+        else:
+            return f"<div style='background-color: red; color: white; padding: 5px;'>{value:.0f}%</div>"
+
+    progress_data["Progress to Monthly Target"] = progress_data["% Sold (Numeric)"].apply(style_progress)
 
     # Drop numeric % Sold column after sorting and styling
     progress_data = progress_data.drop(columns=["% Sold (Numeric)"])
@@ -152,7 +175,8 @@ def calculate_monthly_progress(data, start_date, end_date):
     # Extract unique sales made for the second return value
     sales_made = filtered_data["CreatedBy"].unique()
 
-    return progress_data, sales_made 
+    return progress_data, sales_made
+
 
 
 
@@ -264,7 +288,7 @@ def generate_scrolling_messages(data, budget_df):
 
         # Generate the message
         next_fixture_message = (
-            f"🏟️ Next Fixture: {fixture_display} in {days_to_fixture} days "
+            f"🏟️ Next Fixture: {fixture_display} in {days_to_fixture} day(s) "
             f"🎯 Budget Target Achieved: {budget_achieved}%."
         )
     else:
@@ -343,7 +367,7 @@ def run_dashboard():
     st.set_page_config(page_title="Hospitality Leadership Board", layout="wide")
     
     # Dashboard Title
-    st.image("assets/crestARS001(Transparent)(Small).png", width=100)  # Display the crest image (adjust width as needed)
+    st.image("assets/arsenal_crest_gold.png", width=200)  # Display the crest image (adjust width as needed)
     st.markdown(
         """
         <style>
@@ -357,7 +381,8 @@ def run_dashboard():
             font-weight: bold;
             color: #E41B17;
             text-align: center;
-            padding: 20px;
+            padding: 5px;
+            margin-top: -40px
         }
         </style>
         <div class="custom-title">
@@ -371,13 +396,21 @@ def run_dashboard():
    # Sidebar: Date Range Filter
     st.sidebar.markdown(
         """
-        <div style="
-            text-align: center; 
-            font-family: Arial, sans-serif; 
-            font-size: 18px; 
-            font-weight: bold; 
-            color: #2c3e50; 
-            margin-bottom: 10px;">
+        <style>
+            @font-face {
+                font-family: 'Northbank-N5';
+                src: url('fonts/Northbank-N5_2789720163.ttf') format('truetype');
+            }
+            .custom-date-range-title {
+                text-align: center; 
+                font-family: 'Northbank-N5'; /* Apply the custom font */
+                font-size: 18px; 
+                font-weight: bold; 
+                color: #E41B17; 
+                margin-bottom: 10px;
+            }
+        </style>
+        <div class="custom-date-range-title">
             Date Range Filter
         </div>
         """,
@@ -391,21 +424,42 @@ def run_dashboard():
     total_sales = calculate_total_sales(filtered_df_without_seats)
     st.sidebar.markdown(
         f"""
-        <div style="
-            padding: 20px 15px; /* Match padding of the other widgets */
-            margin-bottom: 30px; /* Space between widgets */
-            text-align: center; /* Center align all text */
-            font-family: Impact, Arial, sans-serif; /* Match the font style */
-            font-size: 28px; /* Match font size */
-            font-weight: bold; /* Match weight */
-            color: #E41B17; /* Match font color */
-        ">
-            <span style="font-size: 22px; color: #E41B17; text-align: center; font-weight: bold;">🛒 Sales To Date:</span><br>
-            <span style="font-size: 24px; color: #E41B17; text-align: center; font-weight: bold;">£{total_sales:,.0f}</span>
+        <style>
+            @font-face {{
+                font-family: 'Northbank-N5';
+                src: url('fonts/Northbank-N5_2789720163.ttf') format('truetype');
+            }}
+            .custom-sales-box {{
+                padding: 20px 15px; /* Match padding of the other widgets */
+                margin-bottom: 30px; /* Space between widgets */
+                text-align: center; /* Center align all text */
+                font-family: 'Northbank-N5'; /* Apply the custom font */
+                font-size: 28px; /* Match font size */
+                font-weight: bold; /* Match weight */
+                color: #E41B17; /* Match font color */
+            }}
+            .custom-sales-header {{
+                font-size: 25px;
+                color: #E41B17;
+                text-align: center;
+                font-weight: bold;
+            }}
+            .custom-sales-value {{
+                font-size: 28px;
+                color: #E41B17;
+                text-align: center;
+                font-weight: bold;
+            }}
+        </style>
+        <div class="custom-sales-box">
+            <span class="custom-sales-header"> 🍯 Sales To Date:</span><br>
+            <span class="custom-sales-value">£{total_sales:,.0f}</span>
         </div>
         """,
         unsafe_allow_html=True
     )
+
+    
     # Premium Monthly Progress Section
     valid_executives = ["dcoppin", "BethNW", "bgardiner", "MeganS", "dmontague", 
                         "jedwards", "HayleyA", "MillieS", "BenT", "jmurphy"]
@@ -443,18 +497,25 @@ def run_dashboard():
     if total_target == 0:
         st.sidebar.markdown(
             """
-            <div style="
-                background-color: #fff0f0;
-                border: 2px solid #E41B17;
-                border-radius: 15px;
-                padding: 20px 15px;
-                margin-bottom: 30px;
-                text-align: center;
-                font-family: Impact, Arial, sans-serif;
-                font-size: 28px;
-                font-weight: bold;
-                color: #E41B17;
-            ">
+            <style>
+                @font-face {
+                    font-family: 'Chapman-Bold';
+                    src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
+                }
+                .custom-out-of-bounds {
+                    background-color: #fff0f0;
+                    border: 2px solid #E41B17;
+                    border-radius: 15px;
+                    padding: 20px 15px;
+                    margin-bottom: 30px;
+                    text-align: center;
+                    font-family: 'Chapman-Bold';
+                    font-size: 28px;
+                    font-weight: bold;
+                    color: #E41B17;
+                }
+            </style>
+            <div class="custom-out-of-bounds">
                 ⚠️ Selected date range is out of bounds for available targets.
             </div>
             """,
@@ -463,29 +524,43 @@ def run_dashboard():
     else:
         st.sidebar.markdown(
             f"""
-            <div style="
-                background-color: #fff0f0;
-                border: 2px solid #E41B17;
-                border-radius: 15px;
-                padding: 20px 15px;
-                text-align: center;
-                font-family: Impact, Arial, sans-serif;
-                font-size: 28px;
-                font-weight: bold;
-                color: #E41B17;
-            ">
+            <style>
+                @font-face {{
+                    font-family: 'Chapman-Bold';
+                    src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
+                }}
+                .custom-progress-widget {{
+                    background-color: #fff0f0;
+                    border: 2px solid #E41B17;
+                    border-radius: 15px;
+                    padding: 20px 15px;
+                    text-align: center;
+                    font-family: 'Chapman-Bold';
+                    font-size: 28px;
+                    font-weight: bold;
+                    color: #E41B17;
+                }}
+                .custom-progress-widget span {{
+                    font-size: 22px;
+                    color: #0047AB;
+                }}
+                .custom-progress-widget .highlight {{
+                    font-size: 24px;
+                    color: #E41B17;
+                }}
+            </style>
+            <div class="custom-progress-widget">
                 📊 Monthly Progress Budget Target <br>
-                <span style="font-size: 22px; color: #0047AB;">Total Revenue ({start_date.strftime("%B")}):</span><br>
-                <span style="font-size: 24px; color: #E41B17;">£{total_revenue:,.0f}</span><br>
-                <span style="font-size: 22px; color: #0047AB;">Total Target:</span><br>
-                <span style="font-size: 24px; color: #E41B17;">£{total_target:,.0f}</span><br>
-                <span style="font-size: 22px; color: #0047AB;">🌟 Progress Achieved:</span><br>
-                <span style="font-size: 24px; color: #E41B17;">{progress_percentage:.0f}%</span>
+                <span>Total Revenue ({start_date.strftime("%B")}):</span><br>
+                <span class="highlight">£{total_revenue:,.0f}</span><br>
+                <span>Total Target:</span><br>
+                <span class="highlight">£{total_target:,.0f}</span><br>
+                <span>🌟 Progress Achieved:</span><br>
+                <span class="highlight">{progress_percentage:.0f}%</span>
             </div>
             """,
             unsafe_allow_html=True
         )
-
 
 
     # Next Fixture Section
@@ -497,40 +572,63 @@ def run_dashboard():
             (filtered_df_without_seats["Fixture Name"] == fixture_name) &
             (filtered_df_without_seats["EventCompetition"] == event_competition)
         ]
-        
+
         # Calculate days to fixture
         days_to_fixture = (fixture_date - datetime.now()).days
-        
+
         # Calculate total revenue for the selected fixture
         fixture_revenue = filtered_fixture_data["Price"].sum()
-        
+
         # Calculate budget achieved
         budget_achieved = round((fixture_revenue / budget_target) * 100, 2) if budget_target > 0 else 0
-        
+
         # Display fixture with event competition
         fixture_display = f"{fixture_name} ({event_competition})"
-        
+
         # Render the fixture details
         st.sidebar.markdown(
             f"""
-            <div style="
+            <style>
+            @font-face {{
+                font-family: 'Chapman-Bold';
+                src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
+            }}
+            .next-fixture-widget {{
                 background-color: #fff0f0;
                 border: 2px solid #E41B17;
                 border-radius: 15px;
                 margin-top: 10px;
                 padding: 20px 15px;
                 text-align: center;
-                font-family: Impact, Arial, sans-serif;
+                font-family: 'Chapman-Bold';
                 font-size: 28px;
                 font-weight: bold;
                 color: #E41B17;
-            ">
+            }}
+            .next-fixture-widget span {{
+                display: block;
+                margin-bottom: 10px;
+            }}
+            .next-fixture-widget .fixture-title {{
+                font-size: 22px;
+                color: #E41B17;
+            }}
+            .next-fixture-widget .fixture-info {{
+                font-size: 22px;
+                color: #0047AB;
+            }}
+            .next-fixture-widget .fixture-days {{
+                font-size: 24px;
+                color: #E41B17;
+            }}
+            </style>
+            <div class="next-fixture-widget">
                 🏟️ Next Fixture <br>
-                <span style="font-size: 22px; color: #E41B17;">{fixture_display}</span><br>
-                <span style="font-size: 22px; color: #0047AB;">⏳ Days to Fixture:</span><br>
-                <span style="font-size: 24px; color: #E41B17;">{days_to_fixture} days</span><br>
-                <span style="font-size: 22px; color: #0047AB;">🎯 Budget Target Achieved:</span><br>
-                <span style="font-size: 24px; color: #E41B17;">{budget_achieved}%</span>
+                <span class="fixture-title">{fixture_display}</span>
+                <span class="fixture-info">⏳ Days to Fixture:</span>
+                <span class="fixture-days">{days_to_fixture} days</span>
+                <span class="fixture-info">🎯 Budget Target Achieved:</span>
+                <span class="fixture-days">{budget_achieved}%</span>
             </div>
             """,
             unsafe_allow_html=True
@@ -538,17 +636,24 @@ def run_dashboard():
     else:
         st.sidebar.markdown(
             """
-            <div style="
+            <style>
+            @font-face {{
+                font-family: 'Chapman-Bold';
+                src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
+            }}
+            .no-fixture-widget {{
                 background-color: #fff0f0;
                 border: 2px solid #E41B17;
                 border-radius: 15px;
                 padding: 20px 15px;
                 text-align: center;
-                font-family: Impact, Arial, sans-serif;
+                font-family: 'Chapman-Bold';
                 font-size: 28px;
                 font-weight: bold;
                 color: #E41B17;
-            ">
+            }}
+            </style>
+            <div class="no-fixture-widget">
                 ⚠️ No upcoming fixtures found.
             </div>
             """,
@@ -559,27 +664,39 @@ def run_dashboard():
     # Sidebar: Auto-refresh
     refresh_time = auto_refresh()
     st.sidebar.markdown(
-            f"""
-            <div style="
+        f"""
+        <style>
+            @font-face {{
+                font-family: 'Northbank-N5';
+                src: url('fonts/Northbank-N5_2789720163.ttf') format('truetype');
+            }}
+            .custom-refresh-box {{
                 background-color: #fff0f0;
                 border: 2px solid #E41B17;
                 border-radius: 10px;
                 padding: 20px; /* Add extra padding for better spacing */
                 margin-bottom: 20px; /* Space below widget */
-                font-family: Impact, Arial, sans-serif; /* Bold and blocky font */
+                font-family: 'Northbank-N5'; /* Custom font applied */
                 font-size: 28px; /* Larger font size for visibility */
                 color: #E41B17; /* Arsenal red text */
                 text-align: center; /* Center-align text */
                 font-weight: bold; /* Make text bold */
-            ">
-                <span>🔄 Latest Data Update:</span><br>
-                <span style="font-size: 20px; font-weight: bold; color: #E41B17;">{refresh_time}</span>
-            </div>
-            """,
-            unsafe_allow_html=True
+            }}
+            .custom-refresh-time {{
+                font-size: 20px;
+                font-weight: bold;
+                color: #E41B17;
+            }}
+        </style>
+        <div class="custom-refresh-box">
+            <span>🔄 Latest Data Update:</span><br>
+            <span class="custom-refresh-time">{refresh_time}</span>
+        </div>
+        """,
+        unsafe_allow_html=True
     )
-
-        
+    
+    
     # Monthly Progress Table
     monthly_progress, sales_made = calculate_monthly_progress(filtered_df_without_seats, start_date, end_date)
 
@@ -598,7 +715,8 @@ def run_dashboard():
                 color: #E41B17;
                 text-align: center;
                 padding: 5px;
-                margin-top: -20px
+                margin-top: -25px
+                
             }
             </style>
             <div class="custom-leaderboard-title">
@@ -626,39 +744,40 @@ def run_dashboard():
     else:
         st.warning("Monthly Progress data not available for the selected date range.")
         
+        
 
-    # Scrolling Message Section
-        scrolling_message = generate_scrolling_messages(filtered_df_without_seats, budget_df)
-        st.markdown(
-            f"""
-            <style>
-                @font-face {{
-                    font-family: 'Northbank-N5';
-                    src: url('fonts/Northbank-N5_2789720163.ttf') format('truetype');
-                }}
-                .custom-scroll-box {{
-                    overflow: hidden;
-                    white-space: nowrap;
-                    width: 100%;
-                    background-color: #fff0f0; /* Soft pastel pink background */
-                    color: #E41B17; /* Arsenal red font color */
-                    padding: 15px 20px; /* Padding for spacing */
-                    border-radius: 15px; /* Curved edges */
-                    font-family: 'Northbank-N5'; /* Apply the custom font */
-                    font-size: 25px; /* Extra-large font size */
-                    font-weight: bold; /* Extra-bold text */
-                    text-align: center; /* Center-aligned text */
-                    border: 2px solid #E41B17; /* Red border */
-                }}
-            </style>
-            <div class="custom-scroll-box">
-                <marquee behavior="scroll" direction="left" scrollamount="4">
-                    {scrolling_message}
-                </marquee>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+    scrolling_message = generate_scrolling_messages(filtered_df_without_seats, budget_df)
+    st.markdown(
+        f"""
+        <style>
+            @font-face {{
+                font-family: 'Northbank-N5';
+                src: url('fonts/Northbank-N5_2789720163.ttf') format('truetype');
+            }}
+            .custom-scroll-box {{
+                overflow: hidden;
+                white-space: nowrap;
+                width: 100%;
+                background-color: #fff0f0; /* Soft pastel pink background */
+                color: #E41B17; /* Arsenal red font color */
+                padding: 15px 20px; /* Padding for spacing */
+                border-radius: 15px; /* Curved edges */
+                font-family: 'Northbank-N5'; /* Apply the custom font */
+                font-size: 25px; /* Extra-large font size */
+                font-weight: bold; /* Extra-bold text */
+                text-align: center; /* Center-aligned text */
+                border: 2px solid #E41B17; /* Red border */
+                border-top: 20;
+            }}
+        </style>
+        <div class="custom-scroll-box">
+            <marquee behavior="scroll" direction="left" scrollamount="4">
+                {scrolling_message}
+            </marquee>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 
 if __name__ == "__main__":
