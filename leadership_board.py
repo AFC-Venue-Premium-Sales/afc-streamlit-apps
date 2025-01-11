@@ -158,7 +158,7 @@ def calculate_monthly_progress(data, start_date, end_date):
     
     # Define a function to style table cells with consistent fonts and spacing
     def style_cell(value, color="black"):
-        return f"<div style='color: {color}; font-family: Chapman-Bold; font-size: 24px; padding: 10px; text-align: center;'>{value}</div>"
+        return f"<div style='color: {color}; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>{value}</div>"
 
     # Apply consistent styling to all columns
     progress_data["Sales Exec"] = progress_data["Sales Exec"].apply(
@@ -185,7 +185,7 @@ def calculate_monthly_progress(data, start_date, end_date):
         "Progress To Monthly Target": "Progress To Monthly Target"
     }
     progress_data.columns = [
-        f"<div style='font-family: Chapman-Bold; font-size: 24px; text-align: center;'>{col}</div>"
+        f"<div style='font-family: Chapman-Bold; font-size: 28px; text-align: center;'>{col}</div>"
         for col in styled_columns.values()
     ]
 
@@ -459,8 +459,8 @@ def run_dashboard():
         f"""
         <style>
             @font-face {{
-                font-family: 'Northbank-N5';
-                src: url('fonts/Northbank-N5_2789720163.ttf') format('truetype');
+                font-family: 'Chapman-Bold';
+                src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
             }}
             .custom-sales-box {{
                 background-color: #fff0f0;
@@ -469,7 +469,7 @@ def run_dashboard():
                 padding: 20px 15px; /* Match padding of the other widgets */
                 margin-bottom: 30px; /* Space between widgets */
                 text-align: center; /* Center align all text */
-                font-family: 'Northbank-N5'; /* Apply the custom font */
+                font-family: 'Chapman-Bold'; /* Apply the custom font */
                 font-size: 28px; /* Match font size */
                 font-weight: bold; /* Match weight */
                 color: #E41B17; /* Match font color */
@@ -711,9 +711,7 @@ def run_dashboard():
                 margin-bottom: 20px; /* Space below widget */
                 font-family: 'Northbank-N5'; /* Custom font applied */
                 font-size: 12px; /* Larger font size for visibility */
-                color: #E41B17; /* Arsenal red text */
-                text-align: center; /* Center-align text */
-                font-weight: bold; /* Make text bold */
+                color: #000000; /* Arsenal red text */
             }}
             .custom-refresh-time {{
                 font-size: 12px;
@@ -738,11 +736,11 @@ def run_dashboard():
             """
             <style>
             @font-face {
-                font-family: 'Chapman-Bold';
-                src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
+                font-family: 'Northbank-N7';
+                src: url('fonts/Northbank-N7_2789728357.ttf') format('truetype');
             }
             .custom-leaderboard-title {
-                font-family: 'Chapman-Bold';
+                font-family: 'Northbank-N7';
                 font-size: 40px;
                 font-weight: bold;
                 color: #E41B17;
@@ -789,7 +787,7 @@ def run_dashboard():
             .custom-scroll-box {{
                 overflow: hidden;
                 white-space: nowrap;
-                width: 80%; /* Adjust width to center */
+                width: 70%; /* Adjust width to be more centered */
                 margin: 0 auto; /* Center the bar horizontally */
                 background-color: #fff0f0; /* Soft pastel pink background */
                 color: #E41B17; /* Arsenal red font color */
@@ -801,9 +799,9 @@ def run_dashboard():
                 text-align: center; /* Center-aligned text */
                 border: 2px solid #E41B17; /* Red border */
                 position: fixed; /* Keep the bar fixed on the screen */
-                left: 10%; /* Center horizontally by adding space on the left */
-                right: 10%; /* Balance space on the right */
-                bottom: 50px; /* Adjust the height above the bottom of the page */
+                left: 15%; /* Space from the left side */
+                right: 15%; /* Space from the right side */
+                bottom: 60px; /* Adjust the height above the bottom of the page */
                 z-index: 1000; /* Ensure it stays above other elements */
             }}
             body {{
