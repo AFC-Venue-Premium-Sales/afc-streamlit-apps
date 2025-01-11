@@ -408,7 +408,7 @@ def run_dashboard():
             margin-left: 15px; /* Adjust spacing between the crest and the title */
         }}
         .custom-crest {{
-            width: 80px; /* Adjust crest size */
+            width: 200x; /* Adjust crest size */
             margin-right: 15px; /* Adjust spacing between the crest and the title */
         }}
         </style>

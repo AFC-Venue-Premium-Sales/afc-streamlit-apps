@@ -107,7 +107,7 @@ def calculate_monthly_progress(data, start_date, end_date):
     )
 
     # Weekly sales (from Monday to end_date)
-    start_of_week = pd.to_datetime(end_date) - pd.Timedelta(days=pd.to_datetime(end_date).weekday())  # Get Monday of the current week
+    start_of_week = pd.to_datetime(end_date) - pd.Timedelta(days=pd.to_datetime(end_date).weekday())
     weekly_sales_data = data[
         (data["CreatedOn"] >= start_of_week) &
         (data["CreatedOn"] <= pd.to_datetime(end_date))
@@ -124,7 +124,6 @@ def calculate_monthly_progress(data, start_date, end_date):
         .sum()
         .reindex(targets_data.columns, fill_value=0)
     )
-
     monthly_targets = targets_data.loc[(current_month, current_year)]
 
     # Calculate Progress To Monthly Target percentage
@@ -156,21 +155,20 @@ def calculate_monthly_progress(data, start_date, end_date):
     # Sort by Progress To Monthly Target (Numeric) before formatting
     progress_data = progress_data.sort_values(by="Progress To Monthly Target (Numeric)", ascending=False)
 
-    # Format columns for display (add £ sign)
-    progress_data["Today's Sales"] = progress_data["Today's Sales"].apply(lambda x: f"£{x:,.0f}")
-    progress_data["Weekly Sales"] = progress_data["Weekly Sales"].apply(lambda x: f"£{x:,.0f}")
+    # Define a function to style table cells
+    def style_cell(value, color):
+        return f"<div style='background-color: {color}; color: white; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>{value}</div>"
 
-    # Define color-coding logic based on monthly pace
-    def style_progress(value):
-        if value >= expected_pace:
-            return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>{value:.0f}%</div>"
-        elif value >= 0.5 * expected_pace:
-            return f"<div style='background-color: orange; color: white; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>{value:.0f}%</div>"
-        else:
-            return f"<div style='background-color: red; color: white; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>{value:.0f}%</div>"
-
-    # Apply color-coding to Progress To Monthly Target
-    progress_data["Progress To Monthly Target"] = progress_data["Progress To Monthly Target (Numeric)"].apply(style_progress)
+    # Apply consistent styling to all columns
+    progress_data["Today's Sales"] = progress_data["Today's Sales"].apply(
+        lambda x: style_cell(f"£{x:,.0f}", "#0047AB")  # Blue for sales
+    )
+    progress_data["Weekly Sales"] = progress_data["Weekly Sales"].apply(
+        lambda x: style_cell(f"£{x:,.0f}", "#0047AB")  # Blue for weekly sales
+    )
+    progress_data["Progress To Monthly Target"] = progress_data["Progress To Monthly Target (Numeric)"].apply(
+        lambda x: style_cell(f"{x:.0f}%", "green" if x >= expected_pace else "orange" if x >= 0.5 * expected_pace else "red")
+    )
 
     # Drop numeric column after styling
     progress_data = progress_data.drop(columns=["Progress To Monthly Target (Numeric)"])
@@ -179,7 +177,6 @@ def calculate_monthly_progress(data, start_date, end_date):
     sales_made = filtered_data["CreatedBy"].unique()
 
     return progress_data, sales_made
-
 
 
 def get_next_fixture(data, budget_df):
@@ -399,7 +396,7 @@ def run_dashboard():
             margin-left: 15px; /* Adjust spacing between the crest and the title */
         }}
         .custom-crest {{
-            width: 80px; /* Adjust crest size */
+            width: 200px; /* Adjust crest size */
             margin-right: 15px; /* Adjust spacing between the crest and the title */
         }}
         </style>
