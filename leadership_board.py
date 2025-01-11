@@ -29,17 +29,17 @@ targets_data = pd.DataFrame({
     "dcoppin": [155000, 155000, 135000, 110000, 90000, 65000],
     "jedwards": [155000, 155000, 135000, 110000, 90000, 65000],
     "MillieS": [155000, 155000, 135000, 110000, 90000, 65000],
-    "dmontague": [155000, 155000, 135000, 110000, 90000, 65000],
-    "MeganS": [42500, 42500, 36500, 30500, 24500, 18500],
-    "BethNW": [42500, 42500, 36500, 30500, 24500, 18500],
-    "HayleyA": [42500, 42500, 36500, 30500, 24500, 18500],
-    "jmurphy": [35000, 35000, 30000, 25000, 20000, 15000],
-    "BenT": [35000, 35000, 30000, 25000, 20000, 15000],
+    "dmontague": [155000, 155000, 135000, 110000, 90000, 65000]
+    # "MeganS": [42500, 42500, 36500, 30500, 24500, 18500],
+    # "BethNW": [42500, 42500, 36500, 30500, 24500, 18500],
+    # "HayleyA": [42500, 42500, 36500, 30500, 24500, 18500],
+    # "jmurphy": [35000, 35000, 30000, 25000, 20000, 15000],
+    # "BenT": [35000, 35000, 30000, 25000, 20000, 15000],
 }).set_index(["Month", "Year"])
 
 # Specify your list of executives
-valid_executives = ["dcoppin", "BethNW", "bgardiner", "MeganS", "dmontague", 
-                    "jedwards", "HayleyA", "MillieS", "BenT", "jmurphy"]
+valid_executives = ["dcoppin", "BethNW", "bgardiner", "MeganS", "dmontague", "jedwards"]
+                    # "jedwards", "HayleyA", "MillieS", "BenT", "jmurphy"]
 
 
 
@@ -154,13 +154,13 @@ def calculate_monthly_progress(data, start_date, end_date):
     # Map usernames to full names
     user_mapping = {
         "dmontague": "Dan",
-        "BethNW": "Beth",
-        "jmurphy": "James",
+        # "BethNW": "Beth",
+        # "jmurphy": "James",
         "bgardiner": "Bobby",
         "dcoppin": "Coppin",
-        "MeganS": "Megs",
-        "HayleyA": "Hayley",
-        "BenT": "Ben",
+        # "MeganS": "Megs",
+        # "HayleyA": "Hayley",
+        # "BenT": "Ben",
         "jedwards": "Joey",
         "MillieS": "Millie"
     }
@@ -793,8 +793,6 @@ def run_dashboard():
                 margin-top: 50px; /* Add space between the table and the bar */
                 position: fixed; /* Keep the bar at the bottom of the screen */
                 bottom: 0; /* Position it at the very bottom */
-                left: 0; /* Align it to the left edge */
-                right: 0; /* Stretch it to the right edge */
                 z-index: 1000; /* Ensure it stays above other elements */
             }}
         </style>
