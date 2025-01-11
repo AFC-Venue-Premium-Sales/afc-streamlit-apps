@@ -469,8 +469,8 @@ def run_dashboard():
 
     
     # Premium Monthly Progress Section
-    valid_executives = ["dcoppin", "BethNW", "bgardiner", "MeganS", "dmontague", 
-                        "jedwards", "HayleyA", "MillieS", "BenT", "jmurphy"]
+    valid_executives = ["dcoppin", "BethNW", "bgardiner", "MeganS", "dmontague", "jedwards"]
+                        # "jedwards", "HayleyA", "MillieS", "BenT", "jmurphy"]
 
     # Filter the data for valid executives
     filtered_executive_data = filtered_df_without_seats[filtered_df_without_seats["CreatedBy"].isin(valid_executives)]
