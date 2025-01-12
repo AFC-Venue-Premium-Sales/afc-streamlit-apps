@@ -785,7 +785,7 @@ def run_dashboard():
             .custom-scroll-box {{
                 overflow: hidden;
                 white-space: nowrap;
-                width: 80%; /* Adjust width to fit in the center */
+                width: 70%; /* Adjust width to be more centered */
                 margin: 0 auto; /* Center the bar horizontally */
                 background-color: #fff0f0; /* Soft pastel pink background */
                 color: #E41B17; /* Arsenal red font color */
@@ -797,11 +797,13 @@ def run_dashboard():
                 text-align: center; /* Center-aligned text */
                 border: 2px solid #E41B17; /* Red border */
                 position: fixed; /* Keep the bar fixed on the screen */
-                bottom: 40px; /* Move it slightly above the bottom */
+                left: 15%; /* Space from the left side */
+                right: 15%; /* Space from the right side */
+                bottom: 60px; /* Adjust the height above the bottom of the page */
                 z-index: 1000; /* Ensure it stays above other elements */
             }}
             body {{
-                padding-bottom: 100px; /* Add space at the bottom for the scroll box */
+                padding-bottom: 120px; /* Add space at the bottom for the scroll box */
             }}
         </style>
         <div class="custom-scroll-box">
@@ -812,6 +814,7 @@ def run_dashboard():
         """,
         unsafe_allow_html=True
     )
+
 
 if __name__ == "__main__":
     run_dashboard()
