@@ -787,7 +787,7 @@ def run_dashboard():
             .custom-scroll-box {{
                 overflow: hidden;
                 white-space: nowrap;
-                width: 85%; /* Adjust width to better match the layout */
+                width: calc(100% - 400px); /* Ensure it's centered and does not touch sidebars */
                 margin: 0 auto; /* Center the bar horizontally */
                 background-color: #fff0f0; /* Soft pastel pink background */
                 color: #E41B17; /* Arsenal red font color */
@@ -799,9 +799,9 @@ def run_dashboard():
                 text-align: center; /* Center-aligned text */
                 border: 2px solid #E41B17; /* Red border */
                 position: fixed; /* Keep the bar fixed on the screen */
-                left: 7.5%; /* Adjust spacing from the left to center-align */
-                right: 7.5%; /* Ensure symmetry with the left spacing */
-                bottom: 50px; /* Adjust the height above the bottom of the page */
+                left: 200px; /* Push from the left, accounting for sidebar width */
+                right: 200px; /* Push from the right for symmetry */
+                bottom: 50px; /* Adjust height above the bottom */
                 z-index: 1000; /* Ensure it stays above other elements */
             }}
             body {{
@@ -816,6 +816,7 @@ def run_dashboard():
         """,
         unsafe_allow_html=True
     )
+
 
 
 
