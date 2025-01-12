@@ -83,6 +83,7 @@ def calculate_total_sales(data):
     total_sales = data["TotalPrice"].sum()
     return total_sales
 
+
 def calculate_monthly_progress(data, start_date, end_date):
     # Map usernames to actual names
     user_name_mapping = {
@@ -110,27 +111,17 @@ def calculate_monthly_progress(data, start_date, end_date):
     if (current_month, current_year) not in targets_data.index:
         return None, []
 
-    # Today's sales count and revenue
-    today_sales_data = data[data["CreatedOn"].dt.date == datetime.now().date()]
-    today_sales_count = (
-        today_sales_data.groupby("CreatedBy")["Price"]
-        .count()
-        .reindex(targets_data.columns, fill_value=0)
-    )
-    today_sales_total = (
-        today_sales_data.groupby("CreatedBy")["Price"]
-        .sum()
-        .reindex(targets_data.columns, fill_value=0)
-    )
+    # Today's sales (based on the end_date of the range)
+    today_sales_data = data[data["CreatedOn"].dt.date == pd.Timestamp(end_date).date()]
+    today_sales_total = today_sales_data.groupby("CreatedBy")["Price"].sum().reindex(targets_data.columns, fill_value=0)
 
-    # Weekly sales (Monday to today)
-    current_week_start = datetime.now() - pd.to_timedelta(datetime.now().weekday(), unit="D")
-    weekly_sales_data = data[data["CreatedOn"] >= current_week_start]
-    weekly_sales_total = (
-        weekly_sales_data.groupby("CreatedBy")["Price"]
-        .sum()
-        .reindex(targets_data.columns, fill_value=0)
-    )
+    # Weekly sales (from Monday to end_date)
+    start_of_week = pd.Timestamp(end_date) - pd.Timedelta(days=pd.Timestamp(end_date).weekday())
+    weekly_sales_data = data[
+        (data["CreatedOn"] >= start_of_week) &
+        (data["CreatedOn"] <= pd.to_datetime(end_date))
+    ]
+    weekly_sales_total = weekly_sales_data.groupby("CreatedBy")["Price"].sum().reindex(targets_data.columns, fill_value=0)
 
     # Progress calculation
     progress = (
@@ -142,7 +133,6 @@ def calculate_monthly_progress(data, start_date, end_date):
 
     progress_data = pd.DataFrame({
         "Sales Exec": progress.index.map(user_name_mapping),
-        "Today's Sales Count": today_sales_count.values,
         "Today's Sales": today_sales_total.values,
         "Weekly Sales": weekly_sales_total.values,
         "Current Revenue": progress.values,
@@ -151,40 +141,48 @@ def calculate_monthly_progress(data, start_date, end_date):
         "% Sold (Numeric)": (progress / monthly_targets * 100).round(0),
     }).reset_index(drop=True)
 
-    # Format columns for display
-    progress_data["Today's Sales"] = progress_data["Today's Sales"].apply(lambda x: f"\u00a3{x:,.0f}")
-    progress_data["Weekly Sales"] = progress_data["Weekly Sales"].apply(lambda x: f"\u00a3{x:,.0f}")
-    progress_data["Current Revenue"] = progress_data["Current Revenue"].apply(lambda x: f"\u00a3{x:,.0f}")
-    progress_data["Target"] = progress_data["Target"].apply(lambda x: f"\u00a3{x:,.0f}")
-    progress_data["Variance"] = progress_data["Variance"].apply(lambda x: f"({abs(x):,.0f})" if x < 0 else f"{x:,.0f}")
+    # Calculate totals
+    totals_row = {
+        "Sales Exec": "Totals",
+        "Today's Sales": progress_data["Today's Sales"].sum(),
+        "Weekly Sales": progress_data["Weekly Sales"].sum(),
+        "Current Revenue": progress_data["Current Revenue"].sum(),
+        "Target": "",
+        "Variance": "",
+        "% Sold (Numeric)": "",
+    }
 
-    # Remove color coding for % Sold
-    progress_data["% Sold"] = progress_data["% Sold (Numeric)"]
+    # Append totals row to the DataFrame
+    progress_data = progress_data.append(totals_row, ignore_index=True)
+
+    # Format columns for display
+    progress_data["Today's Sales"] = progress_data["Today's Sales"].apply(lambda x: f"\u00a3{x:,.0f}" if isinstance(x, (int, float)) else x)
+    progress_data["Weekly Sales"] = progress_data["Weekly Sales"].apply(lambda x: f"\u00a3{x:,.0f}" if isinstance(x, (int, float)) else x)
+    progress_data["Current Revenue"] = progress_data["Current Revenue"].apply(lambda x: f"\u00a3{x:,.0f}" if isinstance(x, (int, float)) else x)
+    progress_data["Variance"] = progress_data["Variance"].apply(lambda x: f"({abs(x):,.0f})" if x < 0 else f"{x:,.0f}" if isinstance(x, (int, float)) else x)
 
     # Progress to Monthly Target with new logic
-    days_in_month = pd.Period(datetime.now().strftime('%Y-%m')).days_in_month
-    days_elapsed = datetime.now().day
+    days_in_month = pd.Period(end_date.strftime('%Y-%m')).days_in_month
+    days_elapsed = pd.Timestamp(end_date).day
     pace_percentage = (days_elapsed / days_in_month) * 100
 
     def style_progress(value):
-        if value >= pace_percentage:
+        if value == "":
+            return ""
+        elif value >= pace_percentage:
             return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>{value:.0f}%</div>"
         elif value >= 0.5 * pace_percentage:
             return f"<div style='background-color: orange; color: white; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>{value:.0f}%</div>"
         else:
             return f"<div style='background-color: red; color: white; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>{value:.0f}%</div>"
 
-    # Use Progress To Monthly Target logic
     progress_data["Progress to Monthly Target"] = progress_data["% Sold (Numeric)"].apply(style_progress)
-
-    # Drop numeric % Sold column after styling
     progress_data = progress_data.drop(columns=["% Sold (Numeric)"])
 
     # Extract unique sales made for the second return value
     sales_made = filtered_data["CreatedBy"].unique()
 
     return progress_data, sales_made
-
 
 
 
@@ -784,25 +782,24 @@ def run_dashboard():
             .custom-scroll-box {{
                 overflow: hidden;
                 white-space: nowrap;
-                max-width: 90%; /* Adjust width to maintain margins */
-                margin: 0 auto; /* Center the scroll box horizontally */
-                background-color: #fff0f0; /* Soft pastel pink background */
-                color: #E41B17; /* Arsenal red font color */
-                padding: 15px 20px; /* Padding for spacing */
-                border-radius: 15px; /* Curved edges */
-                font-family: 'Northbank-N5'; /* Apply the custom font */
-                font-size: 25px; /* Extra-large font size */
-                font-weight: bold; /* Extra-bold text */
-                text-align: center; /* Center-aligned text */
-                border: 2px solid #E41B17; /* Red border */
-                position: fixed; /* Keep the bar fixed on the screen */
-                left: 5%; /* Maintain equal margins on the left */
-                right: 5%; /* Maintain equal margins on the right */
-                bottom: 40px; /* Adjust the height above the bottom of the page */
-                z-index: 1000; /* Ensure it stays above other elements */
+                max-width: 80%; /* Keep box width manageable */
+                margin: 0 auto; /* Perfectly centers the box horizontally */
+                background-color: #fff0f0; /* Soft pastel pink */
+                color: #E41B17; /* Arsenal red text */
+                padding: 15px 20px; /* Inner padding */
+                border-radius: 15px; /* Smooth curved corners */
+                font-family: 'Northbank-N5'; /* Custom font */
+                font-size: 25px; /* Large readable text */
+                font-weight: bold; /* Bold font */
+                text-align: center; /* Text centered */
+                border: 2px solid #E41B17; /* Red border for contrast */
+                position: fixed; /* Fixed at the bottom */
+                bottom: 50px; /* Distance from bottom */
+                z-index: 1000; /* Keeps it above other content */
+                box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2); /* Shadow for visibility */
             }}
             body {{
-                padding-bottom: 120px; /* Add space at the bottom for the scroll box */
+                padding-bottom: 120px; /* Prevent overlapping */
             }}
         </style>
         <div class="custom-scroll-box">
@@ -813,6 +810,7 @@ def run_dashboard():
         """,
         unsafe_allow_html=True
     )
+
 
 
 if __name__ == "__main__":
