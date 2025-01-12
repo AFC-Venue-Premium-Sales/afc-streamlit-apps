@@ -410,10 +410,10 @@ def auto_refresh():
     st.session_state["refresh_log"] = st.session_state.get("refresh_log", [])
     st.session_state["refresh_log"].append(f"Auto-refresh triggered at {refresh_time}, Count: {st.session_state['refresh_count']}")
     
-    st_autorefresh(interval=300 * 1000, key="auto_refresh")  # Auto-refresh every 2 minutes
+    st_autorefresh(interval=300 * 1000, key="auto_refresh")  # Auto-refresh every 5 minutes
     
-    st.sidebar.text(f"Refresh Count: {st.session_state['refresh_count']}")
     return refresh_time
+
 
 
 def get_base64_image(image_path):
@@ -422,7 +422,6 @@ def get_base64_image(image_path):
 
 # Get the base64 string of the image
 crest_base64 = get_base64_image("assets/arsenal_crest_gold.png")
-
 
 # Run dashboard
 def run_dashboard():
@@ -494,7 +493,7 @@ def run_dashboard():
                 border: 2px solid #E41B17;
                 border-radius: 10px;
                 padding: 20px 15px; /* Match padding of the other widgets */
-                margin-bottom: 30px; /* Space between widgets */
+                margin-bottom: 10px; /* Space between widgets */
                 text-align: center; /* Center align all text */
                 font-family: 'Chapman-Bold'; /* Apply the custom font */
                 font-size: 28px; /* Match font size */
@@ -597,6 +596,7 @@ def run_dashboard():
                     background-color: #fff0f0;
                     border: 2px solid #E41B17;
                     border-radius: 15px;
+                    margin-top: 10px;
                     padding: 20px 15px;
                     text-align: center;
                     font-family: 'Chapman-Bold';
@@ -727,34 +727,39 @@ def run_dashboard():
             
     # Sidebar: Auto-refresh
     refresh_time = auto_refresh()
+    refresh_count = st.session_state["refresh_count"]
+
+    # Updated Sidebar Markup for Refresh Count and Latest Data Update
     st.sidebar.markdown(
         f"""
         <style>
             @font-face {{
-                font-family: 'Northbank-N5';
-                src: url('fonts/Northbank-N5_2789720163.ttf') format('truetype');
+                font-family: 'Chapman-Bold';
+                src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
             }}
-            .custom-refresh-box {{
-                padding: 20px; /* Add extra padding for better spacing */
-                margin-bottom: 20px; /* Space below widget */
-                font-family: 'Northbank-N5'; /* Custom font applied */
-                font-size: 12px; /* Larger font size for visibility */
-                color: #000000; /* Arsenal red text */
-            }}
-            .custom-refresh-time {{
+            .refresh-container {{
+                font-family: 'Chapman-Bold';
                 font-size: 12px;
+                color: #6C757D; /* Light grey text color for Refresh Count and Data Update */
+                margin-top: 10px;
+            }}
+            .refresh-count {{
                 font-weight: bold;
-                color: #E41B17;
+                font-size: 12px;
+            }}
+            .latest-data {{
+                font-size: 12px;
+                color: #E41B17; /* Arsenal red text color */
             }}
         </style>
-        <div class="custom-refresh-box">
-            <span>🔄 Latest Data Update:</span><br>
-            <span class="custom-refresh-time">{refresh_time}</span>
+        <div class="refresh-container">
+            <div class="refresh-count">Refresh Count: {refresh_count}</div>
+            <div class="latest-data">🔄 Latest Data Update: {refresh_time}</div>
         </div>
         """,
         unsafe_allow_html=True
     )
-    
+        
     
     # Monthly Progress Table
     monthly_progress, sales_made = calculate_monthly_progress(filtered_df_without_seats, start_date, end_date)
