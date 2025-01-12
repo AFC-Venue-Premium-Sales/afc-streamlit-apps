@@ -380,7 +380,7 @@ crest_base64 = get_base64_image("assets/arsenal_crest_gold.png")
 
 # Run dashboard
 def run_dashboard():
-    st.set_page_config(page_title="Hospitality Leadership Board", layout="wide")
+    # st.set_page_config(page_title="Hospitality Leadership Board", layout="wide")
     
     # Dashboard Title
     st.markdown(
