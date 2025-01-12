@@ -780,25 +780,24 @@ def run_dashboard():
             .custom-scroll-box {{
                 overflow: hidden;
                 white-space: nowrap;
-                max-width: 90%; /* Adjust width to maintain margins */
-                margin: 0 auto; /* Center the scroll box horizontally */
-                background-color: #fff0f0; /* Soft pastel pink background */
-                color: #E41B17; /* Arsenal red font color */
-                padding: 15px 20px; /* Padding for spacing */
-                border-radius: 15px; /* Curved edges */
-                font-family: 'Northbank-N5'; /* Apply the custom font */
-                font-size: 25px; /* Extra-large font size */
-                font-weight: bold; /* Extra-bold text */
-                text-align: center; /* Center-aligned text */
-                border: 2px solid #E41B17; /* Red border */
-                position: fixed; /* Keep the bar fixed on the screen */
-                left: 5%; /* Maintain equal margins on the left */
-                right: 5%; /* Maintain equal margins on the right */
-                bottom: 40px; /* Adjust the height above the bottom of the page */
-                z-index: 1000; /* Ensure it stays above other elements */
+                max-width: 80%; /* Keep box width manageable */
+                margin: 0 auto; /* Perfectly centers the box horizontally */
+                background-color: #fff0f0; /* Soft pastel pink */
+                color: #E41B17; /* Arsenal red text */
+                padding: 15px 20px; /* Inner padding */
+                border-radius: 15px; /* Smooth curved corners */
+                font-family: 'Northbank-N5'; /* Custom font */
+                font-size: 25px; /* Large readable text */
+                font-weight: bold; /* Bold font */
+                text-align: center; /* Text centered */
+                border: 2px solid #E41B17; /* Red border for contrast */
+                position: fixed; /* Fixed at the bottom */
+                bottom: 50px; /* Distance from bottom */
+                z-index: 1000; /* Keeps it above other content */
+                box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2); /* Shadow for visibility */
             }}
             body {{
-                padding-bottom: 120px; /* Add space at the bottom for the scroll box */
+                padding-bottom: 120px; /* Prevent overlapping */
             }}
         </style>
         <div class="custom-scroll-box">

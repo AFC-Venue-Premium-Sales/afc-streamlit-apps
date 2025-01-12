@@ -38,7 +38,7 @@ except ImportError as e:
     ticket_exchange_report = None
     
 try:
-    import sales_dashboard  # Assuming your dashboard is in a file named `sales_dashboard.py`
+    import sales_dashboard 
     importlib.reload(sales_dashboard)
 except ImportError as e:
     logging.error(f"Failed to import 'sales_dashboard': {e}")
