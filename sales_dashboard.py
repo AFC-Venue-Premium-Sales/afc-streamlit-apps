@@ -162,7 +162,9 @@ def calculate_monthly_progress(data, start_date, end_date):
     progress_data["Today's Sales"] = progress_data["Today's Sales"].apply(lambda x: f"\u00a3{x:,.0f}" if isinstance(x, (int, float)) else x)
     progress_data["Weekly Sales"] = progress_data["Weekly Sales"].apply(lambda x: f"\u00a3{x:,.0f}" if isinstance(x, (int, float)) else x)
     progress_data["Current Revenue"] = progress_data["Current Revenue"].apply(lambda x: f"\u00a3{x:,.0f}" if isinstance(x, (int, float)) else x)
-    progress_data["Variance"] = progress_data["Variance"].apply(lambda x: f"({abs(x):,.0f})" if x < 0 else f"{x:,.0f}" if isinstance(x, (int, float)) else x)
+    progress_data["Variance"] = progress_data["Variance"].apply(
+        lambda x: f"({abs(x):,.0f})" if isinstance(x, (int, float)) and x < 0 else f"{x:,.0f}" if isinstance(x, (int, float)) else x
+    )
 
     # Progress to Monthly Target with new logic
     days_in_month = pd.Period(end_date.strftime('%Y-%m')).days_in_month
