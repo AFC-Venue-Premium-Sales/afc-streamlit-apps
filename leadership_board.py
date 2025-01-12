@@ -130,29 +130,6 @@ def calculate_monthly_progress(data, start_date, end_date):
     # Calculate Progress To Monthly Target percentage
     progress_percentage = (progress / monthly_targets * 100).round(0)
 
-    # Calculate the expected pace based on elapsed days in the month
-    total_days_in_month = pd.Period(f"{current_year}-{start_date.month}").days_in_month
-    days_elapsed = (pd.to_datetime(end_date) - pd.Timestamp(f"{current_year}-{start_date.month}-01")).days + 1
-    expected_pace = (days_elapsed / total_days_in_month) * 100
-
-    # Build the progress table
-    progress_data = pd.DataFrame({
-        "Sales Exec": progress.index,
-        "Today's Sales": end_date_sales.values,
-        "Weekly Sales": weekly_sales.values,
-        "Progress To Monthly Target (Numeric)": progress_percentage.values,
-    }).reset_index(drop=True)
-
-    # Map usernames to full names
-    user_mapping = {
-        "dmontague": "Dan",
-        "bgardiner": "Bobby",
-        "dcoppin": "Coppin",
-        "jedwards": "Joey",
-        "MillieS": "Millie"
-    }
-    progress_data["Sales Exec"] = progress_data["Sales Exec"].map(user_mapping).fillna(progress_data["Sales Exec"])
-
     # Calculate totals
     total_today_sales = end_date_sales.sum()
     total_weekly_sales = weekly_sales.sum()
@@ -164,30 +141,30 @@ def calculate_monthly_progress(data, start_date, end_date):
         "Weekly Sales": total_weekly_sales,
         "Progress To Monthly Target (Numeric)": None  # Totals don't apply here
     }
-    progress_data = pd.concat([progress_data, pd.DataFrame([totals_row])], ignore_index=True)
+    progress_data = pd.concat([progress, pd.DataFrame([totals_row])], ignore_index=True)
 
     # Sort by Progress To Monthly Target (Numeric) before formatting
-    progress_data = progress_data.sort_values(by="Progress To Monthly Target (Numeric)", ascending=False, na_position="last")
+    progress_data = progress_data.sort_values(by="Progress To Monthly Target (Numeric)", ascending=False)
 
     # Define a function to style table cells with consistent fonts and spacing
     def style_cell(value, is_total=False, color="black"):
-        if is_total:
-            return f"<div style='background-color: #E41B17; color: white; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center; font-weight: bold;'>{value}</div>"
-        return f"<div style='color: {color}; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>{value}</div>"
+        bg_color = "#28A745" if is_total else "transparent"
+        text_color = "white" if is_total else color
+        return f"<div style='background-color: {bg_color}; color: {text_color}; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>{value}</div>"
 
     # Apply consistent styling to all columns
     progress_data["Sales Exec"] = progress_data["Sales Exec"].apply(
         lambda x: style_cell(x, is_total=(x == "TOTALS"))
     )
     progress_data["Today's Sales"] = progress_data["Today's Sales"].apply(
-        lambda x: style_cell(f"£{x:,.0f}", is_total=(x == total_today_sales))
+        lambda x: style_cell(f"£{x:,.0f}", is_total=False)
     )
     progress_data["Weekly Sales"] = progress_data["Weekly Sales"].apply(
-        lambda x: style_cell(f"£{x:,.0f}", is_total=(x == total_weekly_sales))
+        lambda x: style_cell(f"£{x:,.0f}", is_total=False)
     )
     progress_data["Progress To Monthly Target"] = progress_data["Progress To Monthly Target (Numeric)"].apply(
-        lambda x: style_cell(f"{x:.0f}%", "green" if x >= expected_pace else "orange" if x >= 0.5 * expected_pace else "red")
-        if pd.notnull(x) else style_cell("", is_total=True)
+        lambda x: style_cell(f"{x:.0f}%", "green" if x >= 100 else "orange" if x >= 50 else "red")
+        if pd.notnull(x) else style_cell("")
     )
 
     # Drop numeric column after styling
