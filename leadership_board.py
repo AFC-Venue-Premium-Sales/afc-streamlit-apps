@@ -134,10 +134,6 @@ def calculate_monthly_progress(data, start_date, end_date):
     monthly_targets = targets_data.loc[(current_month, current_year)]
     progress_percentage = (progress / monthly_targets * 100).round(0)
 
-    # Calculate totals
-    total_today_sales = end_date_sales.sum()
-    total_weekly_sales = weekly_sales.sum()
-
     # Build the progress table
     progress_data = pd.DataFrame({
         "Sales Exec": progress.index,
@@ -146,7 +142,24 @@ def calculate_monthly_progress(data, start_date, end_date):
         "Progress To Monthly Target (Numeric)": progress_percentage.values,
     }).reset_index(drop=True)
 
-    # Add totals row
+    # Map usernames to full names
+    user_mapping = {
+        "dmontague": "Dan",
+        "bgardiner": "Bobby",
+        "dcoppin": "Coppin",
+        "jedwards": "Joey",
+        "MillieS": "Millie"
+    }
+    progress_data["Sales Exec"] = progress_data["Sales Exec"].map(user_mapping).fillna(progress_data["Sales Exec"])
+
+    # Sort by "Progress To Monthly Target" in descending order
+    progress_data = progress_data.sort_values(by="Progress To Monthly Target (Numeric)", ascending=False)
+
+    # Calculate totals
+    total_today_sales = end_date_sales.sum()
+    total_weekly_sales = weekly_sales.sum()
+
+    # Add totals row at the end
     totals_row = {
         "Sales Exec": "TOTALS",
         "Today's Sales": total_today_sales,
@@ -212,6 +225,7 @@ def calculate_monthly_progress(data, start_date, end_date):
 
     # Return the styled table and sales_made list
     return styled_table, sales_made
+
 
 
 
@@ -511,21 +525,22 @@ def run_dashboard():
     
     # Premium Monthly Progress Section
     valid_executives = ["dcoppin", "MillieS", "bgardiner", "dmontague", "jedwards"]
-                        # "jedwards", "HayleyA", "BethNW", "BenT", "jmurphy", "MeganS"]
+    # "jedwards", "HayleyA", "BethNW", "BenT", "jmurphy", "MeganS"]
 
-    # Filter the data for valid executives
-    filtered_executive_data = filtered_df_without_seats[filtered_df_without_seats["CreatedBy"].isin(valid_executives)]
+    # Filter the data for valid executives and within the date range
+    filtered_executive_data = filtered_df_without_seats[
+        (filtered_df_without_seats["CreatedBy"].isin(valid_executives)) &
+        (pd.to_datetime(filtered_df_without_seats["CreatedOn"], errors="coerce", dayfirst=True) >= pd.to_datetime(start_date)) &
+        (pd.to_datetime(filtered_df_without_seats["CreatedOn"], errors="coerce", dayfirst=True) <= pd.to_datetime(end_date))
+    ]
 
-    # Convert the CreatedOn column to datetime format
+    # Ensure the CreatedOn column is in datetime format
     filtered_executive_data["CreatedOn"] = pd.to_datetime(
         filtered_executive_data["CreatedOn"], errors="coerce", dayfirst=True
     )
 
-    # Calculate total revenue for the specified date range and valid executives
-    total_revenue = filtered_executive_data[
-        (filtered_executive_data["CreatedOn"] >= pd.to_datetime(start_date)) &
-        (filtered_executive_data["CreatedOn"] <= pd.to_datetime(end_date))
-    ]["Price"].sum()
+    # Calculate total revenue for the valid executives within the selected date range
+    total_revenue = filtered_executive_data["Price"].sum()
 
     # Extract the current month and year to find the matching targets
     current_month = start_date.strftime("%B")
