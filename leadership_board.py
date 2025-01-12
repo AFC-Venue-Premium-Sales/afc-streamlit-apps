@@ -153,6 +153,19 @@ def calculate_monthly_progress(data, start_date, end_date):
     }
     progress_data["Sales Exec"] = progress_data["Sales Exec"].map(user_mapping).fillna(progress_data["Sales Exec"])
 
+    # Calculate totals
+    total_today_sales = progress_data["Today's Sales"].sum()
+    total_weekly_sales = progress_data["Weekly Sales"].sum()
+
+    # Add totals row
+    totals_row = {
+        "Sales Exec": "Totals",
+        "Today's Sales": total_today_sales,
+        "Weekly Sales": total_weekly_sales,
+        "Progress To Monthly Target (Numeric)": None  # Totals don't apply here
+    }
+    progress_data = pd.concat([progress_data, pd.DataFrame([totals_row])], ignore_index=True)
+
     # Sort by Progress To Monthly Target (Numeric) before formatting
     progress_data = progress_data.sort_values(by="Progress To Monthly Target (Numeric)", ascending=False)
     
@@ -172,6 +185,7 @@ def calculate_monthly_progress(data, start_date, end_date):
     )
     progress_data["Progress To Monthly Target"] = progress_data["Progress To Monthly Target (Numeric)"].apply(
         lambda x: style_cell(f"{x:.0f}%", "green" if x >= expected_pace else "orange" if x >= 0.5 * expected_pace else "red")
+        if pd.notnull(x) else style_cell("")
     )
 
     # Drop numeric column after styling
@@ -787,25 +801,24 @@ def run_dashboard():
             .custom-scroll-box {{
                 overflow: hidden;
                 white-space: nowrap;
-                width: calc(100% - 400px); /* Ensure it's centered and does not touch sidebars */
-                margin: 0 auto; /* Center the bar horizontally */
-                background-color: #fff0f0; /* Soft pastel pink background */
-                color: #E41B17; /* Arsenal red font color */
-                padding: 15px 20px; /* Padding for spacing */
-                border-radius: 15px; /* Curved edges */
-                font-family: 'Northbank-N5'; /* Apply the custom font */
-                font-size: 25px; /* Extra-large font size */
-                font-weight: bold; /* Extra-bold text */
-                text-align: center; /* Center-aligned text */
-                border: 2px solid #E41B17; /* Red border */
-                position: fixed; /* Keep the bar fixed on the screen */
-                left: 200px; /* Push from the left, accounting for sidebar width */
-                right: 200px; /* Push from the right for symmetry */
-                bottom: 50px; /* Adjust height above the bottom */
-                z-index: 1000; /* Ensure it stays above other elements */
+                max-width: 80%; /* Keep box width manageable */
+                margin: 0 auto; /* Perfectly centers the box horizontally */
+                background-color: #fff0f0; /* Soft pastel pink */
+                color: #E41B17; /* Arsenal red text */
+                padding: 15px 20px; /* Inner padding */
+                border-radius: 15px; /* Smooth curved corners */
+                font-family: 'Northbank-N5'; /* Custom font */
+                font-size: 25px; /* Large readable text */
+                font-weight: bold; /* Bold font */
+                text-align: center; /* Text centered */
+                border: 2px solid #E41B17; /* Red border for contrast */
+                position: fixed; /* Fixed at the bottom */
+                bottom: 50px; /* Distance from bottom */
+                z-index: 1000; /* Keeps it above other content */
+                box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2); /* Shadow for visibility */
             }}
             body {{
-                padding-bottom: 120px; /* Add space at the bottom for the scroll box */
+                padding-bottom: 120px; /* Prevent overlapping */
             }}
         </style>
         <div class="custom-scroll-box">
