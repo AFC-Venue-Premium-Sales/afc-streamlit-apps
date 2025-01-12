@@ -7,6 +7,10 @@ import importlib
 from streamlit_autorefresh import st_autorefresh
 import base64
 
+
+st.set_page_config(page_title="Hospitality Leadership Board", layout="wide")
+
+
 # Import live data and reload the module
 def load_live_data():
     try:
@@ -141,18 +145,18 @@ def calculate_monthly_progress(data, start_date, end_date):
     }).reset_index(drop=True)
 
     # Calculate totals
-    totals_row = {
-        "Sales Exec": "Totals",
-        "Today's Sales": progress_data["Today's Sales"].sum(),
-        "Weekly Sales": progress_data["Weekly Sales"].sum(),
-        "Current Revenue": progress_data["Current Revenue"].sum(),
-        "Target": "",
-        "Variance": "",
-        "% Sold (Numeric)": "",
-    }
+    totals_row = pd.DataFrame({
+        "Sales Exec": ["Totals"],
+        "Today's Sales": [progress_data["Today's Sales"].sum()],
+        "Weekly Sales": [progress_data["Weekly Sales"].sum()],
+        "Current Revenue": [progress_data["Current Revenue"].sum()],
+        "Target": [""],
+        "Variance": [""],
+        "% Sold (Numeric)": [""],
+    })
 
-    # Append totals row to the DataFrame
-    progress_data = progress_data.append(totals_row, ignore_index=True)
+    # Concatenate the totals row
+    progress_data = pd.concat([progress_data, totals_row], ignore_index=True)
 
     # Format columns for display
     progress_data["Today's Sales"] = progress_data["Today's Sales"].apply(lambda x: f"\u00a3{x:,.0f}" if isinstance(x, (int, float)) else x)
@@ -182,7 +186,6 @@ def calculate_monthly_progress(data, start_date, end_date):
     sales_made = filtered_data["CreatedBy"].unique()
 
     return progress_data, sales_made
-
 
 
 
@@ -380,7 +383,6 @@ crest_base64 = get_base64_image("assets/arsenal_crest_gold.png")
 
 # Run dashboard
 def run_dashboard():
-    # st.set_page_config(page_title="Hospitality Leadership Board", layout="wide")
     
     # Dashboard Title
     st.markdown(
@@ -394,23 +396,17 @@ def run_dashboard():
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-top: -50px; /* Adjusts the position of the crest and title */
+            margin-top: -50px; /* Adjusts the position of the title */
         }}
         .custom-title {{
             font-family: 'Northbank-N7';
             font-size: 60px;
             font-weight: bold;
             color: #E41B17;
-            text-align: left; /* Aligns with the crest */
-            margin-left: 15px; /* Adjust spacing between the crest and the title */
-        }}
-        .custom-crest {{
-            width: 80x; /* Adjust crest size */
-            margin-right: 15px; /* Adjust spacing between the crest and the title */
+            text-align: center; /* Center-align the title */
         }}
         </style>
         <div class="custom-title-container">
-            <img src="data:image/png;base64,{crest_base64}" class="custom-crest"/>
             <div class="custom-title">
                 ARSENAL PREMIUM SALES
             </div>
@@ -418,6 +414,7 @@ def run_dashboard():
         """,
         unsafe_allow_html=True,
     )
+
 
 
    # Sidebar: Date Range Filter
