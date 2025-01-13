@@ -723,7 +723,9 @@ def run_dashboard():
                 background-color: #fff0f0;
                 border: 2px solid #E41B17;
                 border-radius: 10px;
+                margin-top: 10px;
                 padding: 20px; /* Add extra padding for better spacing */
+                text-align: center;
                 margin-bottom: 20px; /* Space below widget */
                 font-family: 'Northbank-N5'; /* Custom font applied */
                 font-size: 28px; /* Larger font size for visibility */
