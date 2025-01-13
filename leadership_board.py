@@ -716,8 +716,8 @@ def run_dashboard():
         f"""
         <style>
             @font-face {{
-                font-family: 'Northbank-N5';
-                src: url('fonts/Northbank-N5_2789720163.ttf') format('truetype');
+                font-family: 'Chapman-Bold';
+                src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
             }}
             .custom-refresh-box {{
                 background-color: #fff0f0;
@@ -727,7 +727,7 @@ def run_dashboard():
                 padding: 20px; /* Add extra padding for better spacing */
                 text-align: center;
                 margin-bottom: 20px; /* Space below widget */
-                font-family: 'Northbank-N5'; /* Custom font applied */
+                font-family: 'Chapman-Bold'; /* Custom font applied */
                 font-size: 28px; /* Larger font size for visibility */
                 color: #E41B17; /* Arsenal red text */
                 font-weight: bold; /* Make text bold */
