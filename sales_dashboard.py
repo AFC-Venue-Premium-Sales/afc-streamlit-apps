@@ -8,8 +8,6 @@ from streamlit_autorefresh import st_autorefresh
 import base64
 
 
-st.set_page_config(page_title="Hospitality Leadership Board", layout="wide")
-
 
 # Import live data and reload the module
 def load_live_data():
