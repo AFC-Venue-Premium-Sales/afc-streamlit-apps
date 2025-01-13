@@ -90,7 +90,7 @@ def calculate_monthly_progress(data, start_date, end_date):
         .reindex(targets_data.columns, fill_value=0)
     )
 
-    # Weekly sales (from Monday to end_date)
+    # Weekly sales (from Monday to end_date, including today's sales dynamically)
     start_of_week = pd.to_datetime(end_date) - pd.Timedelta(days=pd.to_datetime(end_date).weekday())
     weekly_sales_data = data[
         (data["CreatedOn"] >= start_of_week) &
@@ -101,6 +101,9 @@ def calculate_monthly_progress(data, start_date, end_date):
         .sum()
         .reindex(targets_data.columns, fill_value=0)
     )
+    
+    # Add dynamic adjustment: Ensure Weekly Sales reflects Today's Sales changes
+    weekly_sales += end_date_sales
 
     # Progress to monthly target
     progress = (
@@ -132,7 +135,7 @@ def calculate_monthly_progress(data, start_date, end_date):
     # Sort by "Progress To Monthly Target" in descending order
     progress_data = progress_data.sort_values(by="Progress To Monthly Target (Numeric)", ascending=False)
 
-    # Calculate totals
+    # Calculate totals dynamically
     total_today_sales = end_date_sales.sum()
     total_weekly_sales = weekly_sales.sum()
 
@@ -204,6 +207,7 @@ def calculate_monthly_progress(data, start_date, end_date):
 
     # Return the styled table and sales_made list
     return styled_table, sales_made
+
 
 
 
