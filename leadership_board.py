@@ -60,29 +60,6 @@ def load_budget_targets():
 
 budget_df = load_budget_targets()
 
-# Calculate overall progress
-def calculate_overall_progress(data, start_date, end_date):
-    data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], errors="coerce", dayfirst=True)
-    filtered_data = data[
-        (data["CreatedOn"] >= pd.to_datetime(start_date)) &
-        (data["CreatedOn"] <= pd.to_datetime(end_date))
-    ]
-
-    total_revenue = filtered_data["Price"].sum()
-    try:
-        total_target = targets_data.loc[(start_date.strftime("%B"), start_date.year)].sum()
-        progress_percentage = (total_revenue / total_target) * 100 if total_target > 0 else 0
-    except KeyError:
-        total_target = 0
-        progress_percentage = 0
-
-    return total_revenue, total_target, progress_percentage
-
-# Calculate total sales (including website)
-def calculate_total_sales(data):
-    total_sales = data["TotalPrice"].sum()
-    return total_sales
-
 
 def calculate_monthly_progress(data, start_date, end_date):
     data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], errors="coerce", dayfirst=True)
@@ -146,7 +123,7 @@ def calculate_monthly_progress(data, start_date, end_date):
     user_mapping = {
         "dmontague": "Dan",
         "bgardiner": "Bobby",
-        "dcoppin": "Coppin",
+        "dcoppin": "David",
         "jedwards": "Joey",
         "MillieS": "Millie"
     }
@@ -169,20 +146,22 @@ def calculate_monthly_progress(data, start_date, end_date):
     progress_data = pd.concat([progress_data, pd.DataFrame([totals_row])], ignore_index=True)
 
     # Define a function to style table cells with consistent fonts and spacing
-    def style_cell(value, is_total=False, color="black"):
-        bg_color = "#28A745" if is_total else "transparent"
-        text_color = "white" if is_total else color
-        return f"<div style='background-color: {bg_color}; color: {text_color}; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>{value}</div>"
+    def style_cell(value, is_total=False):
+        return f"<div style='color: black; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>{value}</div>"
+
+    # Highlight the highest Today's Sales value
+    max_today_sales = progress_data.loc[progress_data["Sales Exec"] != "TOTALS", "Today's Sales"].max()
 
     # Apply consistent styling to all columns
     progress_data["Sales Exec"] = progress_data["Sales Exec"].apply(
         lambda x: style_cell(x, is_total=(x == "TOTALS"))
     )
     progress_data["Today's Sales"] = progress_data["Today's Sales"].apply(
-        lambda x: style_cell(f"£{x:,.0f}", is_total=(x == total_today_sales))
+        lambda x: f"<div style='background-color: gold; color: black; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>{x:,.0f}</div>"
+        if x == max_today_sales and x != total_today_sales else style_cell(f"£{x:,.0f}")
     )
     progress_data["Weekly Sales"] = progress_data["Weekly Sales"].apply(
-        lambda x: style_cell(f"£{x:,.0f}", is_total=(x == total_weekly_sales))
+        lambda x: style_cell(f"£{x:,.0f}")
     )
 
     # Apply Progress To Monthly Target color-coding
@@ -225,7 +204,6 @@ def calculate_monthly_progress(data, start_date, end_date):
 
     # Return the styled table and sales_made list
     return styled_table, sales_made
-
 
 
 
@@ -479,47 +457,47 @@ def run_dashboard():
     start_date = col1.date_input("Start Date", value=datetime.now().replace(day=1), label_visibility="collapsed")
     end_date = col2.date_input("End Date", value=datetime.now(), label_visibility="collapsed")
 
-   # Total Sales Section
-    total_sales = calculate_total_sales(filtered_df_without_seats)
-    st.sidebar.markdown(
-        f"""
-        <style>
-            @font-face {{
-                font-family: 'Chapman-Bold';
-                src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
-            }}
-            .custom-sales-box {{
-                background-color: #fff0f0;
-                border: 2px solid #E41B17;
-                border-radius: 10px;
-                padding: 20px 15px; /* Match padding of the other widgets */
-                margin-bottom: 10px; /* Space between widgets */
-                text-align: center; /* Center align all text */
-                font-family: 'Chapman-Bold'; /* Apply the custom font */
-                font-size: 28px; /* Match font size */
-                font-weight: bold; /* Match weight */
-                color: #E41B17; /* Match font color */
-            }}
-            .custom-sales-header {{
-                font-size: 25px;
-                color: #E41B17;
-                text-align: center;
-                font-weight: bold;
-            }}
-            .custom-sales-value {{
-                font-size: 28px;
-                color: #E41B17;
-                text-align: center;
-                font-weight: bold;
-            }}
-        </style>
-        <div class="custom-sales-box">
-            <span class="custom-sales-header"> 🍯 Sales To Date:</span><br>
-            <span class="custom-sales-value">£{total_sales:,.0f}</span>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+#    # Total Sales Section
+#     total_sales = calculate_total_sales(filtered_df_without_seats)
+#     st.sidebar.markdown(
+#         f"""
+#         <style>
+#             @font-face {{
+#                 font-family: 'Chapman-Bold';
+#                 src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
+#             }}
+#             .custom-sales-box {{
+#                 background-color: #fff0f0;
+#                 border: 2px solid #E41B17;
+#                 border-radius: 10px;
+#                 padding: 20px 15px; /* Match padding of the other widgets */
+#                 margin-bottom: 10px; /* Space between widgets */
+#                 text-align: center; /* Center align all text */
+#                 font-family: 'Chapman-Bold'; /* Apply the custom font */
+#                 font-size: 28px; /* Match font size */
+#                 font-weight: bold; /* Match weight */
+#                 color: #E41B17; /* Match font color */
+#             }}
+#             .custom-sales-header {{
+#                 font-size: 25px;
+#                 color: #E41B17;
+#                 text-align: center;
+#                 font-weight: bold;
+#             }}
+#             .custom-sales-value {{
+#                 font-size: 28px;
+#                 color: #E41B17;
+#                 text-align: center;
+#                 font-weight: bold;
+#             }}
+#         </style>
+#         <div class="custom-sales-box">
+#             <span class="custom-sales-header"> 🍯 Sales To Date:</span><br>
+#             <span class="custom-sales-value">£{total_sales:,.0f}</span>
+#         </div>
+#         """,
+#         unsafe_allow_html=True
+#     )
 
     
     # Premium Monthly Progress Section
@@ -734,31 +712,37 @@ def run_dashboard():
         f"""
         <style>
             @font-face {{
-                font-family: 'Chapman-Bold';
-                src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
+                font-family: 'Northbank-N5';
+                src: url('fonts/Northbank-N5_2789720163.ttf') format('truetype');
             }}
-            .refresh-container {{
-                font-family: 'Chapman-Bold';
-                font-size: 12px;
-                color: #6C757D; /* Light grey text color for Refresh Count and Data Update */
-                margin-top: 10px;
+            .custom-refresh-box {{
+                background-color: #fff0f0;
+                border: 2px solid #E41B17;
+                border-radius: 10px;
+                padding: 20px; /* Add extra padding for better spacing */
+                margin-bottom: 20px; /* Space below widget */
+                font-family: 'Northbank-N5'; /* Custom font applied */
+                font-size: 28px; /* Larger font size for visibility */
+                color: #E41B17; /* Arsenal red text */
+                font-weight: bold; /* Make text bold */
             }}
             .refresh-count {{
-                font-weight: bold;
-                font-size: 12px;
+                font-size: 20px;
+                color: #6C757D; /* Light grey text color for Refresh Count */
             }}
             .latest-data {{
-                font-size: 12px;
+                font-size: 20px;
                 color: #E41B17; /* Arsenal red text color */
             }}
         </style>
-        <div class="refresh-container">
+        <div class="custom-refresh-box">
             <div class="refresh-count">Refresh Count: {refresh_count}</div>
             <div class="latest-data">🔄 Latest Data Update: {refresh_time}</div>
         </div>
         """,
         unsafe_allow_html=True
     )
+
         
     
     # Monthly Progress Table
