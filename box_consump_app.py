@@ -152,7 +152,7 @@ def main():
         1. **Upload Files:** Use the file uploaders below to upload your Box Log and Pre-orders (https://www.tjhub3.com/Rts_Arsenal_Hospitality/Suites/Reports/PreOrders/Index) files in Excel format.
         2. **Process Files:** After uploading both files, click the 'Process Files' button to analyze the data.
         3. **Download Results:** Once processing is complete, a download button will appear to download the processed Box Log.
-        4. To see the metrics on the side bar again, please click **Process Files**
+        4. To see the metrics on the side bar again, please click **Process Files** once more.
 
         **How the App Works:**
         - The app compares the 'Pre Order Food' values in the Box Log with the totals in the Pre-orders file.
@@ -162,9 +162,9 @@ def main():
         **Color Codes Explanation:**
         - **Green:** The 'Pre Order Food' value in Box Log matches the 'Total' in the Pr-eorders file if the Status is "Confirmed."
         - **Yellow:** The 'Pre Order Food' value in Box Log matches the 'Total' in the Pre-orders file if the Status is "Pending."
-        - **Yellow:** The box is not found in the Pre-orders file, but the 'Pre Order Food' cell has a value.
-        - **Red:** The 'Pre Order Food' value does not match the 'Total' in the Preorders file, regardless of status.
-        - **On Red filled cells, I would recommend checking the Pre-Order file and manually update if required**
+        - **Yellow:** The box is not found in the Pre-orders file, but the 'Pre Order Food' cell in the Box Log has a value.
+        - **Red:** The 'Pre Order Food' value does not match the 'Total' in the Preorders file, regardless of status (key for checking Multi-Event Boxes).
+          - **On Red filled cells, I would recommend checking the Pre-Order file and manually update if required**
         """)
 
     st.sidebar.header("Summary")
