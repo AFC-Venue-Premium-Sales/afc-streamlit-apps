@@ -74,3 +74,4 @@ python3-saml
 onelogin
 streamlit-aggrid
 streamlit-autorefresh
+xlrd

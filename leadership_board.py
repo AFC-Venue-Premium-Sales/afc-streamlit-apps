@@ -30,17 +30,17 @@ targets_data = pd.DataFrame({
     "dcoppin": [155000, 155000, 135000, 110000, 90000, 65000],
     "jedwards": [155000, 155000, 135000, 110000, 90000, 65000],
     "MillieS": [155000, 155000, 135000, 110000, 90000, 65000],
-    "dmontague": [155000, 155000, 135000, 110000, 90000, 65000],
-    "MeganS": [42500, 42500, 36500, 30500, 24500, 18500],
-    "BethNW": [42500, 42500, 36500, 30500, 24500, 18500],
-    "HayleyA": [42500, 42500, 36500, 30500, 24500, 18500],
-    "jmurphy": [35000, 35000, 30000, 25000, 20000, 15000],
-    "BenT": [35000, 35000, 30000, 25000, 20000, 15000],
+    "dmontague": [155000, 155000, 135000, 110000, 90000, 65000]
+    # "MeganS": [42500, 42500, 36500, 30500, 24500, 18500],
+    # "BethNW": [42500, 42500, 36500, 30500, 24500, 18500],
+    # "HayleyA": [42500, 42500, 36500, 30500, 24500, 18500],
+    # "jmurphy": [35000, 35000, 30000, 25000, 20000, 15000],
+    # "BenT": [35000, 35000, 30000, 25000, 20000, 15000],
 }).set_index(["Month", "Year"])
 
 # Specify your list of executives
-valid_executives = ["dcoppin", "MillieS", "bgardiner", "dmontague", "jedwards",
-                     "HayleyA", "BethNW", "BenT", "jmurphy", "MeganS"]
+valid_executives = ["dcoppin", "MillieS", "bgardiner", "dmontague", "jedwards"]
+                    #  "HayleyA", "BethNW", "BenT", "jmurphy", "MeganS"]
 
 
 
@@ -127,11 +127,11 @@ def calculate_monthly_progress(data, start_date, end_date):
         "dcoppin": "David",
         "jedwards": "Joey",
         "MillieS": "Millie",
-        "HayleyA": "Hayley",
-        "BethNW": "Beth",
-        "BenT": "Ben",
-        "jmurphy": "James",
-        "MeganS": "Megan"
+        # "HayleyA": "Hayley",
+        # "BethNW": "Beth",
+        # "BenT": "Ben",
+        # "jmurphy": "James",
+        # "MeganS": "Megan"
     }
     progress_data["Sales Exec"] = progress_data["Sales Exec"].map(user_mapping).fillna(progress_data["Sales Exec"])
 
@@ -358,8 +358,8 @@ def generate_scrolling_messages(data, budget_df):
         top_fixture_message = "📉 No sales recorded today."
 
 # Specify Execs
-    valid_executives = ["dcoppin", "MillieS", "bgardiner", "dmontague", 'jedwards',
-                         "HayleyA", "BethNW", "BenT", "jmurphy", "MeganS"]
+    valid_executives = ["dcoppin", "MillieS", "bgardiner", "dmontague", 'jedwards']
+                        #  "HayleyA", "BethNW", "BenT", "jmurphy", "MeganS"]
 
     # Filter today’s sales to include only valid executives
     exec_sales_today = today_sales[today_sales["CreatedBy"].isin(valid_executives)]
@@ -523,8 +523,8 @@ def run_dashboard():
 
     
     # Premium Monthly Progress Section
-    valid_executives = ["dcoppin", "MillieS", "bgardiner", "dmontague",
-    "jedwards", "HayleyA", "BethNW", "BenT", "jmurphy", "MeganS"]
+    valid_executives = ["dcoppin", "MillieS", "bgardiner", "dmontague"]
+    # "jedwards", "HayleyA", "BethNW", "BenT", "jmurphy", "MeganS"]
 
     # Filter the data for valid executives and within the date range
     filtered_executive_data = filtered_df_without_seats[
