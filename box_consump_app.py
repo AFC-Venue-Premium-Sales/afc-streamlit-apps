@@ -147,18 +147,18 @@ import streamlit as st
 def main():
     # Display the Arsenal crest image
     st.image("assets/arsenal_crest_gold.png", width=150)  # Adjust the width as needed
-    st.title("Box Log Processing App")
+    st.title("Box Log Processing Tool")
     
     # Instructions Expander
     with st.expander("Instructions and Information", expanded=False):
         st.markdown("""
-        **How to Use the App:**
+        **How to Use the Tool:**
         1. **Upload Files:** Use the file uploaders below to upload your Box Log and Pre-orders files in Excel format.
         2. **Process Files:** After uploading both files, click the 'Process Files' button to analyze the data.
         3. **Download Results:** Once processing is complete, a download button will appear to download the processed Box Log.
         4. To see the metrics on the sidebar again, please click **Process Files** once more.
 
-        **How the App Works:**
+        **How the Tool Works:**
         - The app compares the 'Pre Order Food' values in the Box Log with the totals in the Pre-orders file.
         - It identifies matching boxes and checks for discrepancies between the two files.
         - Based on the comparison, it applies color highlights to the 'Pre Order Food' column in the Box Log to indicate the status.
