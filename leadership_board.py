@@ -30,17 +30,17 @@ targets_data = pd.DataFrame({
     "dcoppin": [155000, 155000, 135000, 110000, 90000, 65000],
     "jedwards": [155000, 155000, 135000, 110000, 90000, 65000],
     "MillieS": [155000, 155000, 135000, 110000, 90000, 65000],
-    "dmontague": [155000, 155000, 135000, 110000, 90000, 65000]
-    # "MeganS": [42500, 42500, 36500, 30500, 24500, 18500],
-    # "BethNW": [42500, 42500, 36500, 30500, 24500, 18500],
-    # "HayleyA": [42500, 42500, 36500, 30500, 24500, 18500],
-    # "jmurphy": [35000, 35000, 30000, 25000, 20000, 15000],
-    # "BenT": [35000, 35000, 30000, 25000, 20000, 15000],
+    "dmontague": [155000, 155000, 135000, 110000, 90000, 65000],
+    "MeganS": [42500, 42500, 36500, 30500, 24500, 18500],
+    "BethNW": [42500, 42500, 36500, 30500, 24500, 18500],
+    "HayleyA": [42500, 42500, 36500, 30500, 24500, 18500],
+    "jmurphy": [35000, 35000, 30000, 25000, 20000, 15000],
+    "BenT": [35000, 35000, 30000, 25000, 20000, 15000],
 }).set_index(["Month", "Year"])
 
 # Specify your list of executives
-valid_executives = ["dcoppin", "MillieS", "bgardiner", "dmontague", "jedwards"]
-                    # "jedwards", "HayleyA", "BethNW", "BenT", "jmurphy", "MeganS"]
+valid_executives = ["dcoppin", "MillieS", "bgardiner", "dmontague", "jedwards",
+                     "HayleyA", "BethNW", "BenT", "jmurphy", "MeganS"]
 
 
 
@@ -82,7 +82,7 @@ def calculate_monthly_progress(data, start_date, end_date):
     expected_pace = (days_elapsed / total_days_in_month) * 100
     half_expected_pace = 0.5 * expected_pace
 
-    # Today's sales (based on the end_date of the range)
+    # Today's sales
     end_date_sales_data = data[data["CreatedOn"].dt.date == pd.to_datetime(end_date).date()]
     end_date_sales = (
         end_date_sales_data.groupby("CreatedBy")["Price"]
@@ -90,7 +90,7 @@ def calculate_monthly_progress(data, start_date, end_date):
         .reindex(targets_data.columns, fill_value=0)
     )
 
-    # Weekly sales (from Monday to end_date, including today's sales dynamically)
+    # Weekly sales
     start_of_week = pd.to_datetime(end_date) - pd.Timedelta(days=pd.to_datetime(end_date).weekday())
     weekly_sales_data = data[
         (data["CreatedOn"] >= start_of_week) &
@@ -99,11 +99,9 @@ def calculate_monthly_progress(data, start_date, end_date):
     weekly_sales = (
         weekly_sales_data.groupby("CreatedBy")["Price"]
         .sum()
+        .add(end_date_sales, fill_value=0)  # Ensure today's sales are included
         .reindex(targets_data.columns, fill_value=0)
     )
-    
-    # Add dynamic adjustment: Ensure Weekly Sales reflects Today's Sales changes
-    weekly_sales += end_date_sales
 
     # Progress to monthly target
     progress = (
@@ -128,7 +126,12 @@ def calculate_monthly_progress(data, start_date, end_date):
         "bgardiner": "Bobby",
         "dcoppin": "David",
         "jedwards": "Joey",
-        "MillieS": "Millie"
+        "MillieS": "Millie",
+        "HayleyA": "Hayley",
+        "BethNW": "Beth",
+        "BenT": "Ben",
+        "jmurphy": "James",
+        "MeganS": "Megan"
     }
     progress_data["Sales Exec"] = progress_data["Sales Exec"].map(user_mapping).fillna(progress_data["Sales Exec"])
 
@@ -144,27 +147,52 @@ def calculate_monthly_progress(data, start_date, end_date):
         "Sales Exec": "TOTALS",
         "Today's Sales": total_today_sales,
         "Weekly Sales": total_weekly_sales,
-        "Progress To Monthly Target (Numeric)": None  # Totals don't apply here
+        "Progress To Monthly Target (Numeric)": None
     }
     progress_data = pd.concat([progress_data, pd.DataFrame([totals_row])], ignore_index=True)
 
-    # Define a function to style table cells with consistent fonts and spacing
-    def style_cell(value, is_total=False):
+    # Highlight the highest Today's Sales and Weekly Sales values
+    max_today_sales = progress_data.loc[progress_data["Sales Exec"] != "TOTALS", "Today's Sales"].max()
+    max_weekly_sales = progress_data.loc[progress_data["Sales Exec"] != "TOTALS", "Weekly Sales"].max()
+
+    # Styling for "Sales Exec" column
+    def style_sales_exec(value, is_total=False):
+        if is_total:
+            return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>{value}</div>"
         return f"<div style='color: black; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>{value}</div>"
 
-    # Highlight the highest Today's Sales value
-    max_today_sales = progress_data.loc[progress_data["Sales Exec"] != "TOTALS", "Today's Sales"].max()
+    progress_data["Sales Exec"] = progress_data.apply(
+        lambda row: style_sales_exec(
+            row["Sales Exec"],
+            is_total=(row["Sales Exec"] == "TOTALS")
+        ),
+        axis=1
+    )
 
-    # Apply consistent styling to all columns
-    progress_data["Sales Exec"] = progress_data["Sales Exec"].apply(
-        lambda x: style_cell(x, is_total=(x == "TOTALS"))
+    # Styling for "Today's Sales" and "Weekly Sales"
+    def style_sales(value, is_highest, is_total=False):
+        if is_total:
+            return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>£{value:,.0f}</div>"
+        if is_highest and value > 0:
+            return f"<div style='background-color: gold; color: black; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>⭐ £{value:,.0f}</div>"
+        return f"<div style='color: black; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>£{value:,.0f}</div>"
+
+    progress_data["Today's Sales"] = progress_data.apply(
+        lambda row: style_sales(
+            row["Today's Sales"],
+            row["Today's Sales"] == max_today_sales and row["Sales Exec"] != "TOTALS",
+            is_total=(row["Sales Exec"] == "TOTALS")
+        ),
+        axis=1
     )
-    progress_data["Today's Sales"] = progress_data["Today's Sales"].apply(
-        lambda x: f"<div style='background-color: gold; color: black; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>{x:,.0f}</div>"
-        if x == max_today_sales and x != total_today_sales else style_cell(f"£{x:,.0f}")
-    )
-    progress_data["Weekly Sales"] = progress_data["Weekly Sales"].apply(
-        lambda x: style_cell(f"£{x:,.0f}")
+
+    progress_data["Weekly Sales"] = progress_data.apply(
+        lambda row: style_sales(
+            row["Weekly Sales"],
+            row["Weekly Sales"] == max_weekly_sales and row["Sales Exec"] != "TOTALS",
+            is_total=(row["Sales Exec"] == "TOTALS")
+        ),
+        axis=1
     )
 
     # Apply Progress To Monthly Target color-coding
@@ -173,17 +201,16 @@ def calculate_monthly_progress(data, start_date, end_date):
             return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>{value:.0f}%</div>"
         elif half_expected_pace <= value < expected_pace:
             return f"<div style='background-color: orange; color: white; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>{value:.0f}%</div>"
-        else:
-            return f"<div style='background-color: red; color: white; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>{value:.0f}%</div>"
+        return f"<div style='background-color: red; color: white; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>{value:.0f}%</div>"
 
     progress_data["Progress To Monthly Target"] = progress_data["Progress To Monthly Target (Numeric)"].apply(
-        lambda x: style_progress(x) if pd.notnull(x) else style_cell("")
+        lambda x: style_progress(x) if pd.notnull(x) else f"<div style='color: black; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'></div>"
     )
 
     # Drop numeric column after styling
     progress_data = progress_data.drop(columns=["Progress To Monthly Target (Numeric)"])
 
-    # Adjust column headers for consistent styling
+    # Adjust column headers for consistent font size
     styled_columns = {
         "Sales Exec": "Sales Exec",
         "Today's Sales": "Today's Sales",
@@ -195,19 +222,10 @@ def calculate_monthly_progress(data, start_date, end_date):
         for col in styled_columns.values()
     ]
 
-    # Ensure all rows have uniform padding and spacing
-    styled_table = progress_data.to_html(
-        classes="big-table",
-        escape=False,
-        index=False
-    )
-
-    # Extract unique sales made for the second return value
+    # Return styled table and list of sales made
+    styled_table = progress_data.to_html(classes="big-table", escape=False, index=False)
     sales_made = filtered_data["CreatedBy"].unique()
-
-    # Return the styled table and sales_made list
     return styled_table, sales_made
-
 
 
 
@@ -340,8 +358,8 @@ def generate_scrolling_messages(data, budget_df):
         top_fixture_message = "📉 No sales recorded today."
 
 # Specify Execs
-    valid_executives = ["dcoppin", "MillieS", "bgardiner", "dmontague", 'jedwards']
-                        # "jedwards", "HayleyA", "BethNW", "BenT", "jmurphy", "MeganS"]
+    valid_executives = ["dcoppin", "MillieS", "bgardiner", "dmontague", 'jedwards',
+                         "HayleyA", "BethNW", "BenT", "jmurphy", "MeganS"]
 
     # Filter today’s sales to include only valid executives
     exec_sales_today = today_sales[today_sales["CreatedBy"].isin(valid_executives)]
@@ -505,8 +523,8 @@ def run_dashboard():
 
     
     # Premium Monthly Progress Section
-    valid_executives = ["dcoppin", "MillieS", "bgardiner", "dmontague", "jedwards"]
-    # "jedwards", "HayleyA", "BethNW", "BenT", "jmurphy", "MeganS"]
+    valid_executives = ["dcoppin", "MillieS", "bgardiner", "dmontague",
+    "jedwards", "HayleyA", "BethNW", "BenT", "jmurphy", "MeganS"]
 
     # Filter the data for valid executives and within the date range
     filtered_executive_data = filtered_df_without_seats[
@@ -764,7 +782,7 @@ def run_dashboard():
             }
             .custom-leaderboard-title {
                 font-family: 'Northbank-N7';
-                font-size: 40px;
+                font-size: 50px;
                 font-weight: bold;
                 color: #E41B17;
                 text-align: center;
@@ -772,7 +790,7 @@ def run_dashboard():
             }
             </style>
             <div class="custom-leaderboard-title">
-                MONTHLY PREMIUM LEADERBOARD
+                MONTHLY SALES PREMIUM LEADERBOARD
             </div>
             """,
             unsafe_allow_html=True,
