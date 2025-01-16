@@ -142,17 +142,21 @@ def process_files(box_log_file, preorders_file):
     return output, green_details, yellow_details, red_details, total_matching_boxes, matching_boxes, multi_event_boxes
 
 
+import streamlit as st
+
 def main():
+    # Display the Arsenal crest image
+    st.image("assets/arsenal_crest_gold.png", width=150)  # Adjust the width as needed
     st.title("Box Log Processing App")
     
     # Instructions Expander
     with st.expander("Instructions and Information", expanded=False):
         st.markdown("""
         **How to Use the App:**
-        1. **Upload Files:** Use the file uploaders below to upload your Box Log and Pre-orders (https://www.tjhub3.com/Rts_Arsenal_Hospitality/Suites/Reports/PreOrders/Index) files in Excel format.
+        1. **Upload Files:** Use the file uploaders below to upload your Box Log and Pre-orders files in Excel format.
         2. **Process Files:** After uploading both files, click the 'Process Files' button to analyze the data.
         3. **Download Results:** Once processing is complete, a download button will appear to download the processed Box Log.
-        4. To see the metrics on the side bar again, please click **Process Files** once more.
+        4. To see the metrics on the sidebar again, please click **Process Files** once more.
 
         **How the App Works:**
         - The app compares the 'Pre Order Food' values in the Box Log with the totals in the Pre-orders file.
@@ -160,11 +164,11 @@ def main():
         - Based on the comparison, it applies color highlights to the 'Pre Order Food' column in the Box Log to indicate the status.
 
         **Color Codes Explanation:**
-        - **Green:** The 'Pre Order Food' value in Box Log matches the 'Total' in the Pr-eorders file if the Status is "Confirmed."
+        - **Green:** The 'Pre Order Food' value in Box Log matches the 'Total' in the Pre-orders file if the Status is "Confirmed."
         - **Yellow:** The 'Pre Order Food' value in Box Log matches the 'Total' in the Pre-orders file if the Status is "Pending."
         - **Yellow:** The box is not found in the Pre-orders file, but the 'Pre Order Food' cell in the Box Log has a value.
         - **Red:** The 'Pre Order Food' value does not match the 'Total' in the Preorders file, regardless of status (key for checking Multi-Event Boxes).
-          - **On Red filled cells, I would recommend checking the Pre-Order file and manually update if required**
+          - **On Red filled cells, it is recommended to check the Pre-Order file and manually update if required.**
         """)
 
     st.sidebar.header("Summary")
@@ -206,7 +210,6 @@ def main():
                 file_name="Processed_Box_Log.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
-
 
 if __name__ == "__main__":
     main()
