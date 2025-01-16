@@ -153,7 +153,7 @@ def main():
     with st.expander("Instructions and Information", expanded=False):
         st.markdown("""
         **How to Use the Tool:**
-        1. **Upload Files:** Use the file uploaders below to upload your Box Log and Pre-orders files in Excel format.
+        1. **Upload Files:** Use the file uploaders below to upload your Box Log and Pre-orders (https://www.tjhub3.com/Rts_Arsenal_Hospitality/Suites/Reports/PreOrders/Index) files in Excel format.
         2. **Process Files:** After uploading both files, click the 'Process Files' button to analyze the data.
         3. **Download Results:** Once processing is complete, a download button will appear to download the processed Box Log.
         4. To see the metrics on the sidebar again, please click **Process Files** once more.
