@@ -608,11 +608,11 @@ def run_dashboard():
                     color: #E41B17;
                 }}
                 .custom-progress-widget span {{
-                    font-size: 22px;
+                    font-size: 26px;
                     color: #0047AB;
                 }}
                 .custom-progress-widget .highlight {{
-                    font-size: 24px;
+                    font-size: 28px;
                     color: #E41B17;
                 }}
             </style>
@@ -859,9 +859,6 @@ def run_dashboard():
         """,
         unsafe_allow_html=True
     )
-
-
-
 
 if __name__ == "__main__":
     run_dashboard()

@@ -2,6 +2,8 @@ import time
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+import calendar
+import time
 import os
 import importlib
 from streamlit_autorefresh import st_autorefresh
@@ -21,7 +23,6 @@ def load_live_data():
 
 # Load data
 filtered_df_without_seats = load_live_data()
-
 # Targets data
 targets_data = pd.DataFrame({
     "Month": ["December", "January", "February", "March", "April", "May"],
@@ -30,17 +31,17 @@ targets_data = pd.DataFrame({
     "dcoppin": [155000, 155000, 135000, 110000, 90000, 65000],
     "jedwards": [155000, 155000, 135000, 110000, 90000, 65000],
     "MillieS": [155000, 155000, 135000, 110000, 90000, 65000],
-    "dmontague": [155000, 155000, 135000, 110000, 90000, 65000]
-    # "MeganS": [42500, 42500, 36500, 30500, 24500, 18500],
-    # "BethNW": [42500, 42500, 36500, 30500, 24500, 18500],
-    # "HayleyA": [42500, 42500, 36500, 30500, 24500, 18500],
-    # "jmurphy": [35000, 35000, 30000, 25000, 20000, 15000],
-    # "BenT": [35000, 35000, 30000, 25000, 20000, 15000],
+    "dmontague": [155000, 155000, 135000, 110000, 90000, 65000],
+    "MeganS": [42500, 42500, 36500, 30500, 24500, 18500],
+    "BethNW": [42500, 42500, 36500, 30500, 24500, 18500],
+    "HayleyA": [42500, 42500, 36500, 30500, 24500, 18500],
+    "jmurphy": [35000, 35000, 30000, 25000, 20000, 15000],
+    "BenT": [35000, 35000, 30000, 25000, 20000, 15000],
 }).set_index(["Month", "Year"])
 
 # Specify your list of executives
-valid_executives = ["dcoppin", "MillieS", "bgardiner", "dmontague", "jedwards"]
-                    #  "HayleyA", "BethNW", "BenT", "jmurphy", "MeganS"]
+valid_sales_executives = ["dcoppin", "MillieS", "bgardiner", "dmontague", "jedwards"]
+valid_services_executives = ["HayleyA", "BethNW", "BenT", "jmurphy", "MeganS"]
 
 # Load budget targets
 def load_budget_targets():
@@ -58,14 +59,15 @@ def load_budget_targets():
 
 budget_df = load_budget_targets()
 
-
-def calculate_monthly_progress(data, start_date, end_date):
+def calculate_monthly_progress(data, start_date, end_date, valid_executives):
+    # Ensure 'CreatedOn' is in datetime format
     data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], errors="coerce", dayfirst=True)
 
-    # Filter data within the date range
+    # Filter data within the date range and for the specified executives
     filtered_data = data[
         (data["CreatedOn"] >= pd.to_datetime(start_date)) &
-        (data["CreatedOn"] <= pd.to_datetime(end_date))
+        (data["CreatedOn"] <= pd.to_datetime(end_date)) &
+        (data["CreatedBy"].isin(valid_executives))
     ]
 
     current_month = start_date.strftime("%B")
@@ -80,34 +82,36 @@ def calculate_monthly_progress(data, start_date, end_date):
     expected_pace = (days_elapsed / total_days_in_month) * 100
     half_expected_pace = 0.5 * expected_pace
 
-    # Today's sales
-    end_date_sales_data = data[data["CreatedOn"].dt.date == pd.to_datetime(end_date).date()]
+    # Today's sales: ensure this reflects sales on the selected `end_date`
+    end_date_sales_data = filtered_data[filtered_data["CreatedOn"].dt.date == pd.to_datetime(end_date).date()]
     end_date_sales = (
         end_date_sales_data.groupby("CreatedBy")["Price"]
         .sum()
-        .reindex(targets_data.columns, fill_value=0)
+        .reindex(valid_executives, fill_value=0)  # Reindex to include only valid executives
     )
 
-    # Weekly sales
+    # Weekly sales: filtered for the full week up until the selected end date
     start_of_week = pd.to_datetime(end_date) - pd.Timedelta(days=pd.to_datetime(end_date).weekday())
-    weekly_sales_data = data[
-        (data["CreatedOn"] >= start_of_week) &
-        (data["CreatedOn"] <= pd.to_datetime(end_date))
+    weekly_sales_data = filtered_data[
+        (filtered_data["CreatedOn"] >= start_of_week) &
+        (filtered_data["CreatedOn"] <= pd.to_datetime(end_date))
     ]
     weekly_sales = (
         weekly_sales_data.groupby("CreatedBy")["Price"]
         .sum()
         .add(end_date_sales, fill_value=0)  # Ensure today's sales are included
-        .reindex(targets_data.columns, fill_value=0)
+        .reindex(valid_executives, fill_value=0)  # Reindex to valid_executives
     )
 
-    # Progress to monthly target
+    # Progress to monthly target (based on the filtered data)
     progress = (
         filtered_data.groupby("CreatedBy")["Price"]
         .sum()
-        .reindex(targets_data.columns, fill_value=0)
+        .reindex(valid_executives, fill_value=0)  # Reindex to valid_executives
     )
-    monthly_targets = targets_data.loc[(current_month, current_year)]
+
+    # Slice monthly_targets to valid_executives as well
+    monthly_targets = targets_data.loc[(current_month, current_year), valid_executives]
     progress_percentage = (progress / monthly_targets * 100).round(0)
 
     # Build the progress table
@@ -125,11 +129,11 @@ def calculate_monthly_progress(data, start_date, end_date):
         "dcoppin": "David",
         "jedwards": "Joey",
         "MillieS": "Millie",
-        # "HayleyA": "Hayley",
-        # "BethNW": "Beth",
-        # "BenT": "Ben",
-        # "jmurphy": "James",
-        # "MeganS": "Megan"
+        "HayleyA": "Hayley",
+        "BethNW": "Beth",
+        "BenT": "Ben",
+        "jmurphy": "James",
+        "MeganS": "Megan"
     }
     progress_data["Sales Exec"] = progress_data["Sales Exec"].map(user_mapping).fillna(progress_data["Sales Exec"])
 
@@ -153,7 +157,7 @@ def calculate_monthly_progress(data, start_date, end_date):
     max_today_sales = progress_data.loc[progress_data["Sales Exec"] != "TOTALS", "Today's Sales"].max()
     max_weekly_sales = progress_data.loc[progress_data["Sales Exec"] != "TOTALS", "Weekly Sales"].max()
 
-    # Styling for "Sales Exec" column
+    # Apply styles for display
     def style_sales_exec(value, is_total=False):
         if is_total:
             return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>{value}</div>"
@@ -167,7 +171,6 @@ def calculate_monthly_progress(data, start_date, end_date):
         axis=1
     )
 
-    # Styling for "Today's Sales" and "Weekly Sales"
     def style_sales(value, is_highest, is_total=False):
         if is_total:
             return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>£{value:,.0f}</div>"
@@ -415,56 +418,161 @@ crest_base64 = get_base64_image("assets/arsenal_crest_gold.png")
 
 
 
-from datetime import datetime
-import calendar
-# Page navigation using session state
 def run_dashboard():
     st.set_page_config(page_title="Hospitality Leadership Board", layout="wide")
 
+    # Define valid executives for sales and services at the top of the function
+    valid_sales_executives = ["dcoppin", "MillieS", "bgardiner", "dmontague", "jedwards"]
+    valid_services_executives = ["HayleyA", "BethNW", "BenT", "jmurphy", "MeganS"]
+
+    # Map usernames to full names
+    user_mapping = {
+        "dmontague": "Dan",
+        "bgardiner": "Bobby",
+        "dcoppin": "David",
+        "jedwards": "Joey",
+        "MillieS": "Millie",
+        "HayleyA": "Hayley",
+        "BethNW": "Beth",
+        "BenT": "Ben",
+        "jmurphy": "James",
+        "MeganS": "Megan"
+    }
+
     # Initialize page counter in session_state if not already present
     if "page" not in st.session_state:
-        st.session_state.page = 0  # 0 for Table Page, 1 for Sidebar Data Page
+        st.session_state.page = 0  # 0 for Sales Page, 1 for Services Page, 2 for Next Fixture Page
 
-    # Get the current date
-    today = datetime.now()
+    # Sidebar: Date Range Filter
+    st.sidebar.markdown(
+        """
+        <style>
+            @font-face {
+                font-family: 'Northbank-N5';
+                src: url('fonts/Northbank-N5_2789720163.ttf') format('truetype');
+            }
+            .custom-date-range-title {
+                text-align: center; 
+                font-family: 'Northbank-N5'; /* Apply the custom font */
+                font-size: 18px; 
+                font-weight: bold; 
+                color: #E41B17; 
+                margin-bottom: 10px;
+            }
+        </style>
+        <div class="custom-date-range-title">
+            Date Range Filter
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
-    # Define start_date (e.g., the first day of the current month)
-    start_date = today.replace(day=1)
-
-    # Define end_date (e.g., today's date or last day of the current month)
-    last_day_of_month = calendar.monthrange(today.year, today.month)[1]
-    end_date = today.replace(day=last_day_of_month)
+    # Set the default start and end dates
+    today = datetime.today()
+    start_date = today.replace(day=1)  # First day of the current month
+    end_date = today  # Today's date as the default end date
 
     # Sidebar controls for Date Range
-    st.sidebar.header("Data Controls")
-    start_date_input = st.sidebar.date_input("Start Date", start_date)
-    end_date_input = st.sidebar.date_input("End Date", end_date)
+    col1, col2 = st.sidebar.columns(2)
+    start_date_input = col1.date_input("Start Date", value=start_date, label_visibility="collapsed")
+    end_date_input = col2.date_input("End Date", value=end_date, label_visibility="collapsed")
 
-    # Refresh data button
-    if st.sidebar.button("Refresh Data"):
-        st.experimental_rerun()
+    # Sidebar: Budget Progress Widget for Sales Exec and Services Exec
+    def render_budget_progress_widget(data, valid_executives, title):
+        total_revenue = data["Price"].sum()
+        current_month = start_date.strftime("%B")
+        current_year = start_date.year
+        monthly_targets = targets_data.loc[(current_month, current_year), valid_executives]
+        total_target = monthly_targets.sum() if total_revenue > 0 else 0
+        progress_percentage = (total_revenue / total_target * 100) if total_target > 0 else 0
 
-    # Page navigation with auto-switching (every 15 seconds)
-    if time.time() - st.session_state.get("last_switch_time", 0) >= 15:
-        st.session_state.page = (st.session_state.page + 1) % 2  # Toggle between 0 and 1
-        st.session_state.last_switch_time = time.time()  # Update the time of last switch
-
-    # Page 1 - Monthly Sales Premium Leaderboard (Table)
-    if st.session_state.page == 0:
-        st.markdown(
-            """
-            <div style="text-align: center; font-family: 'Chapman-Bold'; font-size: 40px; color: #e41b17;">
-                ARSENAL PREMIUM SALES
-            </div>
-            <div style="text-align: center; font-family: 'Chapman-Bold'; font-size: 30px; color: #0047ab;">
-                MONTHLY SALES PREMIUM LEADERBOARD
+        st.sidebar.markdown(
+            f"""
+            <style>
+                @font-face {{
+                    font-family: 'Chapman-Bold';
+                    src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
+                }}
+                .custom-progress-widget {{
+                    background-color: #fff0f0;
+                    border: 2px solid #E41B17;
+                    border-radius: 15px;
+                    margin-top: 10px;
+                    padding: 20px 15px;
+                    text-align: center;
+                    font-family: 'Chapman-Bold';
+                    font-size: 28px;
+                    font-weight: bold;
+                    color: #E41B17;
+                }}
+                .custom-progress-widget span {{
+                    font-size: 26px;
+                    color: #0047AB;
+                }}
+                .custom-progress-widget .highlight {{
+                    font-size: 28px;
+                    color: #E41B17;
+                }}
+            </style>
+            <div class="custom-progress-widget">
+                📊 {title} Progress <br>
+                <span>Total Revenue ({start_date.strftime("%B")}):</span><br>
+                <span class="highlight">£{total_revenue:,.0f}</span><br>
+                <span>Total Target:</span><br>
+                <span class="highlight">£{total_target:,.0f}</span><br>
+                <span>🌟 Progress Achieved:</span><br>
+                <span class="highlight">{progress_percentage:.0f}%</span>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
-        # Display leaderboard with updated data
-        monthly_progress, sales_made = calculate_monthly_progress(filtered_df_without_seats, start_date_input, end_date_input)
+    # Filter data for sales and services based on the valid executives
+    filtered_sales_data = filtered_df_without_seats[
+        (filtered_df_without_seats["CreatedBy"].isin(valid_sales_executives)) &
+        (pd.to_datetime(filtered_df_without_seats["CreatedOn"], errors="coerce", dayfirst=True) >= pd.to_datetime(start_date)) &
+        (pd.to_datetime(filtered_df_without_seats["CreatedOn"], errors="coerce", dayfirst=True) <= pd.to_datetime(end_date))
+    ]
+
+    filtered_services_data = filtered_df_without_seats[
+        (filtered_df_without_seats["CreatedBy"].isin(valid_services_executives)) &
+        (pd.to_datetime(filtered_df_without_seats["CreatedOn"], errors="coerce", dayfirst=True) >= pd.to_datetime(start_date)) &
+        (pd.to_datetime(filtered_df_without_seats["CreatedOn"], errors="coerce", dayfirst=True) <= pd.to_datetime(end_date))
+    ]
+
+    # Page navigation with auto-switching (every 15 seconds)
+    if time.time() - st.session_state.get("last_switch_time", 0) >= 15:
+        st.session_state.page = (st.session_state.page + 1) % 3  # Toggle between 0, 1, 2 (Sales, Services, Next Fixture)
+        st.session_state.last_switch_time = time.time()  # Update the time of last switch
+
+    # Page 1 - Sales Team Leaderboard
+    if st.session_state.page == 0:
+        st.markdown(
+            """
+            <style>
+            @font-face {
+                font-family: 'Northbank-N7';
+                src: url('fonts/Northbank-N7_2789728357.ttf') format('truetype');
+            }
+            .custom-title {
+                font-family: 'Northbank-N7';
+                font-size: 80px;
+                font-weight: bold;
+                color: #E41B17;
+                text-align: center;
+            }
+            </style>
+            <div class="custom-title">
+                ARSENAL PREMIUM SALES
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Display leaderboard with updated data for the sales team (filtered by valid sales executives)
+        monthly_progress, sales_made = calculate_monthly_progress(
+            filtered_sales_data, start_date_input, end_date_input, valid_sales_executives
+        )
         st.markdown(
             f"""
             <div style="
@@ -480,84 +588,139 @@ def run_dashboard():
             unsafe_allow_html=True,
         )
 
-        # Scroll message at the bottom of the page
-        # Scrolling Message
-        scrolling_message = generate_scrolling_messages(filtered_df_without_seats, budget_df)
-        st.markdown(
-            f"""
-            <style>
-                @font-face {{
-                    font-family: 'Northbank-N5';
-                    src: url('fonts/Northbank-N5_2789720163.ttf') format('truetype');
-                }}
-                .custom-scroll-box {{
-                    overflow: hidden;
-                    white-space: nowrap;
-                    max-width: 80%; /* Keep box width manageable */
-                    margin: 0 auto; /* Perfectly centers the box horizontally */
-                    background-color: #fff0f0; /* Soft pastel pink */
-                    color: #E41B17; /* Arsenal red text */
-                    padding: 15px 20px; /* Inner padding */
-                    border-radius: 15px; /* Smooth curved corners */
-                    font-family: 'Northbank-N5'; /* Custom font */
-                    font-size: 25px; /* Large readable text */
-                    font-weight: bold; /* Bold font */
-                    text-align: center; /* Text centered */
-                    border: 2px solid #E41B17; /* Red border for contrast */
-                    position: fixed; /* Fixed at the bottom */
-                    bottom: 50px; /* Distance from bottom */
-                    z-index: 1000; /* Keeps it above other content */
-                    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2); /* Shadow for visibility */
-                }}
-                body {{
-                    padding-bottom: 120px; /* Prevent overlapping */
-                }}
-            </style>
-            <div class="custom-scroll-box">
-                <marquee behavior="scroll" direction="left" scrollamount="4">
-                    {scrolling_message}
-                </marquee>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+        # Sidebar: Budget Progress for Sales Exec
+        render_budget_progress_widget(filtered_sales_data, valid_sales_executives, "Sales Exec")
 
-
-    # Page 2 - Monthly Progress Budget Target and Next Fixture Data
+    # Page 2 - Services Team Leaderboard
     elif st.session_state.page == 1:
-        # Display budget and next fixture data on main page
-        total_revenue = filtered_df_without_seats["Price"].sum()
-        total_target = 2000000  # Placeholder
-        progress_percentage = (total_revenue / total_target) * 100
-
         st.markdown(
-            f"""
-            <div style="text-align: center; font-family: 'Chapman-Bold'; font-size: 28px; margin-bottom: 20px;">
-                📊 Monthly Progress Budget Target
-                <br>
-                Total Revenue: £{total_revenue:,.0f} | Total Target: £{total_target:,.0f} | 
-                Progress Achieved: {progress_percentage:.0f}%
+            """
+            <style>
+            @font-face {
+                font-family: 'Northbank-N7';
+                src: url('fonts/Northbank-N7_2789728357.ttf') format('truetype');
+            }
+            .custom-title {
+                font-family: 'Northbank-N7';
+                font-size: 80px;
+                font-weight: bold;
+                color: #E41B17;
+                text-align: center;
+            }
+            </style>
+            <div class="custom-title">
+                ARSENAL PREMIUM SERVICES
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
 
-        # Placeholder for next fixture data
-        fixture_name = "Arsenal vs Chelsea"
-        fixture_date = "2025-03-12"
-        days_to_fixture = (datetime.strptime(fixture_date, "%Y-%m-%d") - today).days
-
+        # Display leaderboard with updated data for the services team (filtered by valid services executives)
+        monthly_progress, sales_made = calculate_monthly_progress(
+            filtered_services_data, start_date_input, end_date_input, valid_services_executives
+        )
         st.markdown(
             f"""
-            <div style="text-align: center; font-family: 'Chapman-Bold'; font-size: 28px; margin-top: 20px;">
-                🏟️ Next Fixture: {fixture_name} <br>
-                Days to Fixture: {days_to_fixture} days
+            <div style="
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                margin-top: 20px;
+                margin-bottom: 20px;
+            ">
+                {monthly_progress}
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
 
-        # Scroll message at the bottom of the page
+        # Sidebar: Budget Progress for Services Exec
+        render_budget_progress_widget(filtered_services_data, valid_services_executives, "Services Exec")
+
+    # Page 3 - Next Fixture Info
+    elif st.session_state.page == 2:
+        st.markdown(
+            """
+            <style>
+            @font-face {
+                font-family: 'Northbank-N7';
+                src: url('fonts/Northbank-N7_2789728357.ttf') format('truetype');
+            }
+            .custom-title {
+                font-family: 'Northbank-N7';
+                font-size: 48px;
+                font-weight: bold;
+                color: #E41B17;
+                text-align: center;
+                margin-bottom: 40px;
+            }
+            .next-fixture-widget {
+                background-color: #fff0f0; /* Soft pastel pink */
+                border: 2px solid #E41B17; /* Red border for contrast */
+                border-radius: 15px;
+                padding: 20px 15px;
+                text-align: center;
+                font-family: 'Chapman-Bold';
+                font-size: 28px;
+                font-weight: bold;
+                color: #E41B17;
+            }
+            .next-fixture-widget .highlight {
+                font-size: 26px;
+                color: #0047AB; /* Blue color for highlight */
+            }
+            </style>
+            <div class="custom-title">
+                NEXT HOME FIXTURE
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Fetch and display the next fixture information
+        fixture_name, fixture_date, budget_target, event_competition = get_next_fixture(filtered_df_without_seats, budget_df)
+
+        if fixture_name:
+            # Filter data based on both Fixture Name and Event Competition
+            filtered_fixture_data = filtered_df_without_seats[
+                (filtered_df_without_seats["Fixture Name"] == fixture_name) &
+                (filtered_df_without_seats["EventCompetition"] == event_competition)
+            ]
+
+            # Calculate days to fixture
+            days_to_fixture = (fixture_date - datetime.now()).days
+
+            # Calculate total revenue for the selected fixture
+            fixture_revenue = filtered_fixture_data["Price"].sum()
+
+            # Calculate budget achieved for the fixture
+            budget_achieved = round((fixture_revenue / budget_target) * 100, 2) if budget_target > 0 else 0
+
+            # Display fixture with event competition
+            fixture_display = f"{fixture_name} ({event_competition})"
+
+            st.markdown(
+                f"""
+                <div class="next-fixture-widget">
+                    Next Fixture: <br>
+                    <span class="highlight">{fixture_display}</span><br>
+                    Days to Fixture: <span class="highlight">{days_to_fixture} days</span><br>
+                    Budget Target Achieved: <span class="highlight">{budget_achieved}%</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                """
+                <div style="text-align: center; font-family: 'Chapman-Bold'; font-size: 40px; color: #e41b17;">
+                    No upcoming fixtures found.
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+    # Scrolling message at the bottom of the page (for all pages)
     scrolling_message = generate_scrolling_messages(filtered_df_without_seats, budget_df)
     st.markdown(
         f"""
@@ -597,7 +760,6 @@ def run_dashboard():
         """,
         unsafe_allow_html=True
     )
-
 
     # Auto-refresh and page change logic
     st_autorefresh(interval=15000, key="auto_refresh")  # Trigger refresh every 15 seconds
