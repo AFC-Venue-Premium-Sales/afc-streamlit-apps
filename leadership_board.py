@@ -681,11 +681,11 @@ def run_dashboard():
                 color: #E41B17;
             }}
             .next-fixture-widget .fixture-info {{
-                font-size: 22px;
+                font-size: 26px;
                 color: #0047AB;
             }}
             .next-fixture-widget .fixture-days {{
-                font-size: 24px;
+                font-size: 28px;
                 color: #E41B17;
             }}
             </style>
