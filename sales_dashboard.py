@@ -85,6 +85,7 @@ def calculate_total_sales(data):
     total_sales = data["TotalPrice"].sum()
     return total_sales
 
+
 def calculate_monthly_progress(data, start_date, end_date):
     # Map usernames to actual names
     user_name_mapping = {
@@ -213,9 +214,12 @@ def calculate_monthly_progress(data, start_date, end_date):
 
     # Format numeric columns with currency and whole numbers
     def style_numeric(value, is_total=False):
+        if value == "" or pd.isna(value):
+            return ""  # Return an empty string for missing values
         if is_total:
             return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>£{int(value):,}</div>"
         return f"£{int(value):,}"
+
 
     for col in ["Current Revenue", "Target", "Variance"]:
         progress_data[col] = progress_data.apply(
