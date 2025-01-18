@@ -147,7 +147,7 @@ def calculate_monthly_progress(data, start_date, end_date):
         "Variance": (progress - monthly_targets).values,
         "% Sold (Numeric)": (progress / monthly_targets * 100).round(0),
     }).reset_index(drop=True)
-    
+
     # Sort by Progress To Monthly Target (descending order)
     progress_data = progress_data.sort_values(
         by="% Sold (Numeric)", ascending=False, ignore_index=True
@@ -160,7 +160,7 @@ def calculate_monthly_progress(data, start_date, end_date):
         "Weekly Sales": [progress_data["Weekly Sales"].sum()],
         "Current Revenue": [progress_data["Current Revenue"].sum()],
         "Target": [""],
-        "Variance": [""],
+        "Variance": [progress_data["Variance"].sum()],
         "% Sold (Numeric)": [""],
     })
 
@@ -171,13 +171,27 @@ def calculate_monthly_progress(data, start_date, end_date):
     max_today_sales = progress_data.loc[progress_data["Sales Exec"] != "Totals", "Today's Sales"].max()
     max_weekly_sales = progress_data.loc[progress_data["Sales Exec"] != "Totals", "Weekly Sales"].max()
 
+    # Styling for "Sales Exec" column
+    def style_sales_exec(value, is_total=False):
+        if is_total:
+            return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 24px; padding: 10px; text-align: center;'>{value}</div>"
+        return f"<div style='color: black; font-family: Chapman-Bold; font-size: 24px; padding: 10px; text-align: center;'>{value}</div>"
+
+    progress_data["Sales Exec"] = progress_data.apply(
+        lambda row: style_sales_exec(
+            row["Sales Exec"],
+            is_total=(row["Sales Exec"] == "Totals")
+        ),
+        axis=1
+    )
+
     # Styling for "Today's Sales" and "Weekly Sales"
     def style_sales(value, is_highest, is_total=False):
         if is_total:
-            return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>\u00a3{value:,.0f}</div>"
+            return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>£{value:,.0f}</div>"
         if is_highest and value > 0:
-            return f"<div style='background-color: gold; color: black; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>\u2b50 \u00a3{value:,.0f}</div>"
-        return f"<div style='color: black; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>\u00a3{value:,.0f}</div>"
+            return f"<div style='background-color: gold; color: black; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>⭐ £{value:,.0f}</div>"
+        return f"<div style='color: black; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>£{value:,.0f}</div>"
 
     progress_data["Today's Sales"] = progress_data.apply(
         lambda row: style_sales(
@@ -197,6 +211,18 @@ def calculate_monthly_progress(data, start_date, end_date):
         axis=1
     )
 
+    # Format numeric columns with currency and whole numbers
+    def style_numeric(value, is_total=False):
+        if is_total:
+            return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>£{int(value):,}</div>"
+        return f"£{int(value):,}"
+
+    for col in ["Current Revenue", "Target", "Variance"]:
+        progress_data[col] = progress_data.apply(
+            lambda row: style_numeric(row[col], is_total=(row["Sales Exec"] == "Totals")) if row[col] != "" else "",
+            axis=1
+        )
+
     # Progress to Monthly Target with new logic
     def style_progress(value):
         if value == "":
@@ -215,6 +241,7 @@ def calculate_monthly_progress(data, start_date, end_date):
     sales_made = filtered_data["CreatedBy"].unique()
 
     return progress_data, sales_made
+
 
 
 
