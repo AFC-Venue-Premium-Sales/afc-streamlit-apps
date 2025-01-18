@@ -112,6 +112,12 @@ def calculate_monthly_progress(data, start_date, end_date):
     if (current_month, current_year) not in targets_data.index:
         return None, []
 
+    # Calculate expected pace
+    total_days_in_month = pd.Period(f"{current_year}-{start_date.month}").days_in_month
+    days_elapsed = (pd.to_datetime(end_date) - pd.Timestamp(f"{current_year}-{start_date.month}-01")).days + 1
+    expected_pace = (days_elapsed / total_days_in_month) * 100
+    half_expected_pace = 0.5 * expected_pace
+
     # Today's sales (based on the end_date of the range)
     today_sales_data = data[data["CreatedOn"].dt.date == pd.Timestamp(end_date).date()]
     today_sales_total = today_sales_data.groupby("CreatedBy")["Price"].sum().reindex(targets_data.columns, fill_value=0)
@@ -141,6 +147,11 @@ def calculate_monthly_progress(data, start_date, end_date):
         "Variance": (progress - monthly_targets).values,
         "% Sold (Numeric)": (progress / monthly_targets * 100).round(0),
     }).reset_index(drop=True)
+    
+    # Sort by Progress To Monthly Target (descending order)
+    progress_data = progress_data.sort_values(
+        by="% Sold (Numeric)", ascending=False, ignore_index=True
+    )
 
     # Calculate totals
     totals_row = pd.DataFrame({
@@ -156,25 +167,43 @@ def calculate_monthly_progress(data, start_date, end_date):
     # Concatenate the totals row
     progress_data = pd.concat([progress_data, totals_row], ignore_index=True)
 
-    # Format columns for display
-    progress_data["Today's Sales"] = progress_data["Today's Sales"].apply(lambda x: f"\u00a3{x:,.0f}" if isinstance(x, (int, float)) else x)
-    progress_data["Weekly Sales"] = progress_data["Weekly Sales"].apply(lambda x: f"\u00a3{x:,.0f}" if isinstance(x, (int, float)) else x)
-    progress_data["Current Revenue"] = progress_data["Current Revenue"].apply(lambda x: f"\u00a3{x:,.0f}" if isinstance(x, (int, float)) else x)
-    progress_data["Variance"] = progress_data["Variance"].apply(
-        lambda x: f"({abs(x):,.0f})" if isinstance(x, (int, float)) and x < 0 else f"{x:,.0f}" if isinstance(x, (int, float)) else x
+    # Highlight the highest Today's Sales and Weekly Sales values
+    max_today_sales = progress_data.loc[progress_data["Sales Exec"] != "Totals", "Today's Sales"].max()
+    max_weekly_sales = progress_data.loc[progress_data["Sales Exec"] != "Totals", "Weekly Sales"].max()
+
+    # Styling for "Today's Sales" and "Weekly Sales"
+    def style_sales(value, is_highest, is_total=False):
+        if is_total:
+            return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>\u00a3{value:,.0f}</div>"
+        if is_highest and value > 0:
+            return f"<div style='background-color: gold; color: black; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>\u2b50 \u00a3{value:,.0f}</div>"
+        return f"<div style='color: black; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>\u00a3{value:,.0f}</div>"
+
+    progress_data["Today's Sales"] = progress_data.apply(
+        lambda row: style_sales(
+            row["Today's Sales"],
+            row["Today's Sales"] == max_today_sales and row["Sales Exec"] != "Totals",
+            is_total=(row["Sales Exec"] == "Totals")
+        ),
+        axis=1
+    )
+
+    progress_data["Weekly Sales"] = progress_data.apply(
+        lambda row: style_sales(
+            row["Weekly Sales"],
+            row["Weekly Sales"] == max_weekly_sales and row["Sales Exec"] != "Totals",
+            is_total=(row["Sales Exec"] == "Totals")
+        ),
+        axis=1
     )
 
     # Progress to Monthly Target with new logic
-    days_in_month = pd.Period(end_date.strftime('%Y-%m')).days_in_month
-    days_elapsed = pd.Timestamp(end_date).day
-    pace_percentage = (days_elapsed / days_in_month) * 100
-
     def style_progress(value):
         if value == "":
             return ""
-        elif value >= pace_percentage:
+        elif value >= expected_pace:
             return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>{value:.0f}%</div>"
-        elif value >= 0.5 * pace_percentage:
+        elif value >= half_expected_pace:
             return f"<div style='background-color: orange; color: white; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>{value:.0f}%</div>"
         else:
             return f"<div style='background-color: red; color: white; font-family: Chapman-Bold; font-size: 24px; padding: 10px;'>{value:.0f}%</div>"
@@ -186,7 +215,6 @@ def calculate_monthly_progress(data, start_date, end_date):
     sales_made = filtered_data["CreatedBy"].unique()
 
     return progress_data, sales_made
-
 
 
 
