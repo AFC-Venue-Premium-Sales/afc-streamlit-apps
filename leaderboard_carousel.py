@@ -59,38 +59,86 @@ def load_budget_targets():
 
 budget_df = load_budget_targets()
 
+import pandas as pd
+import numpy as np
+import streamlit as st
+from datetime import datetime, timedelta
+import time
+
+# Suppose this is your global "targets_data" DataFrame, with index = (Month, Year),
+# and columns = all possible executives. For instance:
+# targets_data = pd.DataFrame(...)
+
 def calculate_monthly_progress(data, start_date, end_date, valid_executives):
-    # Ensure 'CreatedOn' is in datetime format
+    """
+    Calculates the monthly progress for a given subset of executives within
+    a specified date range. Also styles the final leaderboard for display.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        The raw sales data, containing at least 'CreatedOn', 'CreatedBy', 'Price'.
+    start_date : datetime or date
+        The start of the date range to filter.
+    end_date : datetime or date
+        The end of the date range to filter.
+    valid_executives : list of str
+        The list of executive usernames whose data we want.
+
+    Returns
+    -------
+    styled_table : str or None
+        The HTML string of the styled leaderboard table (or None if no data).
+    sales_made : np.array
+        Array of executive usernames that made sales in the filtered timeframe.
+    """
+
+    # 1) Ensure 'CreatedOn' is in datetime format
     data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], errors="coerce", dayfirst=True)
 
-    # Filter data within the date range and for the specified executives
+    # Optional debugging prints (uncomment to investigate)
+    # st.write("Start Date:", start_date)
+    # st.write("End Date:", end_date)
+    # st.write("Data sample before filtering:", data.head(5))
+
+    # 2) Filter data within the date range and for the specified executives
     filtered_data = data[
         (data["CreatedOn"] >= pd.to_datetime(start_date)) &
         (data["CreatedOn"] <= pd.to_datetime(end_date)) &
         (data["CreatedBy"].isin(valid_executives))
-    ]
+    ].copy()
+
+    # Optional debugging to see how many rows remain after filtering
+    # st.write("filtered_data shape:", filtered_data.shape)
+    # st.write("Unique dates in filtered_data:", filtered_data["CreatedOn"].dt.date.unique())
 
     current_month = start_date.strftime("%B")
     current_year = start_date.year
 
+    # If there's no target for (month, year), bail out
     if (current_month, current_year) not in targets_data.index:
         return None, []
 
-    # Calculate expected pace
+    # 3) Calculate the "expected pace" for color-coding progress
     total_days_in_month = pd.Period(f"{current_year}-{start_date.month}").days_in_month
     days_elapsed = (pd.to_datetime(end_date) - pd.Timestamp(f"{current_year}-{start_date.month}-01")).days + 1
     expected_pace = (days_elapsed / total_days_in_month) * 100
     half_expected_pace = 0.5 * expected_pace
 
-    # Today's sales: ensure this reflects sales on the selected `end_date`
-    end_date_sales_data = filtered_data[filtered_data["CreatedOn"].dt.date == pd.to_datetime(end_date).date()]
+    # 4) Calculate “Today’s Sales” by matching only the end_date’s calendar date
+    end_date_sales_data = filtered_data[
+        filtered_data["CreatedOn"].dt.date == pd.to_datetime(end_date).date()
+    ]
     end_date_sales = (
         end_date_sales_data.groupby("CreatedBy")["Price"]
         .sum()
-        .reindex(valid_executives, fill_value=0)  # Reindex to include only valid executives
+        .reindex(valid_executives, fill_value=0)
     )
+    # Debugging:
+    # st.write("end_date_sales_data shape:", end_date_sales_data.shape)
+    # st.write("end_date_sales_data sample:", end_date_sales_data.head(5))
 
-    # Weekly sales: filtered for the full week up until the selected end date
+    # 5) Weekly sales: from Monday of the end_date's week up to (and including) end_date
     start_of_week = pd.to_datetime(end_date) - pd.Timedelta(days=pd.to_datetime(end_date).weekday())
     weekly_sales_data = filtered_data[
         (filtered_data["CreatedOn"] >= start_of_week) &
@@ -99,22 +147,22 @@ def calculate_monthly_progress(data, start_date, end_date, valid_executives):
     weekly_sales = (
         weekly_sales_data.groupby("CreatedBy")["Price"]
         .sum()
-        .add(end_date_sales, fill_value=0)  # Ensure today's sales are included
-        .reindex(valid_executives, fill_value=0)  # Reindex to valid_executives
+        .add(end_date_sales, fill_value=0)  # ensure today's totals are included
+        .reindex(valid_executives, fill_value=0)
     )
 
-    # Progress to monthly target (based on the filtered data)
+    # 6) Monthly progress: total from the filtered range vs. monthly target
     progress = (
         filtered_data.groupby("CreatedBy")["Price"]
         .sum()
-        .reindex(valid_executives, fill_value=0)  # Reindex to valid_executives
+        .reindex(valid_executives, fill_value=0)
     )
 
-    # Slice monthly_targets to valid_executives as well
+    # Subset the row from targets_data so only valid_executives columns are used
     monthly_targets = targets_data.loc[(current_month, current_year), valid_executives]
     progress_percentage = (progress / monthly_targets * 100).round(0)
 
-    # Build the progress table
+    # 7) Build a DataFrame for display
     progress_data = pd.DataFrame({
         "Sales Exec": progress.index,
         "Today's Sales": end_date_sales.values,
@@ -122,7 +170,7 @@ def calculate_monthly_progress(data, start_date, end_date, valid_executives):
         "Progress To Monthly Target (Numeric)": progress_percentage.values,
     }).reset_index(drop=True)
 
-    # Map usernames to full names
+    # 8) Optional: map short usernames to full names
     user_mapping = {
         "dmontague": "Dan",
         "bgardiner": "Bobby",
@@ -137,14 +185,14 @@ def calculate_monthly_progress(data, start_date, end_date, valid_executives):
     }
     progress_data["Sales Exec"] = progress_data["Sales Exec"].map(user_mapping).fillna(progress_data["Sales Exec"])
 
-    # Sort by "Progress To Monthly Target" in descending order
+    # 9) Sort by progress descending
     progress_data = progress_data.sort_values(by="Progress To Monthly Target (Numeric)", ascending=False)
 
-    # Calculate totals dynamically
+    # 10) Calculate dynamic totals
     total_today_sales = end_date_sales.sum()
     total_weekly_sales = weekly_sales.sum()
 
-    # Add totals row at the end
+    # Add totals row
     totals_row = {
         "Sales Exec": "TOTALS",
         "Today's Sales": total_today_sales,
@@ -153,31 +201,45 @@ def calculate_monthly_progress(data, start_date, end_date, valid_executives):
     }
     progress_data = pd.concat([progress_data, pd.DataFrame([totals_row])], ignore_index=True)
 
-    # Highlight the highest Today's Sales and Weekly Sales values
+    # 11) Highlight highest daily/weekly
     max_today_sales = progress_data.loc[progress_data["Sales Exec"] != "TOTALS", "Today's Sales"].max()
     max_weekly_sales = progress_data.loc[progress_data["Sales Exec"] != "TOTALS", "Weekly Sales"].max()
 
-    # Apply styles for display
+    # 12) Define styling functions
     def style_sales_exec(value, is_total=False):
         if is_total:
-            return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>{value}</div>"
-        return f"<div style='color: black; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>{value}</div>"
-
-    progress_data["Sales Exec"] = progress_data.apply(
-        lambda row: style_sales_exec(
-            row["Sales Exec"],
-            is_total=(row["Sales Exec"] == "TOTALS")
-        ),
-        axis=1
-    )
+            return (
+                f"<div style='background-color: green; color: white; font-family: Chapman-Bold; "
+                f"font-size: 28px; padding: 10px; text-align: center;'>{value}</div>"
+            )
+        return (
+            f"<div style='color: black; font-family: Chapman-Bold; font-size: 28px; "
+            f"padding: 10px; text-align: center;'>{value}</div>"
+        )
 
     def style_sales(value, is_highest, is_total=False):
         if is_total:
-            return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>£{value:,.0f}</div>"
+            return (
+                f"<div style='background-color: green; color: white; font-family: Chapman-Bold; "
+                f"font-size: 28px; padding: 10px; text-align: center;'>£{value:,.0f}</div>"
+            )
         if is_highest and value > 0:
-            return f"<div style='background-color: gold; color: black; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>⭐ £{value:,.0f}</div>"
-        return f"<div style='color: black; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>£{value:,.0f}</div>"
+            return (
+                f"<div style='background-color: gold; color: black; font-family: Chapman-Bold; "
+                f"font-size: 28px; padding: 10px; text-align: center;'>⭐ £{value:,.0f}</div>"
+            )
+        return (
+            f"<div style='color: black; font-family: Chapman-Bold; font-size: 28px; "
+            f"padding: 10px; text-align: center;'>£{value:,.0f}</div>"
+        )
 
+    # 13) Apply those styles
+    progress_data["Sales Exec"] = progress_data.apply(
+        lambda row: style_sales_exec(
+            row["Sales Exec"], is_total=(row["Sales Exec"] == "TOTALS")
+        ),
+        axis=1
+    )
     progress_data["Today's Sales"] = progress_data.apply(
         lambda row: style_sales(
             row["Today's Sales"],
@@ -186,7 +248,6 @@ def calculate_monthly_progress(data, start_date, end_date, valid_executives):
         ),
         axis=1
     )
-
     progress_data["Weekly Sales"] = progress_data.apply(
         lambda row: style_sales(
             row["Weekly Sales"],
@@ -196,22 +257,33 @@ def calculate_monthly_progress(data, start_date, end_date, valid_executives):
         axis=1
     )
 
-    # Apply Progress To Monthly Target color-coding
     def style_progress(value):
         if value >= expected_pace:
-            return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>{value:.0f}%</div>"
+            return (
+                f"<div style='background-color: green; color: white; font-family: Chapman-Bold; "
+                f"font-size: 28px; padding: 10px; text-align: center;'>{value:.0f}%</div>"
+            )
         elif half_expected_pace <= value < expected_pace:
-            return f"<div style='background-color: orange; color: white; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>{value:.0f}%</div>"
-        return f"<div style='background-color: red; color: white; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>{value:.0f}%</div>"
+            return (
+                f"<div style='background-color: orange; color: white; font-family: Chapman-Bold; "
+                f"font-size: 28px; padding: 10px; text-align: center;'>{value:.0f}%</div>"
+            )
+        return (
+            f"<div style='background-color: red; color: white; font-family: Chapman-Bold; "
+            f"font-size: 28px; padding: 10px; text-align: center;'>{value:.0f}%</div>"
+        )
 
     progress_data["Progress To Monthly Target"] = progress_data["Progress To Monthly Target (Numeric)"].apply(
-        lambda x: style_progress(x) if pd.notnull(x) else f"<div style='color: black; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'></div>"
+        lambda x: style_progress(x) if pd.notnull(x) else (
+            f"<div style='color: black; font-family: Chapman-Bold; font-size: 28px; "
+            f"padding: 10px; text-align: center;'></div>"
+        )
     )
 
     # Drop numeric column after styling
-    progress_data = progress_data.drop(columns=["Progress To Monthly Target (Numeric)"])
+    progress_data.drop(columns=["Progress To Monthly Target (Numeric)"], inplace=True)
 
-    # Adjust column headers for consistent font size
+    # 14) Adjust column headers for a consistent font size
     styled_columns = {
         "Sales Exec": "Sales Exec",
         "Today's Sales": "Today's Sales",
@@ -223,9 +295,12 @@ def calculate_monthly_progress(data, start_date, end_date, valid_executives):
         for col in styled_columns.values()
     ]
 
-    # Return styled table and list of sales made
+    # 15) Convert the final DataFrame to HTML
     styled_table = progress_data.to_html(classes="big-table", escape=False, index=False)
+
+    # 16) Return the table and the set of sales makers
     sales_made = filtered_data["CreatedBy"].unique()
+
     return styled_table, sales_made
 
 
@@ -311,6 +386,7 @@ def generate_scrolling_messages(data, budget_df):
             )
     else:
         latest_sale_message = "🚫 No recent sales to display."
+
 
     # Next Fixture Section
     fixture_name, fixture_date, budget_target, event_competition = get_next_fixture(filtered_df_without_seats, budget_df)

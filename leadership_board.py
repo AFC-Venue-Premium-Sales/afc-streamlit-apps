@@ -430,28 +430,28 @@ crest_base64 = get_base64_image("assets/arsenal_crest_gold.png")
 def run_dashboard():
     st.set_page_config(page_title="Hospitality Leadership Board", layout="wide")
     
-    # Dashboard Title
-    st.markdown(
-        """
-        <style>
-        @font-face {
-            font-family: 'Northbank-N7';
-            src: url('fonts/Northbank-N7_2789728357.ttf') format('truetype');
-        }
-        .custom-title {
-            font-family: 'Northbank-N7';
-            font-size: 60px;
-            font-weight: bold;
-            color: #E41B17;
-            text-align: center; /* Center-align the title */
-        }
-        </style>
-        <div class="custom-title">
-            ARSENAL PREMIUM SALES
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    # # Dashboard Title
+    # st.markdown(
+    #     """
+    #     <style>
+    #     @font-face {
+    #         font-family: 'Northbank-N7';
+    #         src: url('fonts/Northbank-N7_2789728357.ttf') format('truetype');
+    #     }
+    #     .custom-title {
+    #         font-family: 'Northbank-N7';
+    #         font-size: 60px;
+    #         font-weight: bold;
+    #         color: #E41B17;
+    #         text-align: center; /* Center-align the title */
+    #     }
+    #     </style>
+    #     <div class="custom-title">
+    #         ARSENAL PREMIUM SALES
+    #     </div>
+    #     """,
+    #     unsafe_allow_html=True,
+    # )
 
 
 
