@@ -158,8 +158,8 @@ def calculate_monthly_progress(data, start_date, end_date):
     # Styling for "Sales Exec" column
     def style_sales_exec(value, is_total=False):
         if is_total:
-            return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>{value}</div>"
-        return f"<div style='color: black; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>{value}</div>"
+            return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 26px; padding: 10px; text-align: center;'>{value}</div>"
+        return f"<div style='color: black; font-family: Chapman-Bold; font-size: 26px; padding: 10px; text-align: center;'>{value}</div>"
 
     progress_data["Sales Exec"] = progress_data.apply(
         lambda row: style_sales_exec(
@@ -172,10 +172,10 @@ def calculate_monthly_progress(data, start_date, end_date):
     # Styling for "Today's Sales" and "Weekly Sales"
     def style_sales(value, is_highest, is_total=False):
         if is_total:
-            return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>£{value:,.0f}</div>"
+            return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 26px; padding: 10px; text-align: center;'>£{value:,.0f}</div>"
         if is_highest and value > 0:
-            return f"<div style='background-color: gold; color: black; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>⭐ £{value:,.0f}</div>"
-        return f"<div style='color: black; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>£{value:,.0f}</div>"
+            return f"<div style='background-color: gold; color: black; font-family: Chapman-Bold; font-size: 26px; padding: 10px; text-align: center;'>⭐ £{value:,.0f}</div>"
+        return f"<div style='color: black; font-family: Chapman-Bold; font-size: 26px; padding: 10px; text-align: center;'>£{value:,.0f}</div>"
 
     progress_data["Today's Sales"] = progress_data.apply(
         lambda row: style_sales(
@@ -198,13 +198,13 @@ def calculate_monthly_progress(data, start_date, end_date):
     # Apply Progress To Monthly Target color-coding
     def style_progress(value):
         if value >= expected_pace:
-            return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>{value:.0f}%</div>"
+            return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 26px; padding: 10px; text-align: center;'>{value:.0f}%</div>"
         elif half_expected_pace <= value < expected_pace:
-            return f"<div style='background-color: orange; color: white; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>{value:.0f}%</div>"
-        return f"<div style='background-color: red; color: white; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'>{value:.0f}%</div>"
+            return f"<div style='background-color: orange; color: white; font-family: Chapman-Bold; font-size: 26px; padding: 10px; text-align: center;'>{value:.0f}%</div>"
+        return f"<div style='background-color: red; color: white; font-family: Chapman-Bold; font-size: 26px; padding: 10px; text-align: center;'>{value:.0f}%</div>"
 
     progress_data["Progress To Monthly Target"] = progress_data["Progress To Monthly Target (Numeric)"].apply(
-        lambda x: style_progress(x) if pd.notnull(x) else f"<div style='color: black; font-family: Chapman-Bold; font-size: 28px; padding: 10px; text-align: center;'></div>"
+        lambda x: style_progress(x) if pd.notnull(x) else f"<div style='color: black; font-family: Chapman-Bold; font-size: 26px; padding: 10px; text-align: center;'></div>"
     )
 
     # Drop numeric column after styling
@@ -218,7 +218,7 @@ def calculate_monthly_progress(data, start_date, end_date):
         "Progress To Monthly Target": "Progress To Monthly Target"
     }
     progress_data.columns = [
-        f"<div style='font-family: Chapman-Bold; font-size: 28px; text-align: center;'>{col}</div>"
+        f"<div style='font-family: Chapman-Bold; font-size: 26px; text-align: center;'>{col}</div>"
         for col in styled_columns.values()
     ]
 
@@ -785,7 +785,7 @@ def run_dashboard():
             }
             .custom-leaderboard-title {
                 font-family: 'Northbank-N7';
-                font-size: 50px;
+                font-size: 40px;
                 font-weight: bold;
                 color: #E41B17;
                 text-align: center;
@@ -806,7 +806,7 @@ def run_dashboard():
                 display: flex;
                 justify-content: center;
                 align-items: center;
-                margin-top: -20px;
+                margin-top: -10px;
                 margin-bottom: 20px;
             ">
                 {monthly_progress}
