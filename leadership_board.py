@@ -831,11 +831,11 @@ def run_dashboard():
             .custom-scroll-box {{
                 overflow: hidden;
                 white-space: nowrap;
-                max-width: 80%; /* Keep box width manageable */
+                max-width: 100%; /* Keep box width manageable */
                 margin: 0 auto; /* Perfectly centers the box horizontally */
                 background-color: #fff0f0; /* Soft pastel pink */
                 color: #E41B17; /* Arsenal red text */
-                padding: 15px 20px; /* Inner padding */
+                padding: 10px 15px; /* Inner padding */
                 border-radius: 15px; /* Smooth curved corners */
                 font-family: 'Northbank-N5'; /* Custom font */
                 font-size: 25px; /* Large readable text */
@@ -848,7 +848,7 @@ def run_dashboard():
                 box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2); /* Shadow for visibility */
             }}
             body {{
-                padding-bottom: 120px; /* Prevent overlapping */
+                padding-bottom: 80px; /* Prevent overlapping */
             }}
         </style>
         <div class="custom-scroll-box">
