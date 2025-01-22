@@ -831,7 +831,7 @@ def run_dashboard():
             .custom-scroll-box {{
                 overflow: hidden;
                 white-space: nowrap;
-                max-width: 80%; /* Keep box width manageable */
+                max-width: 60%; /* Keep box width manageable */
                 margin: 0 auto; /* Perfectly centers the box horizontally */
                 background-color: #fff0f0; /* Soft pastel pink */
                 color: #E41B17; /* Arsenal red text */
