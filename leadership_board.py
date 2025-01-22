@@ -576,7 +576,7 @@ def run_dashboard():
                     margin-bottom: 30px;
                     text-align: center;
                     font-family: 'Chapman-Bold';
-                    font-size: 28px;
+                    font-size: 24px;
                     font-weight: bold;
                     color: #E41B17;
                 }
@@ -603,16 +603,16 @@ def run_dashboard():
                     padding: 20px 15px;
                     text-align: center;
                     font-family: 'Chapman-Bold';
-                    font-size: 28px;
+                    font-size: 24px;
                     font-weight: bold;
                     color: #E41B17;
                 }}
                 .custom-progress-widget span {{
-                    font-size: 26px;
+                    font-size: 22px;
                     color: #0047AB;
                 }}
                 .custom-progress-widget .highlight {{
-                    font-size: 28px;
+                    font-size: 24px;
                     color: #E41B17;
                 }}
             </style>
@@ -668,7 +668,7 @@ def run_dashboard():
                 padding: 20px 15px;
                 text-align: center;
                 font-family: 'Chapman-Bold';
-                font-size: 28px;
+                font-size: 24px;
                 font-weight: bold;
                 color: #E41B17;
             }}
@@ -681,11 +681,11 @@ def run_dashboard():
                 color: #E41B17;
             }}
             .next-fixture-widget .fixture-info {{
-                font-size: 26px;
+                font-size: 22px;
                 color: #0047AB;
             }}
             .next-fixture-widget .fixture-days {{
-                font-size: 28px;
+                font-size: 24px;
                 color: #E41B17;
             }}
             </style>
@@ -831,7 +831,7 @@ def run_dashboard():
             .custom-scroll-box {{
                 overflow: hidden;
                 white-space: nowrap;
-                max-width: 60%; /* Keep box width manageable */
+                max-width: 80%; /* Keep box width manageable */
                 margin: 0 auto; /* Perfectly centers the box horizontally */
                 background-color: #fff0f0; /* Soft pastel pink */
                 color: #E41B17; /* Arsenal red text */
@@ -843,7 +843,7 @@ def run_dashboard():
                 text-align: center; /* Text centered */
                 border: 2px solid #E41B17; /* Red border for contrast */
                 position: fixed; /* Fixed at the bottom */
-                bottom: 10px; /* Distance from bottom */
+                bottom: 0px; /* Distance from bottom */
                 z-index: 1000; /* Keeps it above other content */
                 box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2); /* Shadow for visibility */
             }}
