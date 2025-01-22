@@ -726,6 +726,8 @@ def run_dashboard():
             """,
             unsafe_allow_html=True
         )
+        
+    
 
             
     # Sidebar: Auto-refresh
@@ -848,7 +850,7 @@ def run_dashboard():
                 box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2); /* Shadow for visibility */
             }}
             body {{
-                padding-bottom: 80px; /* Prevent overlapping */
+                padding-bottom: 120px; /* Prevent overlapping */
             }}
         </style>
         <div class="custom-scroll-box">
