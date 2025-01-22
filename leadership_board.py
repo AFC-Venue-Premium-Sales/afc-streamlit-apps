@@ -443,6 +443,7 @@ def run_dashboard():
             font-size: 45px;
             font-weight: bold;
             color: #E41B17;
+            margin-top: -20;
             text-align: center; /* Center-align the title */
         }
         </style>
