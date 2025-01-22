@@ -789,7 +789,7 @@ def run_dashboard():
                 font-weight: bold;
                 color: #E41B17;
                 text-align: center;
-                margin-top: -10px; /* Moves the leaderboard title closer to ARSENAL PREMIUM SALES */
+                margin-top: -20px; /* Moves the leaderboard title closer to ARSENAL PREMIUM SALES */
             }
             </style>
             <div class="custom-leaderboard-title">
@@ -806,7 +806,7 @@ def run_dashboard():
                 display: flex;
                 justify-content: center;
                 align-items: center;
-                margin-top: 20px;
+                margin-top: -20px;
                 margin-bottom: 20px;
             ">
                 {monthly_progress}
