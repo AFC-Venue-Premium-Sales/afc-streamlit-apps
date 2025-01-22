@@ -789,7 +789,7 @@ def run_dashboard():
                 font-weight: bold;
                 color: #E41B17;
                 text-align: center;
-                margin-top: -20px; /* Moves the leaderboard title closer to ARSENAL PREMIUM SALES */
+                margin-top: -30px;
             }
             </style>
             <div class="custom-leaderboard-title">
