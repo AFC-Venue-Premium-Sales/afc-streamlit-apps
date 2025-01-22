@@ -430,28 +430,28 @@ crest_base64 = get_base64_image("assets/arsenal_crest_gold.png")
 def run_dashboard():
     st.set_page_config(page_title="Hospitality Leadership Board", layout="wide")
     
-    # # Dashboard Title
-    # st.markdown(
-    #     """
-    #     <style>
-    #     @font-face {
-    #         font-family: 'Northbank-N7';
-    #         src: url('fonts/Northbank-N7_2789728357.ttf') format('truetype');
-    #     }
-    #     .custom-title {
-    #         font-family: 'Northbank-N7';
-    #         font-size: 60px;
-    #         font-weight: bold;
-    #         color: #E41B17;
-    #         text-align: center; /* Center-align the title */
-    #     }
-    #     </style>
-    #     <div class="custom-title">
-    #         ARSENAL PREMIUM SALES
-    #     </div>
-    #     """,
-    #     unsafe_allow_html=True,
-    # )
+    # Dashboard Title
+    st.markdown(
+        """
+        <style>
+        @font-face {
+            font-family: 'Northbank-N7';
+            src: url('fonts/Northbank-N7_2789728357.ttf') format('truetype');
+        }
+        .custom-title {
+            font-family: 'Northbank-N7';
+            font-size: 60px;
+            font-weight: bold;
+            color: #E41B17;
+            text-align: center; /* Center-align the title */
+        }
+        </style>
+        <div class="custom-title">
+            ARSENAL MONTHLY PREMIUM SALES
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 
@@ -776,28 +776,28 @@ def run_dashboard():
     monthly_progress, sales_made = calculate_monthly_progress(filtered_df_without_seats, start_date, end_date)
 
     if monthly_progress is not None:
-        st.markdown(
-            """
-            <style>
-            @font-face {
-                font-family: 'Northbank-N7';
-                src: url('fonts/Northbank-N7_2789728357.ttf') format('truetype');
-            }
-            .custom-leaderboard-title {
-                font-family: 'Northbank-N7';
-                font-size: 40px;
-                font-weight: bold;
-                color: #E41B17;
-                text-align: center;
-                margin-top: -30px;
-            }
-            </style>
-            <div class="custom-leaderboard-title">
-                MONTHLY SALES PREMIUM LEADERBOARD
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        # st.markdown(
+        #     """
+        #     <style>
+        #     @font-face {
+        #         font-family: 'Northbank-N7';
+        #         src: url('fonts/Northbank-N7_2789728357.ttf') format('truetype');
+        #     }
+        #     .custom-leaderboard-title {
+        #         font-family: 'Northbank-N7';
+        #         font-size: 40px;
+        #         font-weight: bold;
+        #         color: #E41B17;
+        #         text-align: center;
+        #         margin-top: -30px;
+        #     }
+        #     </style>
+        #     <div class="custom-leaderboard-title">
+        #         MONTHLY SALES PREMIUM LEADERBOARD
+        #     </div>
+        #     """,
+        #     unsafe_allow_html=True,
+        # )
 
         # Directly render the HTML table
         st.markdown(
