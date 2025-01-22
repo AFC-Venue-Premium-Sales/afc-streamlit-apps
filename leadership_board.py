@@ -440,14 +440,14 @@ def run_dashboard():
         }
         .custom-title {
             font-family: 'Northbank-N7';
-            font-size: 60px;
+            font-size: 45px;
             font-weight: bold;
             color: #E41B17;
             text-align: center; /* Center-align the title */
         }
         </style>
         <div class="custom-title">
-            ARSENAL MONTHLY PREMIUM SALES
+            ARSENAL PREMIUM SALES
         </div>
         """,
         unsafe_allow_html=True,
