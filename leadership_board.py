@@ -843,7 +843,7 @@ def run_dashboard():
                 text-align: center; /* Text centered */
                 border: 2px solid #E41B17; /* Red border for contrast */
                 position: fixed; /* Fixed at the bottom */
-                bottom: 50px; /* Distance from bottom */
+                bottom: 10px; /* Distance from bottom */
                 z-index: 1000; /* Keeps it above other content */
                 box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2); /* Shadow for visibility */
             }}
