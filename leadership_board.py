@@ -344,7 +344,6 @@ def generate_scrolling_messages(data, budget_df):
     else:
         next_fixture_message = "⚠️ No upcoming fixtures to display."
 
-
     # Top Fixture of the Day
     today_sales = data[data["CreatedOn"].dt.date == datetime.now().date()]
     if not today_sales.empty:
@@ -379,15 +378,21 @@ def generate_scrolling_messages(data, budget_df):
 
         # Generate the message with the full name
         top_executive_message = (
-            f"🤵‍♀️ Top Selling Exec Today: 🌟{top_executive_full_name}🌟 with £{top_executive_revenue:,.2f} generated.."
+            f"🤵‍♀️ Top Selling Exec Today: 🌟{top_executive_full_name}🌟 with £{top_executive_revenue:,.2f} generated."
         )
     else:
         # If no sales by the specified executives, display a no-sales message
         top_executive_message = "🚫 No Premium Executive sales recorded today."
 
+    # Ensure no None values in messages
+    latest_sale_message = latest_sale_message or "🚫 No recent sales to display."
+    next_fixture_message = next_fixture_message or "⚠️ No upcoming fixtures to display."
+    top_fixture_message = top_fixture_message or "📉 No sales recorded today."
+    top_executive_message = top_executive_message or "🚫 No Premium Executive sales recorded today."
 
-        # Combine all messages
-        return f"{latest_sale_message} | {next_fixture_message} | {top_fixture_message} | {top_executive_message}"
+    # Combine all messages
+    return f"{latest_sale_message} | {next_fixture_message} | {top_fixture_message} | {top_executive_message}"
+
 
 
 
