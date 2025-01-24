@@ -500,3 +500,49 @@ def generate_event_level_concert_cumulative_sales_chart(filtered_data):
     except Exception as e:
         st.error(f"Failed to generate the concert cumulative chart: {e}")
         logging.error(f"Error in generate_event_level_concert_cumulative_sales_chart: {e}")
+
+
+
+
+
+#    # Total Sales Section
+#     total_sales = calculate_total_sales(filtered_df_without_seats)
+#     st.sidebar.markdown(
+#         f"""
+#         <style>
+#             @font-face {{
+#                 font-family: 'Chapman-Bold';
+#                 src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
+#             }}
+#             .custom-sales-box {{
+#                 background-color: #fff0f0;
+#                 border: 2px solid #E41B17;
+#                 border-radius: 10px;
+#                 padding: 20px 15px; /* Match padding of the other widgets */
+#                 margin-bottom: 10px; /* Space between widgets */
+#                 text-align: center; /* Center align all text */
+#                 font-family: 'Chapman-Bold'; /* Apply the custom font */
+#                 font-size: 28px; /* Match font size */
+#                 font-weight: bold; /* Match weight */
+#                 color: #E41B17; /* Match font color */
+#             }}
+#             .custom-sales-header {{
+#                 font-size: 25px;
+#                 color: #E41B17;
+#                 text-align: center;
+#                 font-weight: bold;
+#             }}
+#             .custom-sales-value {{
+#                 font-size: 28px;
+#                 color: #E41B17;
+#                 text-align: center;
+#                 font-weight: bold;
+#             }}
+#         </style>
+#         <div class="custom-sales-box">
+#             <span class="custom-sales-header"> 🍯 Sales To Date:</span><br>
+#             <span class="custom-sales-value">£{total_sales:,.0f}</span>
+#         </div>
+#         """,
+#         unsafe_allow_html=True
+#     )
