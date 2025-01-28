@@ -564,7 +564,7 @@ def run_dashboard():
                 }}
             </style>
             <div class="custom-progress-widget">
-                📊 Monthly Progress Budget Target <br>
+                📊 Budget Target <br>
                 <span>Total Revenue ({current_month}):</span><br>
                 <span class="highlight">£{total_revenue:,.0f}</span><br>
                 <span>Total Target:</span><br>
