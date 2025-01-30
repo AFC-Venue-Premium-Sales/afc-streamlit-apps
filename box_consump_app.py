@@ -74,7 +74,7 @@ if "code" in query_params and not st.session_state["authenticated"]:
 # 🔥 **Login Button (If Not Logged In)**
 if not st.session_state["authenticated"]:
     # st.markdown("### 👋 Welcome to the Venue Hospitality App!")
-    st.markdown("**Log in to access the dashboards.**")
+    st.markdown("**Log in to access the Box Consumption Tool.**")
 
     login_url = app.get_authorization_request_url(scopes=SCOPES, redirect_uri=REDIRECT_URI)
     
@@ -111,7 +111,14 @@ if st.sidebar.button("🔓 Logout"):
     st.success("✅ You have been logged out successfully!")
     st.rerun()
 
-
+# Footer Section
+st.markdown("---")
+st.markdown("""
+    <div style="text-align:center; font-size:12px; color:gray;">
+        🏟️ **Arsenal Property** | All Rights Reserved © 2024  
+        Need help? <a href="mailto:cmunthali@arsenal.co.uk" style="text-decoration:none; color:#FF4B4B;">Contact: cmunthali@arsenal.co.uk</a>
+    </div>
+""", unsafe_allow_html=True)
 
 
 
