@@ -145,9 +145,9 @@ def process_files(box_log_file, preorders_file):
 import streamlit as st
 
 def run():
-    # Display the Arsenal crest image
-    st.image("assets/arsenal_crest_gold.png", width=150)  # Adjust the width as needed
-    st.title("Box Log Processing Tool")
+    # # Display the Arsenal crest image
+    # st.image("assets/arsenal_crest_gold.png", width=150)  # Adjust the width as needed
+    # st.title("Box Log Processing Tool")
     
     # Instructions Expander
     with st.expander("Instructions and Information", expanded=False):
