@@ -31,6 +31,8 @@ if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 if "access_token" not in st.session_state:
     st.session_state["access_token"] = None
+if "redirected" not in st.session_state:
+    st.session_state["redirected"] = False
 
 # App Header
 st.image("assets/arsenal_crest_gold.png", width=150)
@@ -39,6 +41,8 @@ st.markdown("---")
 
 # Process login
 query_params = st.experimental_get_query_params()
+logging.info(f"Query parameters received: {query_params}")
+
 if "code" in query_params and not st.session_state["authenticated"]:
     auth_code = query_params["code"][0]
     logging.info("Authorization code received. Initiating login process...")
@@ -55,27 +59,59 @@ if "code" in query_params and not st.session_state["authenticated"]:
             if "access_token" in result:
                 st.session_state["access_token"] = result["access_token"]
                 st.session_state["authenticated"] = True
-                logging.info("✅ Login successful!")
+                st.session_state["redirected"] = True
+                logging.info("✅ Login successful! Session updated.")
 
                 st.success("🎉 Login successful! Redirecting...")
-                st.experimental_rerun()
+                st.rerun()  # Force refresh
             else:
+                logging.warning("⚠️ No access token received.")
                 st.error("❌ Failed to log in. Please try again.")
         except Exception as e:
-            logging.error(f"🚨 Error during login: {e}")
-            st.error(f"❌ An unexpected error occurred: {str(e)}")
+            logging.error(f"🚨 Login error: {e}")
+            st.error(f"❌ An error occurred: {str(e)}")
+
+# 🔥 **Login Button (If Not Logged In)**
+if not st.session_state["authenticated"]:
+    st.markdown("### 👋 Welcome to the Venue Hospitality App!")
+    st.markdown("**Log in to access the dashboards.**")
+
+    login_url = app.get_authorization_request_url(scopes=SCOPES, redirect_uri=REDIRECT_URI)
+    
+    st.markdown(f"""
+        <a href="{login_url}" target="_blank" style="
+            text-decoration:none;
+            color:white;
+            background-color:#FF4B4B;
+            padding:15px 25px;
+            border-radius:5px;
+            font-size:18px;
+            display:inline-block;">
+            🔐 Log in with Microsoft Entra ID
+        </a>
+    """, unsafe_allow_html=True)
+    
+    st.stop()  # Prevent further execution
 
 # 🔥 **After Login: Load the Main App**
 if st.session_state["authenticated"]:
     st.success("✅ Logged in successfully!")
-    
+
     try:
         import box_consumption_app_login
         importlib.reload(box_consumption_app_login)
-        box_consumption_app_login.run()  # Ensure this function exists in your file!
+        box_consumption_app_login.run()
     except ImportError as e:
         logging.error(f"❌ Failed to load main app: {e}")
         st.error("❌ Could not load the application. Please try again.")
+
+# 🔥 **Logout Button**
+if st.sidebar.button("🔓 Logout"):
+    st.session_state.clear()
+    st.success("✅ You have been logged out successfully!")
+    st.rerun()
+
+
 
 
 
