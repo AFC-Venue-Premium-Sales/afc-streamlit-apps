@@ -17,41 +17,18 @@ logging.basicConfig(
 
 # Import modules dynamically to handle errors gracefully
 try:
-    import sales_performance
-    importlib.reload(sales_performance)
+    import box_consump_app
+    importlib.reload(box_consump_app)
 except ImportError as e:
     logging.error(f"Failed to import 'sales_performance': {e}")
-    sales_performance = None
-
-try:
-    import user_performance_api
-    importlib.reload(user_performance_api)
-except ImportError as e:
-    logging.error(f"Failed to import 'user_performance_api': {e}")
-    user_performance_api = None
-
-try:
-    import ticket_exchange_report
-    importlib.reload(ticket_exchange_report)
-except ImportError as e:
-    logging.error(f"Failed to import 'ticket_exchange_report': {e}")
-    ticket_exchange_report = None
+    box_consump_app = None
     
-try:
-    import sales_dashboard 
-    importlib.reload(sales_dashboard)
-except ImportError as e:
-    logging.error(f"Failed to import 'sales_dashboard': {e}")
-    sales_dashboard = None
-
-# Load environment variables
-load_dotenv()
-
+    
 # Azure AD Configuration
-CLIENT_ID = os.getenv("CLIENT_ID")
-TENANT_ID = os.getenv("TENANT_ID")
-CLIENT_SECRET = os.getenv("CLIENT_SECRET")
-REDIRECT_URI = os.getenv("REDIRECT_URI")
+CLIENT_ID = os.getenv("CLIENT_ID_1")
+TENANT_ID = os.getenv("TENANT_ID_1")
+CLIENT_SECRET = os.getenv("CLIENT_SECRET_1")
+REDIRECT_URI = os.getenv("REDIRECT_URI_1")
 AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
 SCOPES = ["User.Read"]
 
@@ -72,43 +49,12 @@ if "redirected" not in st.session_state:
     st.session_state["redirected"] = False
 if "dashboard_data" not in st.session_state:
     st.session_state["dashboard_data"] = None  # Store dashboard data
-
-
-# Function to reload data
-def reload_data():
-    import importlib
-    logging.info("🔄 Reloading tjt_hosp_api...")
-    try:
-        # Reload the module dynamically
-        tjt_hosp_api = importlib.import_module('tjt_hosp_api')
-        importlib.reload(tjt_hosp_api)
-
-        # Validate the reloaded data
-        filtered_df_without_seats = getattr(tjt_hosp_api, 'filtered_df_without_seats', None)
-        if filtered_df_without_seats is None or filtered_df_without_seats.empty:
-            raise ValueError("filtered_df_without_seats is None or empty after reload.")
-
-        # Log successful reload
-        logging.info(f"✅ Data reloaded successfully. Rows: {len(filtered_df_without_seats)}")
-        st.success("✅ Data refreshed successfully!")
-
-        # Reload dependent modules dynamically
-        importlib.reload(sales_performance)
-        importlib.reload(user_performance_api)
-
-        # Trigger a rerun to refresh the app state
-        st.rerun()
-
-    except Exception as e:
-        # Handle and log errors gracefully
-        logging.error(f"❌ Failed to reload tjt_hosp_api: {e}")
-        st.error(f"❌ Failed to reload data: {e}")
-
-
+    
+    
 
 # App Header with a logo
-st.image("assets/arsenal_colour-banner.png", width=500)  # Placeholder for the logo
-st.title("🏟️ AFC Venue - MBM Hospitality")
+st.image("assets/arsenal_crest_gold.png", width=150)  # Placeholder for the logo
+st.title("🏟️ Box Log Processing Tool")
 st.markdown("---")  # A horizontal line for better UI
 
 # Handle login
@@ -170,44 +116,7 @@ if not st.session_state["authenticated"]:
             logging.info("No authorization code in query parameters.")
             # st.info("🔑 Please log in using the authentication portal.")
 
-
-else:
-    # Sidebar Navigation
-    st.sidebar.title("🧭 Navigation")
-    app_choice = st.sidebar.radio(
-        "Choose Module",
-        ["📊 Sales Performance", "📈 User Performance", "📄 Ticket Exchange Report", "📊 Live Sales Dashboard"],
-        format_func=lambda x: x.split(" ")[1],
-    )
-
-    # Refresh Button
-    if st.sidebar.button("🔄 Refresh Data"):
-        logging.info("🔄 Refreshing data...")
-        reload_data()  # Call the reload function
-        # st.rerun()  # Trigger a full app rerun after reload
-
-    # Update app_registry with the new dashboard
-    app_registry = {
-        "📊 Sales Performance": sales_performance.run_app,
-        "📈 User Performance": user_performance_api.run_app,
-        "📄 Ticket Exchange Report": ticket_exchange_report.run_app,
-        "📊 Live Sales Dashboard": sales_dashboard.run_dashboard,  # Add your new dashboard here
-    }
-
-    app_function = app_registry.get(app_choice)
-    if app_function:
-        try:
-            with st.spinner("🔄 Loading..."):
-                app_function()
-            st.success(f"✅ {app_choice} app loaded successfully!")
-        except Exception as e:
-            st.error(f"❌ An error occurred while loading the app: {e}")
-            logging.error(f"Error loading app '{app_choice}': {e}")
-    else:
-        st.error("❌ Invalid selection. Please choose a valid app option.")
-
-
-    # Initialize logout state
+# Initialize logout state
     if "logout_triggered" not in st.session_state:
         st.session_state["logout_triggered"] = False
 
