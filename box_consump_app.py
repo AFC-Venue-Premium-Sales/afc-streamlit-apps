@@ -73,7 +73,7 @@ if "code" in query_params and not st.session_state["authenticated"]:
 
 # 🔥 **Login Button (If Not Logged In)**
 if not st.session_state["authenticated"]:
-    st.markdown("### 👋 Welcome to the Venue Hospitality App!")
+    # st.markdown("### 👋 Welcome to the Venue Hospitality App!")
     st.markdown("**Log in to access the dashboards.**")
 
     login_url = app.get_authorization_request_url(scopes=SCOPES, redirect_uri=REDIRECT_URI)
