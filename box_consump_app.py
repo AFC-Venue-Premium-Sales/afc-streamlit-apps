@@ -87,7 +87,7 @@ if not st.session_state["authenticated"]:
             border-radius:5px;
             font-size:18px;
             display:inline-block;">
-            🔐 Log in with Microsoft Entra ID
+            🔐 Log in
         </a>
     """, unsafe_allow_html=True)
     
