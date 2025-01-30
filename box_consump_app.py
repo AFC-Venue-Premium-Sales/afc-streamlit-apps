@@ -115,7 +115,7 @@ if st.sidebar.button("🔓 Logout"):
 st.markdown("---")
 st.markdown("""
     <div style="text-align:center; font-size:12px; color:gray;">
-        🏟️ **Arsenal Property** | All Rights Reserved © 2024  
+        🏟️ **Arsenal Property** | All Rights Reserved © 2025  
         Need help? <a href="mailto:cmunthali@arsenal.co.uk" style="text-decoration:none; color:#FF4B4B;">Contact: cmunthali@arsenal.co.uk</a>
     </div>
 """, unsafe_allow_html=True)
