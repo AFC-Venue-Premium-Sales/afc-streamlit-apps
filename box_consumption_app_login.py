@@ -144,7 +144,7 @@ def process_files(box_log_file, preorders_file):
 
 import streamlit as st
 
-def main():
+def run():
     # Display the Arsenal crest image
     st.image("assets/arsenal_crest_gold.png", width=150)  # Adjust the width as needed
     st.title("Box Log Processing Tool")
@@ -213,14 +213,14 @@ def main():
 
 
 
-def run():
-    """Main function to display the Box Consumption Dashboard."""
-    st.title("🏟️ Box Consumption Dashboard")
-    st.write("Welcome to the Box Log Processing Tool!")
+# def run():
+#     """Main function to display the Box Consumption Dashboard."""
+#     st.title("🏟️ Box Consumption Dashboard")
+#     st.write("Welcome to the Box Log Processing Tool!")
 
-    # Add other UI components as needed
-    st.write("Upload your Box Log and Preorders files to begin processing.")
+#     # Add other UI components as needed
+#     st.write("Upload your Box Log and Preorders files to begin processing.")
 
 
 if __name__ == "__main__":
-    main()
+    run()
