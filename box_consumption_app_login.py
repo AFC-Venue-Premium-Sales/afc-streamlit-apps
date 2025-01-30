@@ -22,7 +22,9 @@ try:
 except ImportError as e:
     logging.error(f"Failed to import 'sales_performance': {e}")
     box_consump_app = None
-    
+
+# Load environment variables
+load_dotenv()
     
 # Azure AD Configuration
 CLIENT_ID = os.getenv("CLIENT_ID_1")
