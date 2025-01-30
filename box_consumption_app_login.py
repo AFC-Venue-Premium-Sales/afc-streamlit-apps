@@ -1,151 +1,370 @@
+# import streamlit as st
+# from msal import ConfidentialClientApplication
+# from dotenv import load_dotenv
+# import os
+# import logging
+# import importlib
+
+
+# # Configure logging
+# logging.basicConfig(
+#     format="%(asctime)s - [%(levelname)s] - %(message)s",
+#     level=logging.INFO,
+#     handlers=[
+#         logging.StreamHandler()  # Ensures logs are visible in the Streamlit terminal
+#     ]
+# )
+
+# # Import modules dynamically to handle errors gracefully
+# try:
+#     import box_consump_app
+#     importlib.reload(box_consump_app)
+# except ImportError as e:
+#     logging.error(f"Failed to import 'sales_performance': {e}")
+#     box_consump_app = None
+
+# # Load environment variables
+# load_dotenv()
+    
+# # Azure AD Configuration
+# CLIENT_ID = os.getenv("CLIENT_ID_1")
+# TENANT_ID = os.getenv("TENANT_ID_1")
+# CLIENT_SECRET = os.getenv("CLIENT_SECRET_1")
+# REDIRECT_URI = os.getenv("REDIRECT_URI_1")
+# AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
+# SCOPES = ["User.Read"]
+
+
+# # MSAL Confidential Client Application
+# app = ConfidentialClientApplication(
+#     client_id=CLIENT_ID,
+#     client_credential=CLIENT_SECRET,
+#     authority=AUTHORITY
+# )
+
+# # Initialize session states
+# if "authenticated" not in st.session_state:
+#     st.session_state["authenticated"] = False
+# if "access_token" not in st.session_state:
+#     st.session_state["access_token"] = None
+# if "redirected" not in st.session_state:
+#     st.session_state["redirected"] = False
+# if "dashboard_data" not in st.session_state:
+#     st.session_state["dashboard_data"] = None  # Store dashboard data
+    
+    
+
+# # App Header with a logo
+# st.image("assets/arsenal_crest_gold.png", width=150)  # Placeholder for the logo
+# st.title("🏟️ Box Log Processing Tool")
+# st.markdown("---")  # A horizontal line for better UI
+
+# # Handle login
+# if not st.session_state["authenticated"]:
+#     # Display Welcome Message
+#     st.markdown("""
+#     ### 👋 Welcome to the Venue Hospitality App!
+#     **Log in to access the dashboards.**
+#     """)
+
+#     # Generate the Login URL
+#     login_url = app.get_authorization_request_url(scopes=SCOPES, redirect_uri=REDIRECT_URI)
+
+#     # Display the Login Button
+#     st.markdown(f"""
+#             <a href="{login_url}" target="_blank" style="
+#                 text-decoration:none;
+#                 color:white;
+#                 background-color:#FF4B4B;
+#                 padding:15px 25px;
+#                 border-radius:5px;
+#                 font-size:18px;
+#                 display:inline-block;">
+#                 🔐 Log in with Microsoft Entra ID
+#             </a>
+#         </div>
+#     """, unsafe_allow_html=True)
+
+#     # Process login by checking query parameters for the authorization code
+#     query_params = st.experimental_get_query_params()
+#     if "code" in query_params and not st.session_state.get("redirected", False):
+#         auth_code = query_params["code"][0]
+#         logging.info("Authorization code received. Initiating login process...")
+#         with st.spinner("🔄 Logging you in..."):
+#             try:
+#                 result = app.acquire_token_by_authorization_code(
+#                     code=auth_code,
+#                     scopes=SCOPES,
+#                     redirect_uri=REDIRECT_URI
+#                 )
+#                 if "access_token" in result:
+#                     st.session_state["access_token"] = result["access_token"]
+#                     st.session_state["authenticated"] = True
+#                     st.session_state["redirected"] = True
+#                     logging.info("Login successful. Redirecting user...")
+#                     st.success("🎉 Login successful! Redirecting...")
+#                     st.rerun()
+#                 else:
+#                     logging.warning("Failed to acquire access token.")
+#                     st.error("❌ Failed to log in. Please try again.")
+#             except Exception as e:
+#                 logging.error(f"An error occurred during login: {e}")
+#                 if "invalid_grant" in str(e):
+#                     st.error("❌ The authorization code is invalid or expired. Please log in again.")
+#                 else:
+#                     st.error(f"❌ An unexpected error occurred: {str(e)}")
+#     else:
+#         if "code" not in query_params:
+#             logging.info("No authorization code in query parameters.")
+#             # st.info("🔑 Please log in using the authentication portal.")
+
+# # Initialize logout state
+#     if "logout_triggered" not in st.session_state:
+#         st.session_state["logout_triggered"] = False
+
+#     if "logged_in" not in st.session_state:
+#         st.session_state["logged_in"] = True  # Default state is logged in
+
+#     # Logout Button
+#     if st.sidebar.button("🔓 Logout"):
+#         if not st.session_state["logout_triggered"]:
+#             logging.info("User logged out.")
+#             st.session_state["logout_triggered"] = True
+#             st.session_state["logged_in"] = False  # Mark as logged out
+#             st.session_state.clear()
+#             st.success("✅ You have been logged out successfully!")
+#             st.rerun()  # Trigger a full rerun
+
+#     # Handle post-logout state
+#     if st.session_state.get("logout_triggered", False):
+#         st.session_state.clear()  # Clear session state
+#         st.session_state["logout_triggered"] = True  # Maintain logout state to avoid flicker
+#         st.stop()  # Stop further execution to avoid login checks
+
+# # Footer Section
+# st.markdown("---")
+# st.markdown("""
+#     <div style="text-align:center; font-size:12px; color:gray;">
+#         🏟️ **Arsenal Property** | All Rights Reserved © 2024  
+#         Need help? <a href="mailto:cmunthali@arsenal.co.uk" style="text-decoration:none; color:#FF4B4B;">Contact: cmunthali@arsenal.co.uk</a>
+#     </div>
+# """, unsafe_allow_html=True)
+
+
+
+
+import pandas as pd
 import streamlit as st
-from msal import ConfidentialClientApplication
-from dotenv import load_dotenv
-import os
-import logging
-import importlib
+from openpyxl import load_workbook
+from openpyxl.styles import PatternFill
+import re
+import io
 
 
-# Configure logging
-logging.basicConfig(
-    format="%(asctime)s - [%(levelname)s] - %(message)s",
-    level=logging.INFO,
-    handlers=[
-        logging.StreamHandler()  # Ensures logs are visible in the Streamlit terminal
+def preprocess_preorders(preorders_file):
+    """Preprocess the Preorders file to clean and standardize it."""
+    preorders = pd.read_excel(preorders_file, header=4)
+    preorders = preorders.loc[:, ~preorders.columns.str.contains("Unnamed")]
+    preorders.columns = preorders.columns.str.strip().str.replace(" ", "_")
+    preorders['Location'] = preorders['Location'].ffill()
+    preorders = preorders.dropna(how='all')
+    preorders = preorders.dropna(subset=['Event', 'Guest_name'])
+
+    preorders['Box_Number'] = preorders['Location'].apply(
+        lambda x: re.search(r'\d+', x).group() if pd.notnull(x) and re.search(r'\d+', x) else None
+    )
+    preorders['Box_Number'] = preorders['Box_Number'].astype(str).str.strip()
+    preorders['Total'] = (
+        preorders['Total']
+        .replace('[\u00a3,]', '', regex=True)
+        .replace('', '0')
+        .astype(float, errors='ignore')
+    )
+
+    def parse_box_numbers(box_entry):
+        match = re.findall(r'\d+', box_entry)
+        return match if match else [box_entry]
+
+    preorders['Parsed_Box_Numbers'] = preorders['Box_Number'].apply(parse_box_numbers)
+
+    # Multi-event boxes calculation
+    multi_event_boxes = preorders.groupby('Box_Number').filter(lambda x: len(x) > 1)
+
+    # Aggregate totals for multi-event boxes
+    aggregated = preorders.groupby('Box_Number', as_index=False).agg({
+        'Total': 'sum',  # Sum totals for the box
+        'Status': lambda x: ', '.join(x.unique()),  # Combine unique statuses
+        'Event': lambda x: ', '.join(x.unique())  # Combine unique events
+    })
+
+    return preorders, aggregated, multi_event_boxes
+
+
+def preprocess_box_log(box_log_file):
+    """Preprocess the Box Log file to clean and standardize it."""
+    box_log = pd.read_excel(box_log_file, sheet_name="ExecutiveBoxesLog", header=2)
+    box_log.columns = [
+        "Box Number", "Client Name/ Company", "Box Manager",
+        "Pre Order Food (INC VAT)", "On Day Order Food (INC VAT)",
+        "On Day Order Liquor (INC VAT)", "On Day Order Soft (INC VAT)",
+        "On the Day Staff (INC VAT)", "Grand Total (INC VAT)"
     ]
-)
+    box_log.columns = box_log.columns.str.strip()
+    box_log['Box Number'] = box_log['Box Number'].astype(str).str.strip()
 
-# Import modules dynamically to handle errors gracefully
-try:
-    import box_consump_app
-    importlib.reload(box_consump_app)
-except ImportError as e:
-    logging.error(f"Failed to import 'sales_performance': {e}")
-    box_consump_app = None
-
-# Load environment variables
-load_dotenv()
-    
-# Azure AD Configuration
-CLIENT_ID = os.getenv("CLIENT_ID_1")
-TENANT_ID = os.getenv("TENANT_ID_1")
-CLIENT_SECRET = os.getenv("CLIENT_SECRET_1")
-REDIRECT_URI = os.getenv("REDIRECT_URI_1")
-AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
-SCOPES = ["User.Read"]
+    for col in ["Pre Order Food (INC VAT)", "On Day Order Food (INC VAT)"]:
+        box_log[col] = (
+            box_log[col]
+            .replace('[\u00a3,]', '', regex=True)
+            .replace('', '0')
+            .astype(float, errors='ignore')
+        )
+    return box_log
 
 
-# MSAL Confidential Client Application
-app = ConfidentialClientApplication(
-    client_id=CLIENT_ID,
-    client_credential=CLIENT_SECRET,
-    authority=AUTHORITY
-)
+def process_files(box_log_file, preorders_file):
+    """Process Box Log and Preorders files and include conditional formatting."""
+    box_log = preprocess_box_log(box_log_file)
+    preorders, aggregated, multi_event_boxes = preprocess_preorders(preorders_file)
 
-# Initialize session states
-if "authenticated" not in st.session_state:
-    st.session_state["authenticated"] = False
-if "access_token" not in st.session_state:
-    st.session_state["access_token"] = None
-if "redirected" not in st.session_state:
-    st.session_state["redirected"] = False
-if "dashboard_data" not in st.session_state:
-    st.session_state["dashboard_data"] = None  # Store dashboard data
-    
-    
+    wb = load_workbook(box_log_file)
+    ws = wb["ExecutiveBoxesLog"]
 
-# App Header with a logo
-st.image("assets/arsenal_crest_gold.png", width=150)  # Placeholder for the logo
-st.title("🏟️ Box Log Processing Tool")
-st.markdown("---")  # A horizontal line for better UI
+    green_fill = PatternFill(start_color="00FF00", end_color="00FF00", fill_type="solid")
+    yellow_fill = PatternFill(start_color="FFFF00", end_color="00FF00", fill_type="solid")
+    red_fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")  # Red highlighting
 
-# Handle login
-if not st.session_state["authenticated"]:
-    # Display Welcome Message
-    st.markdown("""
-    ### 👋 Welcome to the Venue Hospitality App!
-    **Log in to access the dashboards.**
-    """)
+    total_green = 0
+    total_yellow = 0
+    total_red = 0
+    green_details = []
+    yellow_details = []
+    red_details = []
 
-    # Generate the Login URL
-    login_url = app.get_authorization_request_url(scopes=SCOPES, redirect_uri=REDIRECT_URI)
+    matching_boxes = set(box_log['Box Number']).intersection(preorders['Box_Number'])
+    total_matching_boxes = len(matching_boxes)
 
-    # Display the Login Button
-    st.markdown(f"""
-            <a href="{login_url}" target="_blank" style="
-                text-decoration:none;
-                color:white;
-                background-color:#FF4B4B;
-                padding:15px 25px;
-                border-radius:5px;
-                font-size:18px;
-                display:inline-block;">
-                🔐 Log in with Microsoft Entra ID
-            </a>
-        </div>
-    """, unsafe_allow_html=True)
+    for index, row in box_log.iterrows():
+        box_number = row['Box Number']
+        pre_order_value = row['Pre Order Food (INC VAT)']
+        on_day_order_value = row['On Day Order Food (INC VAT)']
 
-    # Process login by checking query parameters for the authorization code
-    query_params = st.experimental_get_query_params()
-    if "code" in query_params and not st.session_state.get("redirected", False):
-        auth_code = query_params["code"][0]
-        logging.info("Authorization code received. Initiating login process...")
-        with st.spinner("🔄 Logging you in..."):
-            try:
-                result = app.acquire_token_by_authorization_code(
-                    code=auth_code,
-                    scopes=SCOPES,
-                    redirect_uri=REDIRECT_URI
+        matches = preorders[preorders['Parsed_Box_Numbers'].apply(lambda x: box_number in x)]
+
+        if not matches.empty:
+            pre_order_total = matches['Total'].sum()
+            status = ', '.join(matches['Status'].unique())
+
+            # Apply Green Highlight if values match
+            if abs(pre_order_value - pre_order_total) <= 0.01:
+                cell = ws[f"D{index + 4}"]
+                cell.fill = green_fill
+                total_green += 1
+                green_details.append(
+                    f"Box {box_number} (Row {index + 4}): Pre Order Food (\u00a3{pre_order_value}) matches Preorders Total (\u00a3{pre_order_total}). Status: {status}. Green applied."
                 )
-                if "access_token" in result:
-                    st.session_state["access_token"] = result["access_token"]
-                    st.session_state["authenticated"] = True
-                    st.session_state["redirected"] = True
-                    logging.info("Login successful. Redirecting user...")
-                    st.success("🎉 Login successful! Redirecting...")
-                    st.rerun()
-                else:
-                    logging.warning("Failed to acquire access token.")
-                    st.error("❌ Failed to log in. Please try again.")
-            except Exception as e:
-                logging.error(f"An error occurred during login: {e}")
-                if "invalid_grant" in str(e):
-                    st.error("❌ The authorization code is invalid or expired. Please log in again.")
-                else:
-                    st.error(f"❌ An unexpected error occurred: {str(e)}")
-    else:
-        if "code" not in query_params:
-            logging.info("No authorization code in query parameters.")
-            # st.info("🔑 Please log in using the authentication portal.")
+            else:
+                # Apply Red Highlight if values don't match
+                cell = ws[f"D{index + 4}"]
+                cell.fill = red_fill
+                total_red += 1
+                red_details.append(
+                    f"Box {box_number} (Row {index + 4}): Pre Order Food (\u00a3{pre_order_value}) does not match Preorders Total (\u00a3{pre_order_total}). Status: {status}. Red applied."
+                )
 
-# Initialize logout state
-    if "logout_triggered" not in st.session_state:
-        st.session_state["logout_triggered"] = False
+            # Apply Yellow Highlight for Pending status
+            if 'Pending' in status:
+                cell = ws[f"D{index + 4}"]
+                cell.fill = yellow_fill
+                total_yellow += 1
+                yellow_details.append(
+                    f"Box {box_number} (Row {index + 4}): Marked as Yellow due to Pending status. Yellow applied."
+                )
+        else:
+            # Apply Yellow Highlight only if Pre Order Food has a value greater than 0
+            if pre_order_value > 0:
+                cell = ws[f"D{index + 4}"]
+                cell.fill = yellow_fill
+                total_yellow += 1
+                yellow_details.append(
+                    f"Box {box_number} (Row {index + 4}): Not found in Preorders. Highlighted Yellow due to Pre Order Food value (\u00a3{pre_order_value})."
+                )
 
-    if "logged_in" not in st.session_state:
-        st.session_state["logged_in"] = True  # Default state is logged in
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
 
-    # Logout Button
-    if st.sidebar.button("🔓 Logout"):
-        if not st.session_state["logout_triggered"]:
-            logging.info("User logged out.")
-            st.session_state["logout_triggered"] = True
-            st.session_state["logged_in"] = False  # Mark as logged out
-            st.session_state.clear()
-            st.success("✅ You have been logged out successfully!")
-            st.rerun()  # Trigger a full rerun
+    return output, green_details, yellow_details, red_details, total_matching_boxes, matching_boxes, multi_event_boxes
 
-    # Handle post-logout state
-    if st.session_state.get("logout_triggered", False):
-        st.session_state.clear()  # Clear session state
-        st.session_state["logout_triggered"] = True  # Maintain logout state to avoid flicker
-        st.stop()  # Stop further execution to avoid login checks
 
-# Footer Section
-st.markdown("---")
-st.markdown("""
-    <div style="text-align:center; font-size:12px; color:gray;">
-        🏟️ **Arsenal Property** | All Rights Reserved © 2024  
-        Need help? <a href="mailto:cmunthali@arsenal.co.uk" style="text-decoration:none; color:#FF4B4B;">Contact: cmunthali@arsenal.co.uk</a>
-    </div>
-""", unsafe_allow_html=True)
+import streamlit as st
+
+def main():
+    # Display the Arsenal crest image
+    st.image("assets/arsenal_crest_gold.png", width=150)  # Adjust the width as needed
+    st.title("Box Log Processing Tool")
+    
+    # Instructions Expander
+    with st.expander("Instructions and Information", expanded=False):
+        st.markdown("""
+        **How to Use the Tool:**
+        1. **Upload Files:** Use the file uploaders below to upload your Box Log and Pre-orders (https://www.tjhub3.com/Rts_Arsenal_Hospitality/Suites/Reports/PreOrders/Index) files in Excel format.
+        2. **Process Files:** After uploading both files, click the 'Process Files' button to analyze the data.
+        3. **Download Results:** Once processing is complete, a download button will appear to download the processed Box Log.
+        4. To see the metrics on the sidebar again, please click **Process Files** once more.
+
+        **How the Tool Works:**
+        - The app compares the 'Pre Order Food' values in the Box Log with the totals in the Pre-orders file.
+        - It identifies matching boxes and checks for discrepancies between the two files.
+        - Based on the comparison, it applies color highlights to the 'Pre Order Food' column in the Box Log to indicate the status.
+
+        **Color Codes Explanation:**
+        - **Green:** The 'Pre Order Food' value in Box Log matches the 'Total' in the Pre-orders file if the Status is "Confirmed."
+        - **Yellow:** The 'Pre Order Food' value in Box Log matches the 'Total' in the Pre-orders file if the Status is "Pending."
+        - **Yellow:** The box is not found in the Pre-orders file, but the 'Pre Order Food' cell in the Box Log has a value.
+        - **Red:** The 'Pre Order Food' value does not match the 'Total' in the Preorders file, regardless of status (key for checking Multi-Event Boxes).
+          - **On Red filled cells, it is recommended to check the Pre-Order file and manually update if required.**
+        """)
+
+    st.sidebar.header("Summary")
+
+    box_log_file = st.file_uploader("Upload Box Log File", type=["xls", "xlsx"])
+    preorders_file = st.file_uploader("Upload Preorders File", type=["xls", "xlsx"])
+
+    if box_log_file and preorders_file:
+        if st.button("Process Files"):
+            output_file, green_details, yellow_details, red_details, total_matching_boxes, matching_boxes, multi_event_boxes = process_files(
+                box_log_file, preorders_file
+            )
+            st.success("Files processed successfully!")
+
+            st.sidebar.subheader("Matching Boxes Summary")
+            st.sidebar.write(f"**Total Matching Boxes:** {total_matching_boxes}")
+            st.sidebar.write(f"**Matching Boxes:** {', '.join(sorted(matching_boxes))}")
+
+            st.sidebar.subheader("Green Highlights")
+            for detail in green_details:
+                st.sidebar.write(f"- {detail}")
+
+            st.sidebar.subheader("Yellow Highlights")
+            for detail in yellow_details:
+                st.sidebar.write(f"- {detail}")
+
+            st.sidebar.subheader("Red Highlights")
+            for detail in red_details:
+                st.sidebar.write(f"- {detail}")
+
+            st.sidebar.subheader("Multi-Event Boxes")
+            if not multi_event_boxes.empty:
+                for box, group in multi_event_boxes.groupby('Box_Number'):
+                    st.sidebar.write(f"- Box {box} has multiple events with a total of \u00a3{group['Total'].sum():.2f}")
+
+            st.download_button(
+                "Download Processed Box Log",
+                data=output_file,
+                file_name="Processed_Box_Log.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+
+if __name__ == "__main__":
+    main()
