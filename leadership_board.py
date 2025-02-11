@@ -29,7 +29,7 @@ targets_data = pd.DataFrame({
     "bgardiner": [155000, 155000, 135000, 110000, 90000, 65000],
     "dcoppin": [155000, 155000, 135000, 110000, 90000, 65000],
     "jedwards": [155000, 155000, 135000, 110000, 90000, 65000],
-    "MillieS": [155000, 155000, 135000, 110000, 90000, 65000],
+    "millies": [155000, 155000, 135000, 110000, 90000, 65000],
     "dmontague": [155000, 155000, 135000, 110000, 90000, 65000]
     # "MeganS": [42500, 42500, 36500, 30500, 24500, 18500],
     # "BethNW": [42500, 42500, 36500, 30500, 24500, 18500],
@@ -39,7 +39,7 @@ targets_data = pd.DataFrame({
 }).set_index(["Month", "Year"])
 
 # Specify your list of executives
-valid_executives = ["dcoppin", "MillieS", "bgardiner", "dmontague", "jedwards"]
+valid_executives = ["dcoppin", "millies", "bgardiner", "dmontague", "jedwards"]
                     #  "HayleyA", "BethNW", "BenT", "jmurphy", "MeganS"]
 
 
@@ -126,7 +126,7 @@ def calculate_monthly_progress(data, start_date, end_date):
         "bgardiner": "Bobby",
         "dcoppin": "David",
         "jedwards": "Joey",
-        "MillieS": "Millie",
+        "millies": "Millie",
         # "HayleyA": "Hayley",
         # "BethNW": "Beth",
         # "BenT": "Ben",
@@ -354,7 +354,7 @@ def generate_scrolling_messages(data, budget_df):
         top_fixture_message = "📉 No sales recorded today."
 
     # Specify Executives
-    valid_executives = ["dcoppin", "MillieS", "bgardiner", "dmontague", "jedwards"]
+    valid_executives = ["dcoppin", "millies", "bgardiner", "dmontague", "jedwards"]
 
     # Filter today’s sales to include only valid executives
     exec_sales_today = today_sales[today_sales["CreatedBy"].isin(valid_executives)]
@@ -365,7 +365,7 @@ def generate_scrolling_messages(data, budget_df):
         "bgardiner": "Bobby",
         "dcoppin": "David",
         "jedwards": "Joey",
-        "MillieS": "Millie",
+        "millies": "Millie",
     }
 
     if not exec_sales_today.empty:
@@ -472,7 +472,7 @@ def run_dashboard():
     )
 
     # Filter the data for the selected date range
-    valid_executives = ["dcoppin", "MillieS", "bgardiner", "dmontague"]
+    valid_executives = ["dcoppin", "millies", "bgardiner", "dmontague"]
 
     # Sidebar: Monthly Progress Budget Target Section
     filtered_data = filtered_df_without_seats.copy()
@@ -691,6 +691,7 @@ def run_dashboard():
     #     """,
     #     unsafe_allow_html=True,
     # )
+    
     col1, col2 = st.sidebar.columns(2)
     start_date = col1.date_input("Start Date", value=datetime.now().replace(day=1), label_visibility="collapsed")
     end_date = col2.date_input("End Date", value=datetime.now(), label_visibility="collapsed")

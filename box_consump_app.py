@@ -125,9 +125,7 @@ st.markdown("""
 
 # import pandas as pd
 # import streamlit as st
-# from openpyxl import load_workbook
 # from openpyxl.styles import PatternFill
-# import re
 # import io
 
 

@@ -226,3 +226,38 @@ def run_app():
 if __name__ == "__main__":
     run_app()
 
+ # # PAGE 1: Services Leaderboard
+    # elif st.session_state.page == 1:
+    #     st.markdown(
+    #         """
+    #         <style>
+    #         @font-face {
+    #             font-family: 'Northbank-N7';
+    #             src: url('fonts/Northbank-N7_2789728357.ttf') format('truetype');
+    #         }
+    #         .custom-title {
+    #             font-family: 'Northbank-N7';
+    #             font-size: 65px;
+    #             font-weight: bold;
+    #             color: #E41B17;
+    #             text-align: center;
+    #         }
+    #         </style>
+    #         <div class="custom-title">
+    #             ARSENAL PREMIUM SERVICES
+    #         </div>
+    #         """,
+    #         unsafe_allow_html=True,
+    #     )
+    #     monthly_progress, sales_made = calculate_monthly_progress(
+    #         filtered_services_data, start_date, end_date, valid_services_executives, targets_data
+    #     )
+    #     st.markdown(
+    #         f"""
+    #         <div style="display: flex; justify-content: center; align-items: center; margin-top: 20px; margin-bottom: 20px;">
+    #             {monthly_progress}
+    #         </div>
+    #         """,
+    #         unsafe_allow_html=True,
+    #     )
+    #     render_budget_progress_widget(filtered_services_data, valid_services_executives, "Services Exec", start_date, targets_data)
