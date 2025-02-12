@@ -62,6 +62,7 @@ budget_df = load_budget_targets()
 
 
 def calculate_monthly_progress(data, start_date, end_date):
+    
     data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], errors="coerce", dayfirst=True)
 
     # Filter data within the date range
@@ -472,7 +473,7 @@ def run_dashboard():
     )
 
     # Filter the data for the selected date range
-    valid_executives = ["dcoppin", "millies", "bgardiner", "dmontague"]
+    valid_executives = ["dcoppin", "millies", "bgardiner", "dmontague", "jedwards"]
 
     # Sidebar: Monthly Progress Budget Target Section
     filtered_data = filtered_df_without_seats.copy()

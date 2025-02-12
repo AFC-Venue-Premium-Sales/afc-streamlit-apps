@@ -871,3 +871,79 @@ if __name__ == "__main__":
     run_dashboard()
 
 
+
+import pandas as pd
+import streamlit as st
+from datetime import datetime
+
+def render_budget_progress_widget(data, valid_executives, title, start_date, targets_data):
+    """
+    Renders a side widget showing total revenue vs. target for the given subset of execs.
+    THIS IS ONLY FOR THE LEADERBOARD PAGES
+    """
+
+    # Ensure 'CreatedOn' is a datetime object
+    data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], errors="coerce", dayfirst=True)
+
+    # Filter data to include only the specified sales executives
+    executive_data = data[data["CreatedBy"].isin(valid_executives)]  # <-- Fix column name
+
+    # Extract the current month and year from start_date
+    current_month = start_date.strftime("%B")
+    current_year = start_date.year
+
+    # Filter for transactions within the current month and year
+    current_month_data = executive_data[
+        (executive_data["CreatedOn"].dt.month == start_date.month) &
+        (executive_data["CreatedOn"].dt.year == current_year)
+    ]
+
+    # Calculate total revenue for the selected executives in the current month
+    total_revenue = current_month_data["Price"].sum()
+
+    # Retrieve monthly sales targets for the valid executives
+    if (current_month, current_year) in targets_data.index:
+        monthly_targets = targets_data.loc[(current_month, current_year), valid_executives]
+        total_target = monthly_targets.sum()
+    else:
+        total_target = 0
+
+    # Calculate progress percentage
+    progress_percentage = (total_revenue / total_target * 100) if total_target > 0 else 0
+
+    # Render the sidebar widget
+    st.sidebar.markdown(
+        f"""
+        <style>
+            .custom-progress-widget {{
+                background-color: #fff0f0;
+                border: 2px solid #E41B17;
+                border-radius: 15px;
+                margin-top: 10px;
+                padding: 20px 15px;
+                text-align: center;
+                font-size: 28px;
+                font-weight: bold;
+                color: #E41B17;
+            }}
+            .custom-progress-widget span {{
+                font-size: 26px;
+                color: #0047AB;
+            }}
+            .custom-progress-widget .highlight {{
+                font-size: 28px;
+                color: #E41B17;
+            }}
+        </style>
+        <div class="custom-progress-widget">
+            📊 {title} Progress <br>
+            <span>Total Revenue ({start_date.strftime("%B")}):</span><br>
+            <span class="highlight">£{total_revenue:,.0f}</span><br>
+            <span>Total Target:</span><br>
+            <span class="highlight">£{total_target:,.0f}</span><br>
+            <span>🌟 Progress Achieved:</span><br>
+            <span class="highlight">{progress_percentage:.0f}%</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )

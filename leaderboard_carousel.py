@@ -68,17 +68,17 @@ targets_data = pd.DataFrame({
     "bgardiner": [155000, 155000, 135000, 110000, 90000, 65000],
     "dcoppin":   [155000, 155000, 135000, 110000, 90000, 65000],
     "jedwards":  [155000, 155000, 135000, 110000, 90000, 65000],
-    "MillieS":   [155000, 155000, 135000, 110000, 90000, 65000],
+    "millies":   [155000, 155000, 135000, 110000, 90000, 65000],
     "dmontague": [155000, 155000, 135000, 110000, 90000, 65000],
-    "MeganS":    [42500, 42500, 36500, 30500, 24500, 18500],
-    "BethNW":    [42500, 42500, 36500, 30500, 24500, 18500],
-    "HayleyA":   [42500, 42500, 36500, 30500, 24500, 18500],
-    "jmurphy":   [35000, 35000, 30000, 25000, 20000, 15000],
-    "BenT":      [35000, 35000, 30000, 25000, 20000, 15000],
+    # "MeganS":    [42500, 42500, 36500, 30500, 24500, 18500],
+    # "BethNW":    [42500, 42500, 36500, 30500, 24500, 18500],
+    # "HayleyA":   [42500, 42500, 36500, 30500, 24500, 18500],
+    # "jmurphy":   [35000, 35000, 30000, 25000, 20000, 15000],
+    # "BenT":      [35000, 35000, 30000, 25000, 20000, 15000],
 }).set_index(["Month", "Year"])
 
-valid_sales_executives =  ["dcoppin", "MillieS", "bgardiner", "dmontague", "jedwards"]
-valid_services_executives = ["HayleyA", "BethNW", "BenT", "jmurphy", "MeganS"]
+valid_sales_executives =  ["dcoppin", "millies", "bgardiner", "dmontague", "jedwards"]
+# valid_services_executives = ["HayleyA", "BethNW", "BenT", "jmurphy", "MeganS"]
 
 def load_budget_targets():
     """
@@ -108,10 +108,11 @@ def calculate_monthly_progress(data, start_date, end_date, valid_executives, tar
     returning an HTML-styled leaderboard and an array of executives who made sales.
     """
 
-    # Convert CreatedOn to datetime
-    data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], errors="coerce", dayfirst=True)
+    # ✅ 1️⃣ Ensure 'CreatedOn' is properly parsed & normalized
+    data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], format="%d-%m-%Y %H:%M", errors="coerce", dayfirst=True)
+    data["CreatedOn"] = data["CreatedOn"].dt.normalize()  # Removes time, keeps date
 
-    # Filter data within the date range & for valid executives
+    # ✅ 2️⃣ Filter data within the selected date range for valid executives
     filtered_data = data[
         (data["CreatedOn"] >= pd.to_datetime(start_date)) &
         (data["CreatedOn"] <= pd.to_datetime(end_date)) &
@@ -121,53 +122,66 @@ def calculate_monthly_progress(data, start_date, end_date, valid_executives, tar
     current_month = start_date.strftime("%B")
     current_year = start_date.year
 
-    # Ensure the targets exist for this month and year
+    # ✅ 3️⃣ Ensure targets exist for this month and year
     if (current_month, current_year) not in targets_data.index:
+        print("DEBUG: No Monthly Targets Found!")  # Debugging
         return None, []
 
-    # Expected progress pace
+    # ✅ 4️⃣ Expected progress pace calculations
     total_days_in_month = pd.Period(f"{current_year}-{start_date.month}").days_in_month
     days_elapsed = (pd.to_datetime(end_date) - pd.Timestamp(f"{current_year}-{start_date.month}-01")).days + 1
     expected_pace = (days_elapsed / total_days_in_month) * 100
     half_expected_pace = 0.5 * expected_pace
 
-    # Calculate today's sales
-    end_date_sales_data = filtered_data[filtered_data["CreatedOn"].dt.date == pd.to_datetime(end_date).date()]
+    # ✅ 5️⃣ Today's Sales Calculation (Fix: Normalize Dates Before Comparison)
+    today = pd.to_datetime(end_date).normalize()  # Strips time, keeps date
+
+    print("DEBUG: Expected Today's Date:", today)  # Debugging
+    print("DEBUG: Rows matching today's date filter:")
+    print(filtered_data[filtered_data["CreatedOn"] == today])  # Should not be empty
+    
+    end_date_sales_data = filtered_data[filtered_data["CreatedOn"].dt.normalize() == pd.to_datetime(end_date).normalize()]
+    end_date_sales_data = filtered_data[filtered_data["CreatedOn"] == today]
+
     end_date_sales = (
         end_date_sales_data.groupby("CreatedBy")["Price"]
         .sum()
         .reindex(valid_executives, fill_value=0)
     )
 
-    # Calculate weekly sales
-    start_of_week = pd.to_datetime(end_date) - pd.Timedelta(days=pd.to_datetime(end_date).weekday())
+    # ✅ 6️⃣ Weekly Sales Calculation
+    start_of_week = today - pd.Timedelta(days=today.weekday())
+
     weekly_sales_data = filtered_data[
         (filtered_data["CreatedOn"] >= start_of_week) &
-        (filtered_data["CreatedOn"] <= pd.to_datetime(end_date))
+        (filtered_data["CreatedOn"] <= today)
     ]
+
     weekly_sales = (
         weekly_sales_data.groupby("CreatedBy")["Price"]
         .sum()
-        .add(end_date_sales, fill_value=0)
+        .add(end_date_sales, fill_value=0)  # Ensure today's sales are included
         .reindex(valid_executives, fill_value=0)
     )
 
-    # Monthly progress tracking
+    # ✅ 7️⃣ Monthly Progress Calculation
     progress = (
         filtered_data.groupby("CreatedBy")["Price"]
         .sum()
         .reindex(valid_executives, fill_value=0)
     )
 
-    # Ensure correct lookup for monthly targets
-    if isinstance(targets_data, pd.DataFrame):
-        monthly_targets = targets_data.loc[(current_month, current_year), valid_executives]
-    else:
-        monthly_targets = {exec: 0 for exec in valid_executives}
+    # ✅ 8️⃣ Ensure correct lookup for monthly targets
+    monthly_targets = targets_data.loc[(current_month, current_year), valid_executives] \
+        if (current_month, current_year) in targets_data.index else None
+
+    if monthly_targets is None:
+        print("DEBUG: No Monthly Targets Found!")  # Debugging
+        return None, []
 
     progress_percentage = (progress / monthly_targets * 100).round(0)
 
-    # Build DataFrame
+    # ✅ 9️⃣ Build DataFrame for Display
     progress_data = pd.DataFrame({
         "Sales Exec": progress.index,
         "Today's Sales": end_date_sales.values,
@@ -175,27 +189,23 @@ def calculate_monthly_progress(data, start_date, end_date, valid_executives, tar
         "Progress To Monthly Target (Numeric)": progress_percentage.values,
     }).reset_index(drop=True)
 
-    # Map usernames to full names
+    # ✅ 🔟 Map usernames to full names
     user_mapping = {
         "dmontague": "Dan",
         "bgardiner": "Bobby",
         "dcoppin": "David",
         "jedwards": "Joey",
-        "MillieS": "Millie",
-        "HayleyA": "Hayley",
-        "BethNW": "Beth",
-        "BenT": "Ben",
-        "jmurphy": "James",
-        "MeganS": "Megan"
+        "millies": "Millie",
     }
     progress_data["Sales Exec"] = progress_data["Sales Exec"].map(user_mapping).fillna(progress_data["Sales Exec"])
 
-    # Sort by progress descending
+    # ✅ 1️⃣1️⃣ Sort by Progress to Monthly Target
     progress_data.sort_values(by="Progress To Monthly Target (Numeric)", ascending=False, inplace=True)
 
-    # Totals row
+    # ✅ 1️⃣2️⃣ Totals Row Calculation
     total_today_sales = end_date_sales.sum()
     total_weekly_sales = weekly_sales.sum()
+
     totals_row = {
         "Sales Exec": "TOTALS",
         "Today's Sales": total_today_sales,
@@ -205,6 +215,11 @@ def calculate_monthly_progress(data, start_date, end_date, valid_executives, tar
 
     if not progress_data.empty:
         progress_data = pd.concat([progress_data, pd.DataFrame([totals_row])], ignore_index=True)
+
+    # ✅ DEBUG: Check the Final Output
+    print("DEBUG: Final Progress Data")
+    print(progress_data)
+
 
     # Identify highest daily/weekly sales
     max_today_sales = progress_data.loc[progress_data["Sales Exec"] != "TOTALS", "Today's Sales"].max()
@@ -246,6 +261,18 @@ def calculate_monthly_progress(data, start_date, end_date, valid_executives, tar
 
     # Drop numeric column
     progress_data.drop(columns=["Progress To Monthly Target (Numeric)"], inplace=True)
+    
+    # Adjust column headers for consistent font size
+    styled_columns = {
+        "Sales Exec": "Sales Exec",
+        "Today's Sales": "Today's Sales",
+        "Weekly Sales": "Weekly Sales",
+        "Progress To Monthly Target": "Progress To Monthly Target"
+    }
+    progress_data.columns = [
+        f"<div style='font-family: Chapman-Bold; font-size: 22px; text-align: center;'>{col}</div>"
+        for col in styled_columns.values()
+    ]
 
     # Convert to HTML
     styled_table = progress_data.to_html(classes="big-table", escape=False, index=False)
@@ -363,7 +390,7 @@ def generate_scrolling_messages(data, budget_df, df_inventory):
         top_fixture_message = "📉 No sales recorded today."
 
     # ✅ **Top Selling Exec with Name Mapping**
-    valid_executives = ["dcoppin", "MillieS", "bgardiner", "dmontague", "jedwards"]
+    valid_executives = ["dcoppin", "millies", "bgardiner", "dmontague", "jedwards"]
 
     # Apply user mapping
     user_mapping = {
@@ -371,12 +398,12 @@ def generate_scrolling_messages(data, budget_df, df_inventory):
         "bgardiner": "Bobby",
         "dcoppin":   "David",
         "jedwards":  "Joey",
-        "MillieS":   "Millie",
-        "HayleyA":   "Hayley",
-        "BethNW":    "Beth",
-        "BenT":      "Ben",
-        "jmurphy":   "James",
-        "MeganS":    "Megan"
+        "millies":   "Millie",
+        # "HayleyA":   "Hayley",
+        # "BethNW":    "Beth",
+        # "BenT":      "Ben",
+        # "jmurphy":   "James",
+        # "MeganS":    "Megan"
     }
 
     # Filter sales data for valid executives
@@ -469,7 +496,7 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
         }
         .fixture-title {
             font-family: 'Chapman-Bold';
-            font-size: 50px;  /* Optimized size for better dashboard fitting */
+            font-size: 40px;  /* Optimized size for better dashboard fitting */
             color: #E41B17;
             font-weight: bold;
             text-align: center;
@@ -642,8 +669,7 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
 def run_dashboard():
     """
     Renders a 5-page rotating dashboard:
-      - Page 0: Sales Leaderboard
-      - Page 1: Services Leaderboard
+      - Page 1: Sales Leaderboard
       - Page 2: 1st Upcoming Fixture
       - Page 3: 2nd Upcoming Fixture
       - Page 4: 3rd Upcoming Fixture
@@ -659,13 +685,13 @@ def run_dashboard():
     # --------------------------------------------------------------------------
 
     # For sales + services
-    valid_sales_executives = ["dcoppin", "MillieS", "bgardiner", "dmontague", "jedwards"]
-    valid_services_executives = ["HayleyA", "BethNW", "BenT", "jmurphy", "MeganS"]
+    valid_sales_executives = ["dcoppin", "millies", "bgardiner", "dmontague", "jedwards"]
+    # valid_services_executives = ["HayleyA", "BethNW", "BenT", "jmurphy", "MeganS"]
 
     
     # Page state initialization
     if "page" not in st.session_state:
-        st.session_state.page = 0
+        st.session_state.page = 1
 
     # Initialize the time for the first time
     if "last_switch_time" not in st.session_state:
@@ -673,7 +699,7 @@ def run_dashboard():
 
     # Check if 15 seconds have passed since the last switch time
     if time.time() - st.session_state.last_switch_time >= 15:
-        st.session_state.page = (st.session_state.page + 1) % 5  # cycle among 0..4
+        st.session_state.page = (st.session_state.page % 4) + 1
         st.session_state.last_switch_time = time.time()  # Update the last switch time
 
     # Sidebar - Date Filter
@@ -739,23 +765,51 @@ def run_dashboard():
     # -------------------------
     # ✅ **Render Budget Progress and Next Fixture Side bar**
     # -------------------------
-    def render_budget_progress_widget(data, valid_executives, title, start_date, targets_data):
+    
+    def render_budget_progress_widget(data, valid_sales_executives, title, start_date, targets_data):
         """
-        Renders a side widget showing total revenue vs. target for the given subset of execs.
-        THIS IS ONLY FOR THE LEADERBOARD PAGES
+        Renders a sidebar widget showing total revenue vs. target for sales executives.
         """
-        total_revenue = data["Price"].sum()
+
+        # Ensure 'CreatedOn' is a datetime object
+        data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], errors="coerce", dayfirst=True)
+
+        # Filter data to include only the specified sales executives
+        executive_data = data[data["CreatedBy"].isin(valid_sales_executives)]  
+
+        # Extract the current month and year from start_date
         current_month = start_date.strftime("%B")
         current_year = start_date.year
 
+        # Filter for transactions within the current month and year
+        current_month_data = executive_data[
+            (executive_data["CreatedOn"].dt.month == start_date.month) &
+            (executive_data["CreatedOn"].dt.year == current_year)
+        ]
+
+        # Calculate total revenue for the selected executives in the current month
+        total_revenue = current_month_data["Price"].sum()
+
+        # Retrieve monthly sales targets for the valid sales executives
+        # Retrieve monthly sales targets for the valid sales executives
         if (current_month, current_year) in targets_data.index:
-            monthly_targets = targets_data.loc[(current_month, current_year), valid_executives]
-            total_target = monthly_targets.sum() if total_revenue > 0 else 0
-            progress_percentage = (total_revenue / total_target * 100) if total_target > 0 else 0
+            # Ensure only sales executives in the DataFrame are used
+            sales_execs_in_data = [exec for exec in valid_sales_executives if exec in targets_data.columns]
+            
+            # Filter the targets for the selected month and year
+            monthly_targets = targets_data.loc[(current_month, current_year), sales_execs_in_data]
+
+            # ✅ Sum only for the selected sales executives in that month
+            total_target = monthly_targets.sum() if not monthly_targets.empty else 0
         else:
             total_target = 0
-            progress_percentage = 0
 
+
+
+        # Calculate progress percentage
+        progress_percentage = (total_revenue / total_target * 100) if total_target > 0 else 0
+
+        # Render the sidebar widget
         st.sidebar.markdown(
             f"""
             <style>
@@ -792,6 +846,7 @@ def run_dashboard():
             unsafe_allow_html=True,
         )
 
+
     # -------------------------
     # ✅ **Filter Sales & Services Data Properly**
     # -------------------------
@@ -802,12 +857,12 @@ def run_dashboard():
     )
     filtered_sales_data = filtered_data[mask_sales]
 
-    mask_services = (
-        filtered_data["CreatedBy"].isin(valid_services_executives) &
-        (pd.to_datetime(filtered_data["CreatedOn"], errors="coerce", dayfirst=True) >= start_date) &
-        (pd.to_datetime(filtered_data["CreatedOn"], errors="coerce", dayfirst=True) <= end_date)
-    )
-    filtered_services_data = filtered_data[mask_services]
+    # mask_services = (
+    #     filtered_data["CreatedBy"].isin(valid_services_executives) &
+    #     (pd.to_datetime(filtered_data["CreatedOn"], errors="coerce", dayfirst=True) >= start_date) &
+    #     (pd.to_datetime(filtered_data["CreatedOn"], errors="coerce", dayfirst=True) <= end_date)
+    # )
+    # filtered_services_data = filtered_data[mask_services]
     
     
     def render_next_fixture_sidebar(fixture_row, filtered_data, budget_df):
@@ -943,12 +998,12 @@ def run_dashboard():
 
 
     ############################################################################
-    # PAGES: 0 = SALES, 1 = SERVICES, 2/3/4 = UPCOMING FIXTURES
+    # PAGES: 1 =SALES ; 2/3/4 = UPCOMING FIXTURES
     ############################################################################
 
     
-    # PAGE 0: Sales Leaderboard
-    if st.session_state.page == 0:
+    # PAGE 1: Sales Leaderboard
+    if st.session_state.page == 1:
         st.markdown(
             """
             <style>
@@ -984,8 +1039,8 @@ def run_dashboard():
         render_budget_progress_widget(filtered_sales_data, valid_sales_executives, "Sales Exec", start_date, targets_data)
 
 
-    # PAGE 2: 1st Upcoming Fixture
-    elif st.session_state.page == 1:
+    # PAGE 1: 1st Upcoming Fixture
+    elif st.session_state.page == 2:
         next_fixtures = get_upcoming_fixtures(df_inventory, n=3)
         if len(next_fixtures) >= 1:
             fixture_1 = next_fixtures.iloc[0]
@@ -994,8 +1049,8 @@ def run_dashboard():
         else:
             st.write("No upcoming fixtures found.")
 
-    # PAGE 3: 2nd Upcoming Fixture
-    elif st.session_state.page == 2:
+    # PAGE 2: 2nd Upcoming Fixture
+    elif st.session_state.page == 3:
         next_fixtures = get_upcoming_fixtures(df_inventory, n=3)
         if len(next_fixtures) >= 2:
             fixture_2 = next_fixtures.iloc[1]
@@ -1004,8 +1059,8 @@ def run_dashboard():
         else:
             st.write("No second upcoming fixture found.")
 
-    # PAGE 4: 3rd Upcoming Fixture
-    elif st.session_state.page == 3:
+    # PAGE 3: 3rd Upcoming Fixture
+    elif st.session_state.page == 4:
         next_fixtures = get_upcoming_fixtures(df_inventory, n=3)
         if len(next_fixtures) >= 3:
             fixture_3 = next_fixtures.iloc[2]
