@@ -121,7 +121,13 @@ print('initial_merged_events_transactions_with_accounts.csv saved to folder')
 # Helper function to parse datetime with varying precision
 from datetime import datetime
 
+from datetime import datetime
+
 def parse_datetime(date_str):
+    # Check if date_str is None
+    if date_str is None:
+        return None  # Or return a default datetime if necessary
+    
     formats = [
         "%Y-%m-%dT%H:%M:%S.%f",  # With microseconds
         "%Y-%m-%dT%H:%M:%S",      # Without microseconds
@@ -131,13 +137,14 @@ def parse_datetime(date_str):
     
     for fmt in formats:
         try:
-            # Parse the date string
+            # Try parsing the date string
             dt = datetime.strptime(date_str, fmt)
             # Format it as DD-MM-YYYY
             return dt.strftime("%d-%m-%Y %H:%M")
         except ValueError:
             continue
     return date_str  # Return the original string if no format matched
+
 
 final_data = []
 

@@ -102,86 +102,59 @@ budget_df = load_budget_targets()
 # 3. Leaderboard Calculation & Rendering Functions
 ################################################################################
 
-def calculate_monthly_progress(data, start_date, end_date, valid_executives, targets_data):
-    """
-    Calculates the monthly progress for specified executives within a date range,
-    returning an HTML-styled leaderboard and an array of executives who made sales.
-    """
+def calculate_monthly_progress(data, start_date, end_date):
+    
+    data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], errors="coerce", dayfirst=True)
 
-    # ✅ 1️⃣ Ensure 'CreatedOn' is properly parsed & normalized
-    data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], format="%d-%m-%Y %H:%M", errors="coerce", dayfirst=True)
-    data["CreatedOn"] = data["CreatedOn"].dt.normalize()  # Removes time, keeps date
-
-    # ✅ 2️⃣ Filter data within the selected date range for valid executives
+    # Filter data within the date range
     filtered_data = data[
         (data["CreatedOn"] >= pd.to_datetime(start_date)) &
-        (data["CreatedOn"] <= pd.to_datetime(end_date)) &
-        (data["CreatedBy"].isin(valid_executives))
-    ].copy()
+        (data["CreatedOn"] <= pd.to_datetime(end_date))
+    ]
 
     current_month = start_date.strftime("%B")
     current_year = start_date.year
 
-    # ✅ 3️⃣ Ensure targets exist for this month and year
     if (current_month, current_year) not in targets_data.index:
-        print("DEBUG: No Monthly Targets Found!")  # Debugging
         return None, []
 
-    # ✅ 4️⃣ Expected progress pace calculations
+    # Calculate expected pace
     total_days_in_month = pd.Period(f"{current_year}-{start_date.month}").days_in_month
     days_elapsed = (pd.to_datetime(end_date) - pd.Timestamp(f"{current_year}-{start_date.month}-01")).days + 1
     expected_pace = (days_elapsed / total_days_in_month) * 100
     half_expected_pace = 0.5 * expected_pace
 
-    # ✅ 5️⃣ Today's Sales Calculation (Fix: Normalize Dates Before Comparison)
-    today = pd.to_datetime(end_date).normalize()  # Strips time, keeps date
-
-    print("DEBUG: Expected Today's Date:", today)  # Debugging
-    print("DEBUG: Rows matching today's date filter:")
-    print(filtered_data[filtered_data["CreatedOn"] == today])  # Should not be empty
-    
-    end_date_sales_data = filtered_data[filtered_data["CreatedOn"].dt.normalize() == pd.to_datetime(end_date).normalize()]
-    end_date_sales_data = filtered_data[filtered_data["CreatedOn"] == today]
-
+    # Today's sales
+    end_date_sales_data = data[data["CreatedOn"].dt.date == pd.to_datetime(end_date).date()]
     end_date_sales = (
         end_date_sales_data.groupby("CreatedBy")["Price"]
         .sum()
-        .reindex(valid_executives, fill_value=0)
+        .reindex(targets_data.columns, fill_value=0)
     )
 
-    # ✅ 6️⃣ Weekly Sales Calculation
-    start_of_week = today - pd.Timedelta(days=today.weekday())
-
-    weekly_sales_data = filtered_data[
-        (filtered_data["CreatedOn"] >= start_of_week) &
-        (filtered_data["CreatedOn"] <= today)
+    # Weekly sales
+    start_of_week = pd.to_datetime(end_date) - pd.Timedelta(days=pd.to_datetime(end_date).weekday())
+    weekly_sales_data = data[
+        (data["CreatedOn"] >= start_of_week) &
+        (data["CreatedOn"] <= pd.to_datetime(end_date))
     ]
-
     weekly_sales = (
         weekly_sales_data.groupby("CreatedBy")["Price"]
         .sum()
         .add(end_date_sales, fill_value=0)  # Ensure today's sales are included
-        .reindex(valid_executives, fill_value=0)
+        .reindex(targets_data.columns, fill_value=0)
     )
 
-    # ✅ 7️⃣ Monthly Progress Calculation
+    # Progress to monthly target
     progress = (
         filtered_data.groupby("CreatedBy")["Price"]
         .sum()
-        .reindex(valid_executives, fill_value=0)
+        .reindex(targets_data.columns, fill_value=0)
     )
-
-    # ✅ 8️⃣ Ensure correct lookup for monthly targets
-    monthly_targets = targets_data.loc[(current_month, current_year), valid_executives] \
-        if (current_month, current_year) in targets_data.index else None
-
-    if monthly_targets is None:
-        print("DEBUG: No Monthly Targets Found!")  # Debugging
-        return None, []
-
+    monthly_targets = targets_data.loc[(current_month, current_year)]
     progress_percentage = (progress / monthly_targets * 100).round(0)
 
-    # ✅ 9️⃣ Build DataFrame for Display
+    # Build the progress table
     progress_data = pd.DataFrame({
         "Sales Exec": progress.index,
         "Today's Sales": end_date_sales.values,
@@ -189,48 +162,56 @@ def calculate_monthly_progress(data, start_date, end_date, valid_executives, tar
         "Progress To Monthly Target (Numeric)": progress_percentage.values,
     }).reset_index(drop=True)
 
-    # ✅ 🔟 Map usernames to full names
+    # Map usernames to full names
     user_mapping = {
         "dmontague": "Dan",
         "bgardiner": "Bobby",
         "dcoppin": "David",
         "jedwards": "Joey",
         "millies": "Millie",
+        # "HayleyA": "Hayley",
+        # "BethNW": "Beth",
+        # "BenT": "Ben",
+        # "jmurphy": "James",
+        # "MeganS": "Megan"
     }
     progress_data["Sales Exec"] = progress_data["Sales Exec"].map(user_mapping).fillna(progress_data["Sales Exec"])
 
-    # ✅ 1️⃣1️⃣ Sort by Progress to Monthly Target
-    progress_data.sort_values(by="Progress To Monthly Target (Numeric)", ascending=False, inplace=True)
+    # Sort by "Progress To Monthly Target" in descending order
+    progress_data = progress_data.sort_values(by="Progress To Monthly Target (Numeric)", ascending=False)
 
-    # ✅ 1️⃣2️⃣ Totals Row Calculation
+    # Calculate totals dynamically
     total_today_sales = end_date_sales.sum()
     total_weekly_sales = weekly_sales.sum()
 
+    # Add totals row at the end
     totals_row = {
         "Sales Exec": "TOTALS",
         "Today's Sales": total_today_sales,
         "Weekly Sales": total_weekly_sales,
         "Progress To Monthly Target (Numeric)": None
     }
+    progress_data = pd.concat([progress_data, pd.DataFrame([totals_row])], ignore_index=True)
 
-    if not progress_data.empty:
-        progress_data = pd.concat([progress_data, pd.DataFrame([totals_row])], ignore_index=True)
-
-    # ✅ DEBUG: Check the Final Output
-    print("DEBUG: Final Progress Data")
-    print(progress_data)
-
-
-    # Identify highest daily/weekly sales
+    # Highlight the highest Today's Sales and Weekly Sales values
     max_today_sales = progress_data.loc[progress_data["Sales Exec"] != "TOTALS", "Today's Sales"].max()
     max_weekly_sales = progress_data.loc[progress_data["Sales Exec"] != "TOTALS", "Weekly Sales"].max()
 
-    # Styling functions
+    # Styling for "Sales Exec" column
     def style_sales_exec(value, is_total=False):
         if is_total:
             return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'>{value}</div>"
         return f"<div style='color: black; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'>{value}</div>"
 
+    progress_data["Sales Exec"] = progress_data.apply(
+        lambda row: style_sales_exec(
+            row["Sales Exec"],
+            is_total=(row["Sales Exec"] == "TOTALS")
+        ),
+        axis=1
+    )
+
+    # Styling for "Today's Sales" and "Weekly Sales"
     def style_sales(value, is_highest, is_total=False):
         if is_total:
             return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'>£{value:,.0f}</div>"
@@ -238,30 +219,39 @@ def calculate_monthly_progress(data, start_date, end_date, valid_executives, tar
             return f"<div style='background-color: gold; color: black; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'>⭐ £{value:,.0f}</div>"
         return f"<div style='color: black; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'>£{value:,.0f}</div>"
 
+    progress_data["Today's Sales"] = progress_data.apply(
+        lambda row: style_sales(
+            row["Today's Sales"],
+            row["Today's Sales"] == max_today_sales and row["Sales Exec"] != "TOTALS",
+            is_total=(row["Sales Exec"] == "TOTALS")
+        ),
+        axis=1
+    )
+
+    progress_data["Weekly Sales"] = progress_data.apply(
+        lambda row: style_sales(
+            row["Weekly Sales"],
+            row["Weekly Sales"] == max_weekly_sales and row["Sales Exec"] != "TOTALS",
+            is_total=(row["Sales Exec"] == "TOTALS")
+        ),
+        axis=1
+    )
+
+    # Apply Progress To Monthly Target color-coding
     def style_progress(value):
-        if pd.isnull(value):
-            return "<div style='color: black; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'></div>"
         if value >= expected_pace:
             return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'>{value:.0f}%</div>"
-        elif value >= half_expected_pace:
+        elif half_expected_pace <= value < expected_pace:
             return f"<div style='background-color: orange; color: white; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'>{value:.0f}%</div>"
         return f"<div style='background-color: red; color: white; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'>{value:.0f}%</div>"
 
-    # Apply styles
-    progress_data["Sales Exec"] = progress_data.apply(
-        lambda row: style_sales_exec(row["Sales Exec"], is_total=(row["Sales Exec"] == "TOTALS")), axis=1
+    progress_data["Progress To Monthly Target"] = progress_data["Progress To Monthly Target (Numeric)"].apply(
+        lambda x: style_progress(x) if pd.notnull(x) else f"<div style='color: black; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'></div>"
     )
-    progress_data["Today's Sales"] = progress_data.apply(
-        lambda row: style_sales(row["Today's Sales"], row["Today's Sales"] == max_today_sales, is_total=(row["Sales Exec"] == "TOTALS")), axis=1
-    )
-    progress_data["Weekly Sales"] = progress_data.apply(
-        lambda row: style_sales(row["Weekly Sales"], row["Weekly Sales"] == max_weekly_sales, is_total=(row["Sales Exec"] == "TOTALS")), axis=1
-    )
-    progress_data["Progress To Monthly Target"] = progress_data["Progress To Monthly Target (Numeric)"].apply(style_progress)
 
-    # Drop numeric column
-    progress_data.drop(columns=["Progress To Monthly Target (Numeric)"], inplace=True)
-    
+    # Drop numeric column after styling
+    progress_data = progress_data.drop(columns=["Progress To Monthly Target (Numeric)"])
+
     # Adjust column headers for consistent font size
     styled_columns = {
         "Sales Exec": "Sales Exec",
@@ -274,10 +264,9 @@ def calculate_monthly_progress(data, start_date, end_date, valid_executives, tar
         for col in styled_columns.values()
     ]
 
-    # Convert to HTML
+    # Return styled table and list of sales made
     styled_table = progress_data.to_html(classes="big-table", escape=False, index=False)
     sales_made = filtered_data["CreatedBy"].unique()
-
     return styled_table, sales_made
 
 
@@ -629,6 +618,7 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
     df_fixture = df_fixture.sort_values(by="Price", ascending=False)
     
     # 2. Exclude specific packages from the dataframe
+    df_fixture['PackageName'] = df_fixture['PackageName'].str.strip()
     df_fixture = df_fixture[~df_fixture['PackageName'].isin([
         'INTERNAL MBM BOX', 
         'Woolwich Restaurant', 
@@ -766,7 +756,7 @@ def run_dashboard():
     # ✅ **Render Budget Progress and Next Fixture Side bar**
     # -------------------------
     
-    def render_budget_progress_widget(data, valid_sales_executives, title, start_date, targets_data):
+    def render_budget_progress_widget(data, valid_executives, title, start_date, targets_data):
         """
         Renders a sidebar widget showing total revenue vs. target for sales executives.
         """
@@ -775,7 +765,7 @@ def run_dashboard():
         data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], errors="coerce", dayfirst=True)
 
         # Filter data to include only the specified sales executives
-        executive_data = data[data["CreatedBy"].isin(valid_sales_executives)]  
+        executive_data = data[data["CreatedBy"].isin(valid_executives)]  
 
         # Extract the current month and year from start_date
         current_month = start_date.strftime("%B")
@@ -794,7 +784,7 @@ def run_dashboard():
         # Retrieve monthly sales targets for the valid sales executives
         if (current_month, current_year) in targets_data.index:
             # Ensure only sales executives in the DataFrame are used
-            sales_execs_in_data = [exec for exec in valid_sales_executives if exec in targets_data.columns]
+            sales_execs_in_data = [exec for exec in valid_executives if exec in targets_data.columns]
             
             # Filter the targets for the selected month and year
             monthly_targets = targets_data.loc[(current_month, current_year), sales_execs_in_data]
@@ -1026,8 +1016,8 @@ def run_dashboard():
             unsafe_allow_html=True,
         )
         monthly_progress, sales_made = calculate_monthly_progress(
-            filtered_sales_data, start_date, end_date, valid_sales_executives, targets_data
-        )
+            filtered_sales_data, start_date, end_date)
+        
         st.markdown(
             f"""
             <div style="display: flex; justify-content: center; align-items: center; margin-top: 20px; margin-bottom: 20px;">
