@@ -102,9 +102,6 @@ budget_df = load_budget_targets()
 # 3. Leaderboard Calculation & Rendering Functions
 ################################################################################
 
-import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
 
 def calculate_monthly_progress(data, start_date, end_date, targets_data):
     """
@@ -694,7 +691,7 @@ def run_dashboard():
       - Page 4: 3rd Upcoming Fixture
     Each page auto-cycles every 15 seconds.
     """
-    st.set_page_config(page_title="Hospitality Leadership Board", layout="wide")
+    # st.set_page_config(page_title="Hospitality Leadership Board", layout="wide")
 
     # --------------------------------------------------------------------------
     #  MOVE OUR LOAD FUNCTIONS HERE so that each refresh re-runs them:
