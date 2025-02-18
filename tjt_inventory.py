@@ -168,3 +168,12 @@ def get_inventory_data(stock_file="/Users/cmunthali/Documents/PYTHON/APPS/stock_
     df_merged.drop(cols_to_drop, axis=1, inplace=True)
 
     return df_merged
+
+if __name__ == "__main__":
+    # Fetch and merge data
+    merged_df = get_inventory_data()
+    
+    # Display the merged DataFrame
+    print(merged_df)
+    # Optionally, you can save it to a file
+    merged_df.to_excel("merged_event_data1.xlsx", index=False)

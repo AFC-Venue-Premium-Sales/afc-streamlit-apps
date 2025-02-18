@@ -573,27 +573,37 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
     unsafe_allow_html=True
 )
 
-    # ✅ 1. Filter inventory data for the selected fixture and event competition
+
+    # ✅ Step 1: Ensure column names are stripped of spaces
+    merged_inventory = merged_inventory.rename(columns=lambda x: x.strip())
+
+    # ✅ Step 2: Apply filtering to extract fixture-specific inventory
     df_fixture = merged_inventory[
         (merged_inventory["EventName"] == fixture_row["EventName"]) &
         (merged_inventory["EventCompetition"] == fixture_row.get("EventCompetition", "")) &
         (merged_inventory["KickOffEventStart"] == fixture_row["KickOffEventStart"])
     ].copy()
 
-    # ✅ 2. Ensure "Stock Available" is properly assigned and numeric
+    # ✅ Step 3: Debugging print AFTER filtering
+    print("✅ Columns in df_fixture AFTER filtering:", df_fixture.columns.tolist())
+    print("✅ Rows in df_fixture after filtering:", len(df_fixture))
+
+    # ✅ Step 4: Check if 'Stock Available' is missing and fix it
     if "Stock Available" not in df_fixture.columns:
         if "AvailableSeats" in df_fixture.columns:
-            df_fixture["Stock Available"] = pd.to_numeric(df_fixture["AvailableSeats"], errors="coerce").fillna(0)
+            df_fixture["Stock Available"] = pd.to_numeric(df_fixture["AvailableSeats"], errors="coerce")
         elif "Capacity" in df_fixture.columns:
-            df_fixture["Stock Available"] = pd.to_numeric(df_fixture["Capacity"], errors="coerce").fillna(0)
+            df_fixture["Stock Available"] = pd.to_numeric(df_fixture["Capacity"], errors="coerce")
         else:
-            raise ValueError("No appropriate column found for Stock Available.")
+            raise ValueError("❌ No appropriate column found for 'Stock Available' in df_fixture.")
 
+    # ✅ Step 5: Convert 'Stock Available' to integer to prevent formatting issues
+    df_fixture["Stock Available"] = df_fixture["Stock Available"].fillna(0).astype(int)
 
-    # ✅ 3. Convert Price to numeric safely
+    # ✅ Step 6: Convert 'Price' to numeric safely
     df_fixture["Price"] = pd.to_numeric(df_fixture["Price"], errors="coerce").fillna(0)
 
-    # ✅ 4. Merge sales data to compute "Seats Sold"
+    # ✅ Step 7: Aggregate sales data (Seats Sold) by Package Name and EventCompetition
     df_sales_for_fixture = full_sales_data[
         (full_sales_data["Fixture Name"] == fixture_row["EventName"]) &
         (full_sales_data["EventCompetition"] == fixture_row.get("EventCompetition", ""))
@@ -610,7 +620,7 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
             .rename(columns={"Seats": "Seats Sold"})
         )
 
-        # ✅ Merge sales with inventory (Ensures correct column mapping)
+        # ✅ Merge sales with inventory
         df_fixture = pd.merge(
             df_fixture,
             sales_agg,
@@ -618,41 +628,40 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
             right_on="Package Name",
             how="left"
         )
-
         df_fixture.drop(columns="Package Name", inplace=True, errors="ignore")
         df_fixture["Seats Sold"] = pd.to_numeric(df_fixture["Seats Sold"], errors="coerce").fillna(0).astype(int)
 
-    # ✅ 5. Compute "Stock Remaining" correctly
+    # ✅ Step 8: Compute Stock Remaining
     df_fixture["Stock Remaining"] = (df_fixture["Stock Available"] - df_fixture["Seats Sold"]).clip(lower=0)
 
-    # ✅ 6. Rename 'Price' to 'Current Price' and format it
+    # ✅ Step 9: Rename 'Price' to 'Current Price'
     df_fixture["Current Price"] = df_fixture["Price"].apply(lambda x: f"£{x:,.2f}")
 
-    # ✅ 7. Deduplicate data based on "Package Name" & "Event Competition"
+    # ✅ Step 10: Deduplicate data based on 'PackageName' and 'Current Price'
     df_fixture = df_fixture.drop_duplicates(subset=["PackageName", "Current Price"])
 
-    # ✅ 8. Sort by 'Current Price' in descending order
+    # ✅ Step 11: Sort table by 'Current Price' in descending order
     df_fixture = df_fixture.sort_values(by="Price", ascending=False)
 
-    # ✅ 9. Strip whitespace from "Package Name" and exclude specific packages
-    df_fixture["PackageName"] = df_fixture["PackageName"].str.strip()
-    df_fixture = df_fixture[~df_fixture["PackageName"].isin([
-        "INTERNAL MBM BOX", 
-        "Woolwich Restaurant", 
-        "AWFC Executive Box - Ticket Only", 
-        "AWFC Executive Box - Ticket + F&B",
-        "AWFC Box Arsenal"
+    # ✅ Step 12: Exclude specific packages from the dataframe
+    df_fixture['PackageName'] = df_fixture['PackageName'].str.strip()
+    df_fixture = df_fixture[~df_fixture['PackageName'].isin([
+        'INTERNAL MBM BOX', 
+        'Woolwich Restaurant', 
+        'AWFC Executive Box - Ticket Only', 
+        'AWFC Executive Box - Ticket + F&B',
+        'AWFC Box Arsenal'
     ])]
 
-    # ✅ 10. Rename "PackageName" to "Package Name"
+    # ✅ Step 13: Rename 'PackageName' to 'Package Name'
     df_fixture.rename(columns={"PackageName": "Package Name"}, inplace=True)
 
-    # ✅ 11. Generate the HTML table
+    # ✅ Step 14: Generate the HTML table for display
     html_table = df_fixture[["Package Name", "Stock Available", "Seats Sold", "Stock Remaining", "Current Price"]].to_html(
-        classes="fixture-table", index=False, escape=False
+        classes='fixture-table', index=False, escape=False
     )
 
-    # ✅ 12. Display Fixture Name & Kickoff Time at Top
+    # ✅ Step 15: Display Fixture Name & Kickoff Time at Top
     fixture_day = fixture_row["KickOffEventStart"]
     fixture_datetime = pd.to_datetime(fixture_day, errors="coerce")
     formatted_kickoff = "TBC"
@@ -661,7 +670,6 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
         day_suffix = format_date_suffix(fixture_datetime.day)
         formatted_kickoff = fixture_datetime.strftime(f"%A, {day_suffix} %B - %H:%M Kick-Off")
 
-    # ✅ 13. Display in Streamlit
     st.markdown(
         f"""
         <div class="fixture-title">{fixture_row['EventName']}</div>
@@ -669,6 +677,8 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
         """,
         unsafe_allow_html=True
     )
+
+    print("✅ Script execution complete. Data displayed successfully!")
 
 
 ################################################################################
