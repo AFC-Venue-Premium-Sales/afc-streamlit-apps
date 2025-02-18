@@ -598,13 +598,21 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
         st.write("Columns in df_fixture:", df_fixture.columns.tolist())
         return
     
+    # if "Stock Available" not in df_fixture.columns:
+    #     if "AvailableSeats" in df_fixture.columns:
+    #      df_fixture["Stock Available"] = df_fixture["AvailableSeats"]
+    # elif "Capacity" in df_fixture.columns:
+    #     df_fixture["Stock Available"] = df_fixture["Capacity"]  # Use Capacity if needed
+    # else:
+    #     raise ValueError("No appropriate column found for Stock Available.")
+    
     if "Stock Available" not in df_fixture.columns:
-        if "AvailableSeats" in df_fixture.columns:
-         df_fixture["Stock Available"] = df_fixture["AvailableSeats"]
-    elif "Capacity" in df_fixture.columns:
-        df_fixture["Stock Available"] = df_fixture["Capacity"]  # Use Capacity if needed
-    else:
-        raise ValueError("No appropriate column found for Stock Available.")
+        if "AvailableSeats" in df_fixture.columns and "Seats Sold" in df_fixture.columns:
+            df_fixture["Stock Available"] = pd.to_numeric(df_fixture["AvailableSeats"], errors="coerce") - pd.to_numeric(df_fixture["Seats Sold"], errors="coerce")
+        elif "Capacity" in df_fixture.columns:
+            df_fixture["Stock Available"] = pd.to_numeric(df_fixture["Capacity"], errors="coerce") - pd.to_numeric(df_fixture["Seats Sold"], errors="coerce", downcast="integer")
+        else:
+            raise ValueError("No appropriate column found for Stock Available.")
 
 
     df_fixture["Stock Available"] = (
