@@ -573,65 +573,32 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
     unsafe_allow_html=True
 )
 
-
-
-
-    # 1. Filter inventory data for the selected fixture and event competition
+    # ✅ 1. Filter inventory data for the selected fixture and event competition
     df_fixture = merged_inventory[
         (merged_inventory["EventName"] == fixture_row["EventName"]) &
         (merged_inventory["EventCompetition"] == fixture_row.get("EventCompetition", "")) &
         (merged_inventory["KickOffEventStart"] == fixture_row["KickOffEventStart"])
     ].copy()
 
-    # # 2. Exclude specific packages from the dataframe
-    # df_fixture = df_fixture[~df_fixture['PackageName'].isin([
-    #     'INTERNAL MBM BOX', 
-    #     'Woolwich Restaurant', 
-    #     'AWFC Executive Box - Ticket Only', 
-    #     'AWFC Executive Box - Ticket + F&B',
-    #     'AWFC Box Arsenal'
-    # ])]
-
-    # 3. Ensure "Stock Available" is numeric
+    # ✅ 2. Ensure "Stock Available" is properly assigned and numeric
     if "Stock Available" not in df_fixture.columns:
-        st.error("⚠️ 'Stock Available' column is missing in df_fixture!")
-        st.write("Columns in df_fixture:", df_fixture.columns.tolist())
-        return
-    
-    # if "Stock Available" not in df_fixture.columns:
-    #     if "AvailableSeats" in df_fixture.columns:
-    #      df_fixture["Stock Available"] = df_fixture["AvailableSeats"]
-    # elif "Capacity" in df_fixture.columns:
-    #     df_fixture["Stock Available"] = df_fixture["Capacity"]  # Use Capacity if needed
-    # else:
-    #     raise ValueError("No appropriate column found for Stock Available.")
-    
-    if "Stock Available" not in df_fixture.columns:
-        if "AvailableSeats" in df_fixture.columns and "Seats Sold" in df_fixture.columns:
-            df_fixture["Stock Available"] = pd.to_numeric(df_fixture["AvailableSeats"], errors="coerce") - pd.to_numeric(df_fixture["Seats Sold"], errors="coerce")
+        if "AvailableSeats" in df_fixture.columns:
+            df_fixture["Stock Available"] = pd.to_numeric(df_fixture["AvailableSeats"], errors="coerce").fillna(0)
         elif "Capacity" in df_fixture.columns:
-            df_fixture["Stock Available"] = pd.to_numeric(df_fixture["Capacity"], errors="coerce") - pd.to_numeric(df_fixture["Seats Sold"], errors="coerce", downcast="integer")
+            df_fixture["Stock Available"] = pd.to_numeric(df_fixture["Capacity"], errors="coerce").fillna(0)
         else:
             raise ValueError("No appropriate column found for Stock Available.")
 
 
-    df_fixture["Stock Available"] = (
-        df_fixture["Stock Available"]
-        .astype(str)  # Convert everything to string first
-        .str.extract(r"(\d+)")  # Extract only numbers
-        .fillna(0)  # Handle missing values
-        .astype(int)  # Convert to integer
-    )
-
-    # 4. Convert Price to numeric safely
+    # ✅ 3. Convert Price to numeric safely
     df_fixture["Price"] = pd.to_numeric(df_fixture["Price"], errors="coerce").fillna(0)
 
-    # 5. Aggregate the sales data (Seats Sold) by PackageName and EventCompetition
+    # ✅ 4. Merge sales data to compute "Seats Sold"
     df_sales_for_fixture = full_sales_data[
         (full_sales_data["Fixture Name"] == fixture_row["EventName"]) &
         (full_sales_data["EventCompetition"] == fixture_row.get("EventCompetition", ""))
     ]
-    
+
     if df_sales_for_fixture.empty:
         df_fixture["Seats Sold"] = 0
     else:
@@ -642,8 +609,8 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
             .reset_index()
             .rename(columns={"Seats": "Seats Sold"})
         )
-        
-        # Merge sales with inventory (PackageName from inventory, "Package Name" from sales)
+
+        # ✅ Merge sales with inventory (Ensures correct column mapping)
         df_fixture = pd.merge(
             df_fixture,
             sales_agg,
@@ -651,53 +618,58 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
             right_on="Package Name",
             how="left"
         )
-        df_fixture.drop(columns="Package Name", inplace=True, errors="ignore")
 
+        df_fixture.drop(columns="Package Name", inplace=True, errors="ignore")
         df_fixture["Seats Sold"] = pd.to_numeric(df_fixture["Seats Sold"], errors="coerce").fillna(0).astype(int)
 
-    # 6. Compute Stock Remaining and ensure **no negative values**
+    # ✅ 5. Compute "Stock Remaining" correctly
     df_fixture["Stock Remaining"] = (df_fixture["Stock Available"] - df_fixture["Seats Sold"]).clip(lower=0)
 
-    # 7. Rename 'Price' to 'Current Price' and format it
+    # ✅ 6. Rename 'Price' to 'Current Price' and format it
     df_fixture["Current Price"] = df_fixture["Price"].apply(lambda x: f"£{x:,.2f}")
 
-    # 8. Deduplicate the data based on PackageName and EventCompetition
+    # ✅ 7. Deduplicate data based on "Package Name" & "Event Competition"
     df_fixture = df_fixture.drop_duplicates(subset=["PackageName", "Current Price"])
 
-    # 9. Sort the table by 'Current Price' in descending order
+    # ✅ 8. Sort by 'Current Price' in descending order
     df_fixture = df_fixture.sort_values(by="Price", ascending=False)
-    
-    # 2. Exclude specific packages from the dataframe
-    df_fixture['PackageName'] = df_fixture['PackageName'].str.strip()
-    df_fixture = df_fixture[~df_fixture['PackageName'].isin([
-        'INTERNAL MBM BOX', 
-        'Woolwich Restaurant', 
-        'AWFC Executive Box - Ticket Only', 
-        'AWFC Executive Box - Ticket + F&B',
-        'AWFC Box Arsenal'
+
+    # ✅ 9. Strip whitespace from "Package Name" and exclude specific packages
+    df_fixture["PackageName"] = df_fixture["PackageName"].str.strip()
+    df_fixture = df_fixture[~df_fixture["PackageName"].isin([
+        "INTERNAL MBM BOX", 
+        "Woolwich Restaurant", 
+        "AWFC Executive Box - Ticket Only", 
+        "AWFC Executive Box - Ticket + F&B",
+        "AWFC Box Arsenal"
     ])]
 
-    # 10. Generate the HTML table
-    html_table = df_fixture[["PackageName", "Stock Available", "Seats Sold", "Stock Remaining", "Current Price"]].to_html(
-        classes='fixture-table', index=False, escape=False
+    # ✅ 10. Rename "PackageName" to "Package Name"
+    df_fixture.rename(columns={"PackageName": "Package Name"}, inplace=True)
+
+    # ✅ 11. Generate the HTML table
+    html_table = df_fixture[["Package Name", "Stock Available", "Seats Sold", "Stock Remaining", "Current Price"]].to_html(
+        classes="fixture-table", index=False, escape=False
     )
 
-    # --- 11) Display Fixture Name & Kickoff Time at Top ---
+    # ✅ 12. Display Fixture Name & Kickoff Time at Top
     fixture_day = fixture_row["KickOffEventStart"]
     fixture_datetime = pd.to_datetime(fixture_day, errors="coerce")
     formatted_kickoff = "TBC"
-    
+
     if pd.notnull(fixture_datetime):
         day_suffix = format_date_suffix(fixture_datetime.day)
         formatted_kickoff = fixture_datetime.strftime(f"%A, {day_suffix} %B - %H:%M Kick-Off")
 
+    # ✅ 13. Display in Streamlit
     st.markdown(
-    f"""
-    <div class="fixture-title">{fixture_row['EventName']}</div>
-    {html_table}
-    """,
-    unsafe_allow_html=True
-)
+        f"""
+        <div class="fixture-title">{fixture_row['EventName']}</div>
+        {html_table}
+        """,
+        unsafe_allow_html=True
+    )
+
 
 ################################################################################
 # 5. MAIN Streamlit App
