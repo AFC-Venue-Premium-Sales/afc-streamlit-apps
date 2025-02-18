@@ -591,24 +591,9 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
     # ])]
 
     # 3. Ensure "Stock Available" is numeric
-    # if "Stock Available" not in df_fixture.columns:
-    #     st.error("⚠️ 'Stock Available' column is missing in df_fixture!")
-    #     st.write("Columns in df_fixture:", df_fixture.columns.tolist())
-    #     return
-    
-    # if "Stock Available" not in df_fixture.columns:
-    #     st.warning("⚠️ 'Stock Available' column is missing. Checking alternatives...")
-
-    if "AvailableSeats" in df_fixture.columns:
-        df_fixture["Stock Available"] = pd.to_numeric(df_fixture["AvailableSeats"], errors="coerce")
-        st.success("✅ Created 'Stock Available' from 'AvailableSeats'")
-    elif "Capacity" in df_fixture.columns:
-        df_fixture["Stock Available"] = pd.to_numeric(df_fixture["Capacity"], errors="coerce")
-        st.success("✅ Created 'Stock Available' from 'Capacity'")
-    else:
-        st.error("❌ No alternative column found. Something is wrong with the dataset.")
-        st.write("Columns present in df_fixture:", df_fixture.columns.tolist())
-
+    if "Stock Available" not in df_fixture.columns:
+        st.error("⚠️ 'Stock Available' column is missing in df_fixture!")
+        st.write("Columns in df_fixture:", df_fixture.columns.tolist())
 
     df_fixture["Stock Available"] = (
         df_fixture["Stock Available"]
