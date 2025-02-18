@@ -197,7 +197,7 @@ else:
     app_registry = {
         "📊 Sales Performance": sales_performance.run_app,
         "📈 User Performance": user_performance_api.run_app,
-        "📄 Ticket Exchange Report": leaderboard_carousel.run_dashboard,
+        "📄 Leaderboard Carousel Dashboard": leaderboard_carousel.run_dashboard,
         "📊 Live Sales Dashboard": sales_dashboard.run_dashboard,  
     }
 

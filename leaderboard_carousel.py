@@ -509,6 +509,7 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
                 font-weight: bold;
                 text-align: center;
                 margin: 0;
+                margin-top:0;
                 padding: 10px 0;
                 width: 100%;
             }
@@ -592,10 +593,15 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
     # ])]
 
     # 3. Ensure "Stock Available" is numeric
+
     if "Stock Available" not in df_fixture.columns:
-        st.error("⚠️ 'Stock Available' column is missing in df_fixture!")
-        st.write("Columns in df_fixture:", df_fixture.columns.tolist())
-        return
+        if "AvailableSeats" in df_fixture.columns:
+            df_fixture["Stock Available"] = df_fixture["AvailableSeats"]
+        elif "Capacity" in df_fixture.columns:
+            df_fixture["Stock Available"] = df_fixture["Capacity"]  # Use Capacity if needed
+        else:
+            raise ValueError("No appropriate column found for Stock Available.")
+
 
     df_fixture["Stock Available"] = (
         df_fixture["Stock Available"]
@@ -935,7 +941,9 @@ def run_dashboard():
 
         # ✅ Ensure numeric conversion
         if not fixture_data.empty:
-            fixture_data["Price"] = pd.to_numeric(fixture_data["Price"], errors="coerce").fillna(0)
+            fixture_data = fixture_data.copy()  # Ensure it's a new DataFrame
+            fixture_data.loc[:, "Price"] = pd.to_numeric(fixture_data["Price"], errors="coerce").fillna(0)
+
             fixture_revenue = fixture_data["Price"].sum()  # ✅ CORRECT Calculation
         else:
             fixture_revenue = 0
