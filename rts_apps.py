@@ -45,7 +45,7 @@ except ImportError as e:
     sales_dashboard = None
     
 try:
-    import leaderboard_carousel 
+    import leaderboard_carousel
     importlib.reload(leaderboard_carousel)
 except ImportError as e:
     logging.error(f"Failed to import 'leaderboard_carousel': {e}")
