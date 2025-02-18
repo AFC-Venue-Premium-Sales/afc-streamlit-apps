@@ -475,7 +475,7 @@ def format_date_suffix(day):
     suffixes = {1: "st", 2: "nd", 3: "rd"}
     return f"{day}{suffixes.get(day % 10, 'th')}"
 
-def display_inventory_details(fixture_row, api_inventory_data, full_sales_data):
+def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
     """
     Displays the inventory details for upcoming fixtures including package stock, prices, and remaining seats.
     Ensures that stock is calculated properly by subtracting actual sales. It calculates Seats sold minus Available stock at the time of the pull.
@@ -573,12 +573,11 @@ def display_inventory_details(fixture_row, api_inventory_data, full_sales_data):
     unsafe_allow_html=True
 )
 
-
     # ✅ 1. Filter inventory data for the selected fixture and event competition
-    df_fixture = api_inventory_data[
-        (api_inventory_data["EventName"] == fixture_row["EventName"]) &
-        (api_inventory_data["EventCompetition"] == fixture_row.get("EventCompetition", "")) &
-        (api_inventory_data["KickOffEventStart"] == fixture_row["KickOffEventStart"])
+    df_fixture = merged_inventory[
+        (merged_inventory["EventName"] == fixture_row["EventName"]) &
+        (merged_inventory["EventCompetition"] == fixture_row.get("EventCompetition", "")) &
+        (merged_inventory["KickOffEventStart"] == fixture_row["KickOffEventStart"])
     ].copy()
 
     # ✅ 2. Ensure 'MaxSaleQuantity' (Stock Available) is present
@@ -654,23 +653,34 @@ def display_inventory_details(fixture_row, api_inventory_data, full_sales_data):
         "AWFC Box Arsenal"
     ])]
     
-    # Rename 'PackageName' to 'Package Name' for display purposes
-    df_fixture.rename(columns={"PackageName": "Package Name", "Stock Available": "Seats Available", "Stock Remaining": "Seats Remaining"}, inplace=True)
+   # 11️⃣ Convert price to numeric for sorting
+    df_fixture["Sort Price"] = df_fixture["Current Price"].replace("[£,]", "", regex=True).astype(float)
 
-    # ✅ 11. Generate the HTML table
+    # 12️⃣ Rename columns for final display
+    df_fixture.rename(columns={
+        "PackageName": "Package Name",
+        "Stock Available": "Seats Available",
+        "Stock Remaining": "Seats Remaining"
+    }, inplace=True)
+
+    # 13️⃣ GROUP BY "Package Name" to consolidate duplicates
+    df_fixture = df_fixture.groupby("Package Name", as_index=False).agg({
+        "Seats Available": "sum",
+        "Seats Sold": "sum",
+        "Seats Remaining": "sum",
+        "Current Price": "first",
+        "Sort Price": "first"
+    })
+
+    # 14️⃣ Sort by "Sort Price" descending
+    df_fixture = df_fixture.sort_values(by="Sort Price", ascending=False).drop(columns=["Sort Price"])
+
+    # 15️⃣ Build final HTML table
     html_table = df_fixture[["Package Name", "Seats Available", "Seats Sold", "Seats Remaining", "Current Price"]].to_html(
         classes='fixture-table', index=False, escape=False
     )
 
-    # # ✅ 12. Display Fixture Name & Kickoff Time at Top
-    # fixture_day = fixture_row["KickOffEventStart"]
-    # fixture_datetime = pd.to_datetime(fixture_day, errors="coerce")
-    # formatted_kickoff = "TBC"
-
-    # if pd.notnull(fixture_datetime):
-    #     day_suffix = format_date_suffix(fixture_datetime.day)
-    #     formatted_kickoff = fixture_datetime.strftime(f"%A, {day_suffix} %B - %H:%M Kick-Off")
-
+    # Final display
     st.markdown(
         f"""
         <div class="fixture-title">{fixture_row['EventName']}</div>
@@ -678,7 +688,6 @@ def display_inventory_details(fixture_row, api_inventory_data, full_sales_data):
         """,
         unsafe_allow_html=True
     )
-
 
 ################################################################################
 # 5. MAIN Streamlit App
