@@ -592,8 +592,11 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
 
     # 3. Ensure "Stock Available" is numeric
     if "Stock Available" not in df_fixture.columns:
-        st.error("⚠️ 'Stock Available' column is missing in df_fixture!")
-        st.write("Columns in df_fixture:", df_fixture.columns.tolist())
+        df_fixture.columns = df_fixture.columns.str.strip()  # Remove trailing spaces
+        df_fixture.columns = df_fixture.columns.str.lower()  # Convert to lowercase
+        if "stock available" in df_fixture.columns:
+            df_fixture.rename(columns={"stock available": "Stock Available"}, inplace=True)
+
 
     df_fixture["Stock Available"] = (
         df_fixture["Stock Available"]
