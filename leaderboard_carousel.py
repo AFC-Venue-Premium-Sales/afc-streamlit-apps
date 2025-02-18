@@ -483,7 +483,6 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
     st.markdown(
         """
         <style>
-            /* Import Fonts */
             @font-face {
                 font-family: 'Chapman-Bold';
                 src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
@@ -493,7 +492,6 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
                 src: url('fonts/Northbank-N7_2789728357.ttf') format('truetype');
             }
 
-            /* Reset margin & padding for body */
             body, html {
                 margin: 0;
                 padding: 0;
@@ -501,7 +499,6 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
                 width: 100%;
             }
 
-            /* Title styling: Uses Northbank-N7 */
             .fixture-title {
                 font-family: 'Northbank-N7';
                 font-size: 42px;
@@ -513,54 +510,54 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
                 width: 100%;
             }
 
-            /* Table Wrapper (optional) */
-            .fixture-content {
-                margin-top: 0;
-                padding-top: 10px;
+            /* Optional Wrapper to allow horizontal scrolling if needed */
+            .table-wrapper {
                 width: 100%;
+                overflow-x: auto; 
+                margin: 0 auto;
             }
 
-            /* Table: Full-width, auto layout */
             .fixture-table {
+                /* Let columns auto-size based on content */
+                table-layout: auto;
                 width: 100%;
                 border-collapse: collapse;
-                margin: 10px auto;
-                table-layout: auto; /* Let columns size themselves based on content */
                 background-color: white;
             }
 
-            /* Header Styling: Light grey background + bigger text */
+            /* Header Styling */
             .fixture-table th {
-                font-family: 'Chapman-Bold'; /* Apply Chapman-Bold for headers */
+                font-family: 'Chapman-Bold';
                 font-size: 20px;
                 text-align: center;
                 font-weight: bold;
                 padding: 12px;
-                border-bottom: 2px solid black;  /* Thin bottom border only */
-                background-color: #EAEAEA;  /* Light grey background */
+                border-bottom: 2px solid black;
+                background-color: #EAEAEA;
                 color: black;
+                white-space: nowrap; /* Prevent wrapping in headers */
             }
 
-            /* Table Cells: Clean design with thin borders */
+            /* Table Cells */
             .fixture-table td {
-                font-family: 'Chapman-Bold'; /* Apply Chapman-Bold for table body */
+                font-family: 'Chapman-Bold';
                 font-size: 18px;
                 text-align: center;
                 font-weight: bold;
                 padding: 10px;
-                border-bottom: 1px solid #ddd; /* Lighter, thin borders for a clean look */
+                border-bottom: 1px solid #ddd;
                 background-color: white;
+                white-space: nowrap; /* Prevent wrapping in table cells */
             }
 
-            /* No alternating grey rows */
             .fixture-table tr:nth-child(even) {
                 background-color: white !important;
             }
 
-            /* Hover Effect: Subtle highlight */
             .fixture-table tr:hover {
-            background-color: #f5f5f5;
+                background-color: #f5f5f5;
             }
+        </style>
 
             /* Ensure table fits properly */
             .fixture-table th:nth-child(1), .fixture-table td:nth-child(1) { width: 20%; }
@@ -995,6 +992,8 @@ def run_dashboard():
             </style>
             <div class="next-fixture-widget">
                 🏟️ Next Fixture Details <br>
+                <span class="fixture-info">⏳ Fixture Name:</span>
+                <span class="fixture-title">{fixture_name} ({event_competition})</span>
                 <span class="fixture-info">⏳ Days to Fixture:</span>
                 <span class="fixture-days">{days_to_fixture} days</span>
                 <span class="fixture-info">🎯 Budget Target:</span>
