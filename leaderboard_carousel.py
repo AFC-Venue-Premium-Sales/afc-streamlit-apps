@@ -662,14 +662,14 @@ def display_inventory_details(fixture_row, api_inventory_data, full_sales_data):
         classes='fixture-table', index=False, escape=False
     )
 
-    # ✅ 12. Display Fixture Name & Kickoff Time at Top
-    fixture_day = fixture_row["KickOffEventStart"]
-    fixture_datetime = pd.to_datetime(fixture_day, errors="coerce")
-    formatted_kickoff = "TBC"
+    # # ✅ 12. Display Fixture Name & Kickoff Time at Top
+    # fixture_day = fixture_row["KickOffEventStart"]
+    # fixture_datetime = pd.to_datetime(fixture_day, errors="coerce")
+    # formatted_kickoff = "TBC"
 
-    if pd.notnull(fixture_datetime):
-        day_suffix = format_date_suffix(fixture_datetime.day)
-        formatted_kickoff = fixture_datetime.strftime(f"%A, {day_suffix} %B - %H:%M Kick-Off")
+    # if pd.notnull(fixture_datetime):
+    #     day_suffix = format_date_suffix(fixture_datetime.day)
+    #     formatted_kickoff = fixture_datetime.strftime(f"%A, {day_suffix} %B - %H:%M Kick-Off")
 
     st.markdown(
         f"""
