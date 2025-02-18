@@ -54,7 +54,7 @@ def flatten_events(events):
     """
     Converts raw event JSON to a DataFrame with:
       - EventId, EventName, KickOffEventStart, EventCompetition, Gender, GoLiveDate
-      - PackageId, PackageName, AvailableSeats, Price, Capacity
+      - PackageId, PackageName, AvailableSeats, MaxSaleQuantity, Price, Capacity
     """
     all_rows = []
     for event in events:
@@ -73,7 +73,8 @@ def flatten_events(events):
             package_id = pkg.get("PackageId")
             package_name = pkg.get("PackageName")
             price = pkg.get("Price")
-            available_seats = pkg.get("AvailableSeats", None)
+            max_sale_quantity = pkg.get("MaxSaleQuantity", 0)  # ✅ Keep MaxSaleQuantity
+            available_seats = pkg.get("AvailableSeats", None)  # ✅ Keep AvailableSeats
 
             locations = pkg.get("Locations", [])
             if not locations:
@@ -86,7 +87,8 @@ def flatten_events(events):
                     "GoLiveDate": go_live_date,
                     "PackageId": package_id,
                     "PackageName": package_name,
-                    "AvailableSeats": available_seats,
+                    "AvailableSeats": available_seats,  # ✅ Still returning AvailableSeats
+                    "MaxSaleQuantity": max_sale_quantity,  # ✅ Keeping as is
                     "Price": price,
                     "Capacity": None
                 })
@@ -102,7 +104,8 @@ def flatten_events(events):
                         "GoLiveDate": go_live_date,
                         "PackageId": package_id,
                         "PackageName": package_name,
-                        "AvailableSeats": available_seats,
+                        "AvailableSeats": available_seats,  # ✅ Still returning AvailableSeats
+                        "MaxSaleQuantity": max_sale_quantity,  # ✅ Keeping as is
                         "Price": price,
                         "Capacity": capacity
                     })
@@ -116,18 +119,20 @@ def flatten_events(events):
         "GoLiveDate",
         "PackageId",
         "PackageName",
-        "AvailableSeats",
+        "AvailableSeats",  # ✅ AvailableSeats retained
+        "MaxSaleQuantity",  # ✅ Not renamed yet
         "Price",
         "Capacity"
     ])
 
-    # Convert date/time columns to nicer string format
+    # Convert date/time columns to proper format
     if 'KickOffEventStart' in df.columns:
         df['KickOffEventStart'] = pd.to_datetime(df['KickOffEventStart'], errors='coerce').dt.strftime('%Y-%m-%d %H:%M:%S')
     if 'GoLiveDate' in df.columns:
         df['GoLiveDate'] = pd.to_datetime(df['GoLiveDate'], errors='coerce').dt.strftime('%Y-%m-%d %H:%M:%S')
 
     return df
+
 
 def get_inventory_data(stock_file="/Users/cmunthali/Documents/PYTHON/APPS/stock_available.xlsx"):
     """

@@ -475,7 +475,7 @@ def format_date_suffix(day):
     suffixes = {1: "st", 2: "nd", 3: "rd"}
     return f"{day}{suffixes.get(day % 10, 'th')}"
 
-def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
+def display_inventory_details(fixture_row, api_inventory_data, full_sales_data):
     """
     Displays the inventory details for upcoming fixtures including package stock, prices, and remaining seats.
     Ensures that stock is calculated properly by subtracting actual sales. It calculates Seats sold minus Available stock at the time of the pull.
@@ -574,42 +574,42 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
 )
 
 
-    # 1. Filter inventory data for the selected fixture and event competition
-    df_fixture = merged_inventory[
-        (merged_inventory["EventName"] == fixture_row["EventName"]) &
-        (merged_inventory["EventCompetition"] == fixture_row.get("EventCompetition", "")) &
-        (merged_inventory["KickOffEventStart"] == fixture_row["KickOffEventStart"])
+    # ✅ 1. Filter inventory data for the selected fixture and event competition
+    df_fixture = api_inventory_data[
+        (api_inventory_data["EventName"] == fixture_row["EventName"]) &
+        (api_inventory_data["EventCompetition"] == fixture_row.get("EventCompetition", "")) &
+        (api_inventory_data["KickOffEventStart"] == fixture_row["KickOffEventStart"])
     ].copy()
 
-    # # 2. Exclude specific packages from the dataframe
-    # df_fixture = df_fixture[~df_fixture['PackageName'].isin([
-    #     'INTERNAL MBM BOX', 
-    #     'Woolwich Restaurant', 
-    #     'AWFC Executive Box - Ticket Only', 
-    #     'AWFC Executive Box - Ticket + F&B',
-    #     'AWFC Box Arsenal'
-    # ])]
+    # ✅ 2. Ensure 'MaxSaleQuantity' (Stock Available) is present
+    if "MaxSaleQuantity" not in df_fixture.columns:
+        st.error("⚠️ 'MaxSaleQuantity' column is missing in API inventory data!")
+        return
 
-    # 3. Ensure "Stock Available" is numeric
-    if "Stock Available" not in df_fixture.columns:
-        df_fixture.columns = df_fixture.columns.str.strip()  # Remove trailing spaces
-        df_fixture.columns = df_fixture.columns.str.lower()  # Convert to lowercase
-        if "stock available" in df_fixture.columns:
-            df_fixture.rename(columns={"stock available": "Stock Available"}, inplace=True)
+    # ✅ 3. Keep AvailableSeats column (if exists)
+    if "AvailableSeats" not in df_fixture.columns:
+        df_fixture["AvailableSeats"] = 0  # Placeholder to avoid errors
 
+    # ✅ 4. Convert MaxSaleQuantity and Capacity to numeric
+    df_fixture["MaxSaleQuantity"] = pd.to_numeric(df_fixture["MaxSaleQuantity"], errors="coerce").fillna(0).astype(int)
+    df_fixture["Capacity"] = pd.to_numeric(df_fixture["Capacity"], errors="coerce").fillna(0).astype(int)
 
-    df_fixture["Stock Available"] = (
-        df_fixture["Stock Available"]
-        .astype(str)  # Convert everything to string first
-        .str.extract(r"(\d+)")  # Extract only numbers
-        .fillna(0)  # Handle missing values
-        .astype(int)  # Convert to integer
-    )
+    # ✅ 5. Adjust Stock Available for Boxes (N7, N5, any "Box" package)
+    df_fixture["Stock Available"] = df_fixture["MaxSaleQuantity"]  # Default: Use MaxSaleQuantity
 
-    # 4. Convert Price to numeric safely
+    # Identify packages with "Box" in their name where MaxSaleQuantity is 0
+    box_packages = df_fixture[df_fixture["PackageName"].str.contains("Box", case=False, na=False)]
+
+    for package in box_packages["PackageName"].unique():
+        package_rows = df_fixture[df_fixture["PackageName"] == package]
+        if package_rows["MaxSaleQuantity"].sum() == 0:  # If all MaxSaleQuantity are 0, use summed Capacity
+            total_capacity = package_rows["Capacity"].sum()
+            df_fixture.loc[df_fixture["PackageName"] == package, "Stock Available"] = total_capacity
+
+    # ✅ 6. Convert Price to numeric safely
     df_fixture["Price"] = pd.to_numeric(df_fixture["Price"], errors="coerce").fillna(0)
 
-    # 5. Aggregate the sales data (Seats Sold) by PackageName and EventCompetition
+    # ✅ 7. Aggregate sales data for 'Seats Sold'
     df_sales_for_fixture = full_sales_data[
         (full_sales_data["Fixture Name"] == fixture_row["EventName"]) &
         (full_sales_data["EventCompetition"] == fixture_row.get("EventCompetition", ""))
@@ -625,8 +625,8 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
             .reset_index()
             .rename(columns={"Seats": "Seats Sold"})
         )
-        
-        # Merge sales with inventory (PackageName from inventory, "Package Name" from sales)
+
+        # ✅ Merge sales with inventory
         df_fixture = pd.merge(
             df_fixture,
             sales_agg,
@@ -638,49 +638,47 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
 
         df_fixture["Seats Sold"] = pd.to_numeric(df_fixture["Seats Sold"], errors="coerce").fillna(0).astype(int)
 
-    # 6. Compute Stock Remaining and ensure **no negative values**
+    # ✅ 8. Compute Stock Remaining (ensuring no negative values)
     df_fixture["Stock Remaining"] = (df_fixture["Stock Available"] - df_fixture["Seats Sold"]).clip(lower=0)
 
-    # 7. Rename 'Price' to 'Current Price' and format it
+    # ✅ 9. Rename 'Price' to 'Current Price' and format it
     df_fixture["Current Price"] = df_fixture["Price"].apply(lambda x: f"£{x:,.2f}")
 
-    # 8. Deduplicate the data based on PackageName and EventCompetition
-    df_fixture = df_fixture.drop_duplicates(subset=["PackageName", "Current Price"])
-
-    # 9. Sort the table by 'Current Price' in descending order
-    df_fixture = df_fixture.sort_values(by="Price", ascending=False)
-    
-    # 2. Exclude specific packages from the dataframe
-    df_fixture['PackageName'] = df_fixture['PackageName'].str.strip()
-    df_fixture = df_fixture[~df_fixture['PackageName'].isin([
-        'INTERNAL MBM BOX', 
-        'Woolwich Restaurant', 
-        'AWFC Executive Box - Ticket Only', 
-        'AWFC Executive Box - Ticket + F&B',
-        'AWFC Box Arsenal'
+    # ✅ 10. Exclude specific packages
+    df_fixture["PackageName"] = df_fixture["PackageName"].str.strip()
+    df_fixture = df_fixture[~df_fixture["PackageName"].isin([
+        "INTERNAL MBM BOX",
+        "Woolwich Restaurant",
+        "AWFC Executive Box - Ticket Only",
+        "AWFC Executive Box - Ticket + F&B",
+        "AWFC Box Arsenal"
     ])]
+    
+    # Rename 'PackageName' to 'Package Name' for display purposes
+    df_fixture.rename(columns={"PackageName": "Package Name", "Stock Available": "Seats Available", "Stock Remaining": "Seats Remaining"}, inplace=True)
 
-    # 10. Generate the HTML table
-    html_table = df_fixture[["PackageName", "Stock Available", "Seats Sold", "Stock Remaining", "Current Price"]].to_html(
+    # ✅ 11. Generate the HTML table
+    html_table = df_fixture[["Package Name", "Seats Available", "Seats Sold", "Seats Remaining", "Current Price"]].to_html(
         classes='fixture-table', index=False, escape=False
     )
 
-    # --- 11) Display Fixture Name & Kickoff Time at Top ---
+    # ✅ 12. Display Fixture Name & Kickoff Time at Top
     fixture_day = fixture_row["KickOffEventStart"]
     fixture_datetime = pd.to_datetime(fixture_day, errors="coerce")
     formatted_kickoff = "TBC"
-    
+
     if pd.notnull(fixture_datetime):
         day_suffix = format_date_suffix(fixture_datetime.day)
         formatted_kickoff = fixture_datetime.strftime(f"%A, {day_suffix} %B - %H:%M Kick-Off")
 
     st.markdown(
-    f"""
-    <div class="fixture-title">{fixture_row['EventName']}</div>
-    {html_table}
-    """,
-    unsafe_allow_html=True
-)
+        f"""
+        <div class="fixture-title">{fixture_row['EventName']}</div>
+        {html_table}
+        """,
+        unsafe_allow_html=True
+    )
+
 
 ################################################################################
 # 5. MAIN Streamlit App
