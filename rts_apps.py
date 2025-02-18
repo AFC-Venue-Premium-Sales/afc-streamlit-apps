@@ -183,7 +183,7 @@ else:
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio(
         "Choose Module",
-        ["📊 Sales Performance", "📈 User Performance", "📄 Ticket Exchange Report", "📊 Live Sales Dashboard"],
+        ["📊 Sales Performance", "📈 User Performance", "📄 Leaderboard Carousel Dashboard", "📊 Live Sales Dashboard"],
         format_func=lambda x: x.split(" ")[1],
     )
 
