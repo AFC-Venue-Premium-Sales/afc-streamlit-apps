@@ -558,14 +558,6 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
                 background-color: #f5f5f5;
             }
         </style>
-
-            /* Ensure table fits properly */
-            .fixture-table th:nth-child(1), .fixture-table td:nth-child(1) { width: 20%; }
-            .fixture-table th:nth-child(2), .fixture-table td:nth-child(2) { width: 15%; }
-            .fixture-table th:nth-child(3), .fixture-table td:nth-child(3) { width: 15%; }
-            .fixture-table th:nth-child(4), .fixture-table td:nth-child(4) { width: 15%; }
-            .fixture-table th:nth-child(5), .fixture-table td:nth-child(5) { width: 15%; }
-        </style>
         """,
     unsafe_allow_html=True
 )
