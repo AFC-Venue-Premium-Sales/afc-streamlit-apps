@@ -102,122 +102,132 @@ budget_df = load_budget_targets()
 # 3. Leaderboard Calculation & Rendering Functions
 ################################################################################
 
-def calculate_monthly_progress(data, start_date, end_date):
-    
+import pandas as pd
+import numpy as np
+from datetime import datetime, timedelta
+
+def calculate_monthly_progress(data, start_date, end_date, targets_data):
+    """
+    Calculates the monthly progress for specified executives within a date range.
+    Returns an HTML-styled leaderboard and an array of executives who made sales.
+    """
+
+    # ✅ Convert 'CreatedOn' to datetime safely
     data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], errors="coerce", dayfirst=True)
 
-    # Filter data within the date range
+    # ✅ Ensure correct filtering within the provided date range
     filtered_data = data[
-        (data["CreatedOn"] >= pd.to_datetime(start_date)) &
-        (data["CreatedOn"] <= pd.to_datetime(end_date))
+        (data["CreatedOn"] >= start_date) & (data["CreatedOn"] <= end_date)
     ]
 
+    # ✅ Extract current month and year
     current_month = start_date.strftime("%B")
     current_year = start_date.year
 
+    # ✅ Ensure the month exists in targets_data before proceeding
     if (current_month, current_year) not in targets_data.index:
         return None, []
 
-    # Calculate expected pace
+    # ✅ Calculate expected sales pace dynamically
     total_days_in_month = pd.Period(f"{current_year}-{start_date.month}").days_in_month
-    days_elapsed = (pd.to_datetime(end_date) - pd.Timestamp(f"{current_year}-{start_date.month}-01")).days + 1
+    days_elapsed = (end_date - start_date).days + 1
     expected_pace = (days_elapsed / total_days_in_month) * 100
     half_expected_pace = 0.5 * expected_pace
 
-    # Today's sales
-    end_date_sales_data = data[data["CreatedOn"].dt.date == pd.to_datetime(end_date).date()]
-    end_date_sales = (
-        end_date_sales_data.groupby("CreatedBy")["Price"]
+    # ✅ Set today’s start and end time correctly
+    today_start = pd.to_datetime(datetime.now().date())  # Midnight today
+    today_end = today_start + pd.Timedelta(days=1)  # Midnight next day
+
+    # ✅ Ensure today's sales are correctly filtered
+    today_sales_data = data[
+        (data["CreatedOn"] >= today_start) & (data["CreatedOn"] < today_end)
+    ]
+    today_sales = (
+        today_sales_data.groupby("CreatedBy")["Price"]
         .sum()
         .reindex(targets_data.columns, fill_value=0)
     )
 
-    # Weekly sales
-    start_of_week = pd.to_datetime(end_date) - pd.Timedelta(days=pd.to_datetime(end_date).weekday())
+    # ✅ Calculate start of the current week (Monday)
+    start_of_week = today_start - pd.Timedelta(days=today_start.weekday())
+
+    # ✅ Ensure weekly sales include today
     weekly_sales_data = data[
-        (data["CreatedOn"] >= start_of_week) &
-        (data["CreatedOn"] <= pd.to_datetime(end_date))
+        (data["CreatedOn"] >= start_of_week) & (data["CreatedOn"] < today_end)
     ]
     weekly_sales = (
         weekly_sales_data.groupby("CreatedBy")["Price"]
         .sum()
-        .add(end_date_sales, fill_value=0)  # Ensure today's sales are included
         .reindex(targets_data.columns, fill_value=0)
     )
 
-    # Progress to monthly target
+    # ✅ Calculate total progress per executive
     progress = (
         filtered_data.groupby("CreatedBy")["Price"]
         .sum()
         .reindex(targets_data.columns, fill_value=0)
     )
+
+    # ✅ Retrieve correct monthly targets
     monthly_targets = targets_data.loc[(current_month, current_year)]
     progress_percentage = (progress / monthly_targets * 100).round(0)
 
-    # Build the progress table
+    # ✅ Replace NaN values with 0
     progress_data = pd.DataFrame({
         "Sales Exec": progress.index,
-        "Today's Sales": end_date_sales.values,
+        "Today's Sales": today_sales.values,
         "Weekly Sales": weekly_sales.values,
         "Progress To Monthly Target (Numeric)": progress_percentage.values,
-    }).reset_index(drop=True)
+    }).fillna(0).reset_index(drop=True)
 
-    # Map usernames to full names
+    # ✅ Map usernames to full names
     user_mapping = {
         "dmontague": "Dan",
         "bgardiner": "Bobby",
         "dcoppin": "David",
         "jedwards": "Joey",
         "millies": "Millie",
-        # "HayleyA": "Hayley",
-        # "BethNW": "Beth",
-        # "BenT": "Ben",
-        # "jmurphy": "James",
-        # "MeganS": "Megan"
     }
     progress_data["Sales Exec"] = progress_data["Sales Exec"].map(user_mapping).fillna(progress_data["Sales Exec"])
 
-    # Sort by "Progress To Monthly Target" in descending order
-    progress_data = progress_data.sort_values(by="Progress To Monthly Target (Numeric)", ascending=False)
+    # ✅ Sort correctly, keeping TOTALS at the bottom
+    progress_data = progress_data.sort_values(by="Progress To Monthly Target (Numeric)", ascending=False, na_position='last')
 
-    # Calculate totals dynamically
-    total_today_sales = end_date_sales.sum()
-    total_weekly_sales = weekly_sales.sum()
-
-    # Add totals row at the end
+    # ✅ Add totals row at the end
     totals_row = {
         "Sales Exec": "TOTALS",
-        "Today's Sales": total_today_sales,
-        "Weekly Sales": total_weekly_sales,
+        "Today's Sales": today_sales.sum(),
+        "Weekly Sales": weekly_sales.sum(),
         "Progress To Monthly Target (Numeric)": None
     }
-    progress_data = pd.concat([progress_data, pd.DataFrame([totals_row])], ignore_index=True)
-
-    # Highlight the highest Today's Sales and Weekly Sales values
+    if any(totals_row.values()):  # Ensure totals_row is not empty or all-NA
+        progress_data = pd.concat([progress_data, pd.DataFrame([totals_row])], ignore_index=True)
+        
     max_today_sales = progress_data.loc[progress_data["Sales Exec"] != "TOTALS", "Today's Sales"].max()
     max_weekly_sales = progress_data.loc[progress_data["Sales Exec"] != "TOTALS", "Weekly Sales"].max()
 
-    # Styling for "Sales Exec" column
+
+    # ✅ Styling for "Sales Exec" column
     def style_sales_exec(value, is_total=False):
         if is_total:
             return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'>{value}</div>"
         return f"<div style='color: black; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'>{value}</div>"
 
     progress_data["Sales Exec"] = progress_data.apply(
-        lambda row: style_sales_exec(
-            row["Sales Exec"],
-            is_total=(row["Sales Exec"] == "TOTALS")
-        ),
+        lambda row: style_sales_exec(row["Sales Exec"], is_total=(row["Sales Exec"] == "TOTALS")),
         axis=1
     )
 
-    # Styling for "Today's Sales" and "Weekly Sales"
+    # ✅ Styling for "Today's Sales" and "Weekly Sales"
     def style_sales(value, is_highest, is_total=False):
         if is_total:
             return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'>£{value:,.0f}</div>"
         if is_highest and value > 0:
             return f"<div style='background-color: gold; color: black; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'>⭐ £{value:,.0f}</div>"
         return f"<div style='color: black; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'>£{value:,.0f}</div>"
+
+    # max_today_sales = progress_data.loc[progress_data["Sales Exec"] != "TOTALS", "Today's Sales"].max()
+    # max_weekly_sales = progress_data.loc[progress_data["Sales Exec"] != "TOTALS", "Weekly Sales"].max()
 
     progress_data["Today's Sales"] = progress_data.apply(
         lambda row: style_sales(
@@ -237,7 +247,7 @@ def calculate_monthly_progress(data, start_date, end_date):
         axis=1
     )
 
-    # Apply Progress To Monthly Target color-coding
+    # ✅ Apply Progress To Monthly Target color-coding
     def style_progress(value):
         if value >= expected_pace:
             return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'>{value:.0f}%</div>"
@@ -246,13 +256,13 @@ def calculate_monthly_progress(data, start_date, end_date):
         return f"<div style='background-color: red; color: white; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'>{value:.0f}%</div>"
 
     progress_data["Progress To Monthly Target"] = progress_data["Progress To Monthly Target (Numeric)"].apply(
-        lambda x: style_progress(x) if pd.notnull(x) else f"<div style='color: black; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'></div>"
+        lambda x: style_progress(x) if pd.notnull(x) else "<div></div>"
     )
 
-    # Drop numeric column after styling
+    # ✅ Drop numeric column after styling
     progress_data = progress_data.drop(columns=["Progress To Monthly Target (Numeric)"])
 
-    # Adjust column headers for consistent font size
+    # ✅ Adjust column headers for consistent font size
     styled_columns = {
         "Sales Exec": "Sales Exec",
         "Today's Sales": "Today's Sales",
@@ -264,10 +274,11 @@ def calculate_monthly_progress(data, start_date, end_date):
         for col in styled_columns.values()
     ]
 
-    # Return styled table and list of sales made
+    # ✅ Return styled table and list of sales made
     styled_table = progress_data.to_html(classes="big-table", escape=False, index=False)
     sales_made = filtered_data["CreatedBy"].unique()
     return styled_table, sales_made
+
 
 
 
@@ -470,77 +481,98 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
     Ensures that stock is calculated properly by subtracting actual sales. It calculates Seats sold minus Available stock at the time of the pull.
     """
     st.markdown(
-    """
-    <style>
-        @font-face {
-            font-family: 'Chapman-Bold';
-            src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
-        }
-        /* Remove global margin and padding for the body */
-        body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            width: 100%;
-        }
-        .fixture-title {
-            font-family: 'Chapman-Bold';
-            font-size: 40px;  /* Optimized size for better dashboard fitting */
-            color: #E41B17;
-            font-weight: bold;
-            text-align: center;
-            margin-top: 0px;  /* Remove any top margin */
-            margin-bottom: 5px;  /* Optional, adjust as needed */
-        }
-        .kickoff-time {
-            font-size: 30px;  /* Optimized size for better dashboard fitting */
-            color: black;
-            font-weight: bold;
-            text-align: center;
-            margin-top: 0px;  /* Remove any top margin */
-            margin-bottom: 0px;  /* Remove any bottom margin */
-        }
-        .fixture-content {
-            margin-top: 0px;  /* Ensure no margin above the content */
-            padding-top: 0px;  /* Remove any padding above */
-        }
-        .fixture-table th {
-            font-size: 18px;  /* Adjust font size */
-            font-weight: bold;
-            text-align: center;
-            color: black;
-            background-color: #ffffff;
-            padding: 8px;  /* Reduced padding to conserve space */
-            border-bottom: 2px solid black;
-        }
-        .fixture-table td {
-            font-size: 16px;  /* Adjust font size */
-            text-align: center;
-            font-weight: bold;
-            padding: 8px;  /* Reduced padding to conserve space */
-        }
-        .fixture-table {
-            width: 100%;
-            margin-top: 10px;
-            border-collapse: collapse;
-            table-layout: fixed;  /* Ensure table layout is consistent */
-        }
-        .fixture-table tr:nth-child(even) {
-            background-color: #f2f2f2;
-        }
-        .fixture-table tr:hover {
-            background-color: #ddd;
-        }
-        /* Explicit column widths to ensure table fits within the dashboard */
-        .fixture-table th:nth-child(1), .fixture-table td:nth-child(1) { width: 20%; }
-        .fixture-table th:nth-child(2), .fixture-table td:nth-child(2) { width: 15%; }
-        .fixture-table th:nth-child(3), .fixture-table td:nth-child(3) { width: 15%; }
-        .fixture-table th:nth-child(4), .fixture-table td:nth-child(4) { width: 25%; }
-        .fixture-table th:nth-child(5), .fixture-table td:nth-child(5) { width: 25%; }
-    </style>
-    """,
+        """
+        <style>
+            /* Import Fonts */
+            @font-face {
+                font-family: 'Chapman-Bold';
+                src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
+            }
+            @font-face {
+                font-family: 'Northbank-N7';
+                src: url('fonts/Northbank-N7_2789728357.ttf') format('truetype');
+            }
+
+            /* Reset margin & padding for body */
+            body, html {
+                margin: 0;
+                padding: 0;
+                height: 100%;
+                width: 100%;
+            }
+
+            /* Title styling: Uses Northbank-N7 */
+            .fixture-title {
+                font-family: 'Northbank-N7';
+                font-size: 42px;
+                color: #E41B17;
+                font-weight: bold;
+                text-align: center;
+                margin: 0;
+                padding: 10px 0;
+                width: 100%;
+            }
+
+            /* Table Wrapper */
+            .fixture-content {
+                margin-top: 0px;
+                padding-top: 10px;
+            }
+
+            /* Table: Clean modern design */
+            .fixture-table {
+                width: 100%;
+                margin-top: 10px;
+                border-collapse: collapse;
+                table-layout: fixed;
+                background-color: white;
+            }
+
+            /* Header Styling: Light grey background + bigger text */
+            .fixture-table th {
+                font-family: 'Chapman-Bold'; /* Apply Chapman-Bold for headers */
+                font-size: 20px;
+                text-align: center;
+                font-weight: bold;
+                padding: 12px;
+                border-bottom: 2px solid black;  /* Thin bottom border only */
+                background-color: #EAEAEA;  /* Light grey background */
+                color: black;
+            }
+
+            /* Table Cells: Clean design with thin borders */
+            .fixture-table td {
+                font-family: 'Chapman-Bold'; /* Apply Chapman-Bold for table body */
+                font-size: 18px;
+                text-align: center;
+                font-weight: bold;
+                padding: 10px;
+                border-bottom: 1px solid #ddd; /* Lighter, thin borders for a clean look */
+                background-color: white;
+            }
+
+            /* No alternating grey rows */
+            .fixture-table tr:nth-child(even) {
+                background-color: white !important;
+            }
+
+            /* Hover Effect: Subtle highlight */
+            .fixture-table tr:hover {
+                background-color: #f5f5f5;
+            }
+
+            /* Ensure table fits properly */
+            .fixture-table th:nth-child(1), .fixture-table td:nth-child(1) { width: 20%; }
+            .fixture-table th:nth-child(2), .fixture-table td:nth-child(2) { width: 15%; }
+            .fixture-table th:nth-child(3), .fixture-table td:nth-child(3) { width: 15%; }
+            .fixture-table th:nth-child(4), .fixture-table td:nth-child(4) { width: 15%; }
+            .fixture-table th:nth-child(5), .fixture-table td:nth-child(5) { width: 15%; }
+        </style>
+        """,
     unsafe_allow_html=True
 )
+
+
 
 
     # 1. Filter inventory data for the selected fixture and event competition
@@ -644,13 +676,10 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
     st.markdown(
     f"""
     <div class="fixture-title">{fixture_row['EventName']}</div>
-    <div class="kickoff-time">{formatted_kickoff}</div>
     {html_table}
     """,
     unsafe_allow_html=True
 )
-
-
 
 ################################################################################
 # 5. MAIN Streamlit App
@@ -716,90 +745,69 @@ def run_dashboard():
         unsafe_allow_html=True
     )
     
-    # col1, col2 = st.sidebar.columns(2)
-    # start_date = col1.date_input("Start Date", value=datetime.now().replace(day=1), label_visibility="collapsed")
-    # end_date = col2.date_input("End Date", value=datetime.now(), label_visibility="collapsed")
-
-    # # Filter by date range
-    # filtered_data = filtered_data[
-    #     (filtered_data["CreatedOn"] >= pd.to_datetime(start_date)) &
-    #     (filtered_data["CreatedOn"] <= pd.to_datetime(end_date))
-    # ]
-
-# -------------------------
-# ✅ **Sidebar - Date Filter**
-# -------------------------
-    col1, col2 = st.sidebar.columns(2)
-    start_date = col1.date_input("Start Date", value=datetime.now().replace(day=1), label_visibility="collapsed")
-    end_date = col2.date_input("End Date", value=datetime.now(), label_visibility="collapsed")
-
-    # -------------------------
-    # ✅ **Filter Data by Date**
-    # -------------------------
     # Ensure `filtered_data` exists
     filtered_data = filtered_df_without_seats.copy()
-
+    
     # Convert 'CreatedOn' to datetime safely
     filtered_data["CreatedOn"] = pd.to_datetime(filtered_data["CreatedOn"], errors="coerce", dayfirst=True)
+    
+    filtered_data = filtered_data[filtered_data["CreatedBy"].isin(valid_sales_executives)]
 
-    # Convert start_date and end_date to datetime
-    start_date = pd.to_datetime(start_date)
-    end_date = pd.to_datetime(end_date)
+    # -------------------------
+    # ✅ **Sidebar - Date Filter**
+    # -------------------------
+    # ✅ Ensure start_date is always the 1st day of the selected month
+    col1, col2 = st.sidebar.columns(2)
+    selected_start_date = col1.date_input("Start Date", value=datetime.now().replace(day=1), label_visibility="collapsed")
+    selected_end_date = col2.date_input("End Date", value=datetime.now(), label_visibility="collapsed")
 
-    # Now filter based on the corrected start and end date
+    # ✅ Convert user selection to datetime
+    start_date = pd.to_datetime(selected_start_date).replace(day=1)  # Always first day of the month
+    end_date = pd.to_datetime(selected_end_date) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)  # Full last day
+
+    # ✅ Apply correct date filtering for sales data
     filtered_data = filtered_data[
         (filtered_data["CreatedOn"] >= start_date) &
         (filtered_data["CreatedOn"] <= end_date)
     ]
 
+
     # -------------------------
     # ✅ **Render Budget Progress and Next Fixture Side bar**
     # -------------------------
     
-    def render_budget_progress_widget(data, valid_executives, title, start_date, targets_data):
+    def render_budget_progress_widget(data, valid_executives, title, start_date, end_date, targets_data):
         """
-        Renders a sidebar widget showing total revenue vs. target for sales executives.
+        Renders a sidebar widget showing total revenue vs. target within the selected date range.
+        Includes a download button to export filtered sales data.
         """
-
-        # Ensure 'CreatedOn' is a datetime object
+        # ✅ Ensure 'CreatedOn' is datetime
         data["CreatedOn"] = pd.to_datetime(data["CreatedOn"], errors="coerce", dayfirst=True)
 
-        # Filter data to include only the specified sales executives
-        executive_data = data[data["CreatedBy"].isin(valid_executives)]  
-
-        # Extract the current month and year from start_date
-        current_month = start_date.strftime("%B")
-        current_year = start_date.year
-
-        # Filter for transactions within the current month and year
-        current_month_data = executive_data[
-            (executive_data["CreatedOn"].dt.month == start_date.month) &
-            (executive_data["CreatedOn"].dt.year == current_year)
+        # ✅ Apply the same date filtering as calculate_monthly_progress()
+        executive_data = data[
+            (data["CreatedOn"] >= start_date) &
+            (data["CreatedOn"] <= end_date) &
+            (data["CreatedBy"].isin(valid_executives))
         ]
 
-        # Calculate total revenue for the selected executives in the current month
-        total_revenue = current_month_data["Price"].sum()
+        # ✅ Calculate total revenue for selected range
+        total_revenue = executive_data["Price"].sum()
 
-        # Retrieve monthly sales targets for the valid sales executives
-        # Retrieve monthly sales targets for the valid sales executives
+        # ✅ Retrieve correct target
+        current_month = start_date.strftime("%B")
+        current_year = start_date.year
         if (current_month, current_year) in targets_data.index:
-            # Ensure only sales executives in the DataFrame are used
-            sales_execs_in_data = [exec for exec in valid_executives if exec in targets_data.columns]
-            
-            # Filter the targets for the selected month and year
-            monthly_targets = targets_data.loc[(current_month, current_year), sales_execs_in_data]
-
-            # ✅ Sum only for the selected sales executives in that month
-            total_target = monthly_targets.sum() if not monthly_targets.empty else 0
+            valid_execs_in_targets = [exec for exec in valid_executives if exec in targets_data.columns]
+            monthly_targets = targets_data.loc[(current_month, current_year), valid_execs_in_targets]
+            total_target = monthly_targets.sum()
         else:
             total_target = 0
 
-
-
-        # Calculate progress percentage
+        # ✅ Fix Progress Percentage Calculation
         progress_percentage = (total_revenue / total_target * 100) if total_target > 0 else 0
 
-        # Render the sidebar widget
+        # ✅ Render the sidebar widget
         st.sidebar.markdown(
             f"""
             <style>
@@ -835,6 +843,17 @@ def run_dashboard():
             """,
             unsafe_allow_html=True,
         )
+
+        # ✅ Sidebar Download Button (Filtered Data Export)
+        if not executive_data.empty:
+            csv_data = executive_data.to_csv(index=False)
+            st.sidebar.download_button(
+                label="📥 Download Sales Data",
+                data=csv_data,
+                file_name=f"sales_data_{current_month}_{current_year}.csv",
+                mime="text/csv"
+            )
+
 
 
     # -------------------------
@@ -1003,7 +1022,7 @@ def run_dashboard():
             }
             .custom-title {
                 font-family: 'Northbank-N7';
-                font-size: 65px;
+                font-size: 45px;
                 font-weight: bold;
                 color: #E41B17;
                 text-align: center;
@@ -1016,8 +1035,8 @@ def run_dashboard():
             unsafe_allow_html=True,
         )
         monthly_progress, sales_made = calculate_monthly_progress(
-            filtered_sales_data, start_date, end_date)
-        
+            filtered_sales_data, start_date, end_date, targets_data
+        )
         st.markdown(
             f"""
             <div style="display: flex; justify-content: center; align-items: center; margin-top: 20px; margin-bottom: 20px;">
@@ -1026,7 +1045,7 @@ def run_dashboard():
             """,
             unsafe_allow_html=True,
         )
-        render_budget_progress_widget(filtered_sales_data, valid_sales_executives, "Sales Exec", start_date, targets_data)
+        render_budget_progress_widget(filtered_sales_data, valid_sales_executives, "Sales Exec", start_date, end_date, targets_data)
 
 
     # PAGE 1: 1st Upcoming Fixture
@@ -1075,24 +1094,27 @@ def run_dashboard():
             .custom-scroll-box {{
                 overflow: hidden;
                 white-space: nowrap;
-                max-width: 80%;
+                max-width: 100%;
                 margin: 0 auto;
                 background-color: #fff0f0;
                 color: #E41B17;
-                padding: 15px 20px;
-                border-radius: 15px;
+                padding: 10px 12px;
+                border-radius: 10px;
                 font-family: 'Northbank-N5';
-                font-size: 25px;
+                font-size: 20px;
                 font-weight: bold;
                 text-align: center;
-                border: 2px solid #E41B17;
+                border: 1px solid #E41B17;
                 position: fixed;
                 bottom: 0px;
+                bottom: 0;
+                left: 0; /* Ensure it starts at the left edge */
+                width: 100%;
                 z-index: 1000;
                 box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
             }}
             body {{
-                padding-bottom: 120px;
+                padding-bottom: 90px;
             }}
         </style>
         <div class="custom-scroll-box">
@@ -1105,7 +1127,7 @@ def run_dashboard():
     )
     
     # Automatically refresh the page every 5 minutes (300,000 milliseconds)
-    st_autorefresh(interval=15000, key="auto_refresh")
+    st_autorefresh(interval=15000, key="auto_refresh")  # Refresh every 5 minutes
 
 ################################################################################
 # 6. Main Entry Point

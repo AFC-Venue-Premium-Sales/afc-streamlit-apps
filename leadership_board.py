@@ -669,29 +669,7 @@ def run_dashboard():
             unsafe_allow_html=True,
         )
 
-    # Sidebar: Date Range Filter (Now at the Bottom)
-    # st.sidebar.markdown(
-    #     """
-    #     <style>
-    #         @font-face {
-    #             font-family: 'Northbank-N5';
-    #             src: url('fonts/Northbank-N5_2789720163.ttf') format('truetype');
-    #         }
-    #         .custom-date-range-title {
-    #             text-align: center; 
-    #             font-family: 'Northbank-N5'; 
-    #             font-size: 18px; 
-    #             font-weight: bold; 
-    #             color: #E41B17; 
-    #             margin-bottom: 10px;
-    #         }
-    #     </style>
-    #     <div class="custom-date-range-title">
-    #         Date Range Filter
-    #     </div>
-    #     """,
-    #     unsafe_allow_html=True,
-    # )
+  
     
     col1, col2 = st.sidebar.columns(2)
     start_date = col1.date_input("Start Date", value=datetime.now().replace(day=1), label_visibility="collapsed")

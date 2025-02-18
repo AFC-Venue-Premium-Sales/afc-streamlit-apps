@@ -30,12 +30,12 @@ except ImportError as e:
     logging.error(f"Failed to import 'user_performance_api': {e}")
     user_performance_api = None
 
-try:
-    import ticket_exchange_report
-    importlib.reload(ticket_exchange_report)
-except ImportError as e:
-    logging.error(f"Failed to import 'ticket_exchange_report': {e}")
-    ticket_exchange_report = None
+# try:
+#     import ticket_exchange_report
+#     importlib.reload(ticket_exchange_report)
+# except ImportError as e:
+#     logging.error(f"Failed to import 'ticket_exchange_report': {e}")
+#     ticket_exchange_report = None
     
 try:
     import sales_dashboard 
@@ -43,6 +43,13 @@ try:
 except ImportError as e:
     logging.error(f"Failed to import 'sales_dashboard': {e}")
     sales_dashboard = None
+    
+try:
+    import leaderboard_carousel 
+    importlib.reload(leaderboard_carousel)
+except ImportError as e:
+    logging.error(f"Failed to import 'leaderboard_carousel': {e}")
+    leaderboard_carousel = None
 
 # Load environment variables
 load_dotenv()
@@ -190,8 +197,8 @@ else:
     app_registry = {
         "📊 Sales Performance": sales_performance.run_app,
         "📈 User Performance": user_performance_api.run_app,
-        "📄 Ticket Exchange Report": ticket_exchange_report.run_app,
-        "📊 Live Sales Dashboard": sales_dashboard.run_dashboard,  # Add your new dashboard here
+        "📄 Ticket Exchange Report": leaderboard_carousel.run_dashboard,
+        "📊 Live Sales Dashboard": sales_dashboard.run_dashboard,  
     }
 
     app_function = app_registry.get(app_choice)
