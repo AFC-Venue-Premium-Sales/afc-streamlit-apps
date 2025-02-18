@@ -509,23 +509,23 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
                 font-weight: bold;
                 text-align: center;
                 margin: 0;
-                margin-top:0;
                 padding: 10px 0;
                 width: 100%;
             }
 
-            /* Table Wrapper */
+            /* Table Wrapper (optional) */
             .fixture-content {
-                margin-top: 0px;
+                margin-top: 0;
                 padding-top: 10px;
+                width: 100%;
             }
 
-            /* Table: Clean modern design */
+            /* Table: Full-width, auto layout */
             .fixture-table {
                 width: 100%;
-                margin-top: 10px;
                 border-collapse: collapse;
-                table-layout: fixed;
+                margin: 10px auto;
+                table-layout: auto; /* Let columns size themselves based on content */
                 background-color: white;
             }
 
@@ -559,7 +559,7 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
 
             /* Hover Effect: Subtle highlight */
             .fixture-table tr:hover {
-                background-color: #f5f5f5;
+            background-color: #f5f5f5;
             }
 
             /* Ensure table fits properly */
@@ -656,26 +656,20 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
    # 11️⃣ Convert price to numeric for sorting
     df_fixture["Sort Price"] = df_fixture["Current Price"].replace("[£,]", "", regex=True).astype(float)
 
-    # 12️⃣ Rename columns for final display
+    # Rename 'PackageName' to 'Package Name' for display
     df_fixture.rename(columns={
-        "PackageName": "Package Name",
-        "Stock Available": "Seats Available",
+        "PackageName": "Package Name", 
+        "Stock Available": "Seats Available", 
         "Stock Remaining": "Seats Remaining"
     }, inplace=True)
 
-    # 13️⃣ GROUP BY "Package Name" to consolidate duplicates
-    df_fixture = df_fixture.groupby("Package Name", as_index=False).agg({
-        "Seats Available": "sum",
-        "Seats Sold": "sum",
-        "Seats Remaining": "sum",
-        "Current Price": "first",
-        "Sort Price": "first"
-    })
+    # ✅ Sort by Price so the row you keep is the one with largest Price (optional)
+    df_fixture = df_fixture.sort_values(by="Price", ascending=False)
 
-    # 14️⃣ Sort by "Sort Price" descending
-    df_fixture = df_fixture.sort_values(by="Sort Price", ascending=False).drop(columns=["Sort Price"])
+    # ✅ Drop duplicates by "Package Name", keeping the first occurrence
+    df_fixture.drop_duplicates(subset=["Package Name"], keep="first", inplace=True)
 
-    # 15️⃣ Build final HTML table
+    # Finally, generate the HTML table
     html_table = df_fixture[["Package Name", "Seats Available", "Seats Sold", "Seats Remaining", "Current Price"]].to_html(
         classes='fixture-table', index=False, escape=False
     )
