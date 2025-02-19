@@ -210,7 +210,7 @@ def calculate_monthly_progress(data, start_date, end_date, targets_data):
     # ✅ Styling for "Sales Exec" column
     def style_sales_exec(value, is_total=False):
         if is_total:
-            return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'>{value}</div>"
+            return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center; white-space: nowrap;'>{value}</div>"
         return f"<div style='color: black; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;white-space: nowrap;'>{value}</div>"
 
     progress_data["Sales Exec"] = progress_data.apply(
@@ -221,9 +221,9 @@ def calculate_monthly_progress(data, start_date, end_date, targets_data):
     # ✅ Styling for "Today's Sales" and "Weekly Sales"
     def style_sales(value, is_highest, is_total=False):
         if is_total:
-            return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'>£{value:,.0f}</div>"
+            return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center; white-space: nowrap;'>£{value:,.0f}</div>"
         if is_highest and value > 0:
-            return f"<div style='background-color: gold; color: black; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'>⭐ £{value:,.0f}</div>"
+            return f"<div style='background-color: gold; color: black; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center; white-space: nowrap;'>⭐ £{value:,.0f}</div>"
         return f"<div style='color: black; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center; white-space: nowrap;'>£{value:,.0f}</div>"
 
     # max_today_sales = progress_data.loc[progress_data["Sales Exec"] != "TOTALS", "Today's Sales"].max()
@@ -252,8 +252,8 @@ def calculate_monthly_progress(data, start_date, end_date, targets_data):
         if value >= expected_pace:
             return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'>{value:.0f}%</div>"
         elif half_expected_pace <= value < expected_pace:
-            return f"<div style='background-color: orange; color: white; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'>{value:.0f}%</div>"
-        return f"<div style='background-color: red; color: white; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center; white-space: nowrap;'>{value:.0f}%</div>"
+            return f"<div style='background-color: orange; color: white; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center; white-space: nowrap;'>{value:.0f}%</div>"
+        return f"<div style='background-color: red; color: white; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center; white-space: nowrap; white-space: nowrap;'>{value:.0f}%</div>"
 
     progress_data["Progress To Monthly Target"] = progress_data["Progress To Monthly Target (Numeric)"].apply(
         lambda x: style_progress(x) if pd.notnull(x) else "<div></div>"
