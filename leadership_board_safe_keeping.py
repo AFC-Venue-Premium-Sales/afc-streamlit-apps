@@ -490,6 +490,8 @@ def run_dashboard():
     (executive_data["CreatedOn"].dt.month == datetime.now().month) &
     (executive_data["CreatedOn"].dt.year == current_year)
 ]
+
+
     # Calculate total revenue for the current month
     total_revenue = current_month_data["Price"].sum()
 
@@ -583,7 +585,7 @@ def run_dashboard():
             (filtered_data["Fixture Name"] == fixture_name) &
             (filtered_data["EventCompetition"] == event_competition)
         ]
-        
+
         fixture_revenue = fixture_data["Price"].sum()
         budget_achieved = round((fixture_revenue / budget_target) * 100, 2) if budget_target > 0 else 0
         days_to_fixture = (fixture_date - datetime.now()).days

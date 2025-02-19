@@ -708,7 +708,7 @@ def run_dashboard():
         st.session_state.last_switch_time = time.time()
 
     # Check if 15 seconds have passed since the last switch time
-    if time.time() - st.session_state.last_switch_time >= 15:
+    if time.time() - st.session_state.last_switch_time >= 25:
         st.session_state.page = (st.session_state.page % 4) + 1
         st.session_state.last_switch_time = time.time()  # Update the last switch time
 
