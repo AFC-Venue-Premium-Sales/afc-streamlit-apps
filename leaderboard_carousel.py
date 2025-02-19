@@ -666,11 +666,11 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
     # Final display
     st.markdown(
         f"""
-        <div class="fixture-title">{fixture_row['EventName']}</div>
         {html_table}
         """,
         unsafe_allow_html=True
-    )
+)
+
 
 ################################################################################
 # 5. MAIN Streamlit App
@@ -942,7 +942,44 @@ def run_dashboard():
         print(f"💰 FIXED Fixture Revenue: £{fixture_revenue:,.0f}")
         print(f"📊 Budget Target Achieved: {budget_achieved:.2f}%")
 
-        # Sidebar Widget
+        # 1️⃣ First widget: minimal “Next Fixture” card 
+        st.sidebar.markdown(
+            f"""
+            <style>
+                @font-face {{
+                    font-family: 'Chapman-Bold';
+                    src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
+                }}
+                .next-fixture-minimal {{
+                    background-color: #fff0f0;
+                    border: 2px solid #0047AB; /* Use Blue for the border if desired */
+                    border-radius: 15px;
+                    margin-top: 10px;
+                    padding: 15px;
+                    text-align: center;
+                    font-family: 'Chapman-Bold';
+                    font-weight: bold;
+                }}
+                .next-fixture-minimal .header-text {{
+                    font-size: 24px;
+                    color: #0047AB; /* Blue for "Next Fixture" */
+                    margin-bottom: 10px;
+                }}
+                .next-fixture-minimal .fixture-title {{
+                    font-size: 22px;
+                    color: #E41B17; /* Red for fixture name */
+                    margin-bottom: 5px;
+                }}
+            </style>
+            <div class="next-fixture-minimal">
+                <div class="header-text">Next Fixture</div>
+                <div class="fixture-title">{fixture_name} ({event_competition})</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+        # 2️⃣ Second widget: detailed “Next Fixture Details” card
         st.sidebar.markdown(
             f"""
             <style>
@@ -962,15 +999,6 @@ def run_dashboard():
                     font-weight: bold;
                     color: #E41B17;
                 }}
-                .next-fixture-widget span {{
-                    display: block;
-                    margin-bottom: 5px;
-                }}
-                .next-fixture-widget .fixture-title {{
-                    font-size: 22px;
-                    color: #E41B17;
-                    margin-bottom: 10px;
-                }}
                 .next-fixture-widget .fixture-info {{
                     font-size: 20px;
                     color: #0047AB;
@@ -984,8 +1012,6 @@ def run_dashboard():
             </style>
             <div class="next-fixture-widget">
                 🏟️ Next Fixture Details <br>
-                <span class="fixture-info">⏳ Fixture Name:</span>
-                <span class="fixture-title">{fixture_name} ({event_competition})</span>
                 <span class="fixture-info">⏳ Days to Fixture:</span>
                 <span class="fixture-days">{days_to_fixture} days</span>
                 <span class="fixture-info">🎯 Budget Target:</span>
@@ -994,8 +1020,9 @@ def run_dashboard():
                 <span class="fixture-days">{budget_achieved:.2f}%</span>
             </div>
             """,
-            unsafe_allow_html=True,
+            unsafe_allow_html=True
         )
+
 
 
 
