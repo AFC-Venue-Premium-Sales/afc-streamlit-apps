@@ -658,7 +658,25 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
     # ✅ Drop duplicates by "Package Name", keeping the first occurrence
     df_fixture.drop_duplicates(subset=["Package Name"], keep="first", inplace=True)
 
-    # Finally, generate the HTML table
+    # 12. Apply "SOLD OUT" Styling for Package Name if Seats Remaining = 0
+    def style_pkg_name(pkg_name, seats_remaining):
+        if seats_remaining == 0:
+            return (
+                "<div style='background-color: red; color: white; font-family: Chapman-Bold; "
+                "font-size: 22px; padding: 10px; text-align: center; white-space: nowrap;'>"
+                "SOLD OUT</div>"
+            )
+        else:
+            return (
+                f"<div style='color: black; font-family: Chapman-Bold; font-size: 22px; "
+                f"padding: 10px; text-align: center; white-space: nowrap;'>{pkg_name}</div>"
+            )
+            
+    df_fixture["Package Name"] = df_fixture.apply(
+    lambda row: style_pkg_name(row["Package Name"], row["Seats Remaining"]), axis=1
+        )
+
+    # 13. Generate HTML Table
     html_table = df_fixture[["Package Name", "Seats Available", "Seats Sold", "Seats Remaining", "Current Price"]].to_html(
         classes='fixture-table', index=False, escape=False
     )
