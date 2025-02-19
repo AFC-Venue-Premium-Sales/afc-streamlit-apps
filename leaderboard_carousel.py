@@ -253,7 +253,7 @@ def calculate_monthly_progress(data, start_date, end_date, targets_data):
             return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'>{value:.0f}%</div>"
         elif half_expected_pace <= value < expected_pace:
             return f"<div style='background-color: orange; color: white; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center; white-space: nowrap;'>{value:.0f}%</div>"
-        return f"<div style='background-color: red; color: white; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center; white-space: nowrap; white-space: nowrap;'>{value:.0f}%</div>"
+        return f"<div style='background-color: red; color: white; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center; white-space: nowrap;'>{value:.0f}%</div>"
 
     progress_data["Progress To Monthly Target"] = progress_data["Progress To Monthly Target (Numeric)"].apply(
         lambda x: style_progress(x) if pd.notnull(x) else "<div></div>"
@@ -270,7 +270,7 @@ def calculate_monthly_progress(data, start_date, end_date, targets_data):
         "Progress To Monthly Target": "Progress To Monthly Target"
     }
     progress_data.columns = [
-        f"<div style='font-family: Chapman-Bold; font-size: 22px; text-align: center;'>{col}</div>"
+        f"<div style='font-family: Chapman-Bold; font-size: 22px; text-align: center;white-space: nowrap;'>{col}</div>"
         for col in styled_columns.values()
     ]
 
