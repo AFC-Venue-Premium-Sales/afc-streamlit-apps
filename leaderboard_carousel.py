@@ -211,7 +211,7 @@ def calculate_monthly_progress(data, start_date, end_date, targets_data):
     def style_sales_exec(value, is_total=False):
         if is_total:
             return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'>{value}</div>"
-        return f"<div style='color: black; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'>{value}</div>"
+        return f"<div style='color: black; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;white-space: nowrap;'>{value}</div>"
 
     progress_data["Sales Exec"] = progress_data.apply(
         lambda row: style_sales_exec(row["Sales Exec"], is_total=(row["Sales Exec"] == "TOTALS")),
@@ -224,7 +224,7 @@ def calculate_monthly_progress(data, start_date, end_date, targets_data):
             return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'>£{value:,.0f}</div>"
         if is_highest and value > 0:
             return f"<div style='background-color: gold; color: black; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'>⭐ £{value:,.0f}</div>"
-        return f"<div style='color: black; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'>£{value:,.0f}</div>"
+        return f"<div style='color: black; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center; white-space: nowrap;'>£{value:,.0f}</div>"
 
     # max_today_sales = progress_data.loc[progress_data["Sales Exec"] != "TOTALS", "Today's Sales"].max()
     # max_weekly_sales = progress_data.loc[progress_data["Sales Exec"] != "TOTALS", "Weekly Sales"].max()
@@ -253,7 +253,7 @@ def calculate_monthly_progress(data, start_date, end_date, targets_data):
             return f"<div style='background-color: green; color: white; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'>{value:.0f}%</div>"
         elif half_expected_pace <= value < expected_pace:
             return f"<div style='background-color: orange; color: white; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'>{value:.0f}%</div>"
-        return f"<div style='background-color: red; color: white; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center;'>{value:.0f}%</div>"
+        return f"<div style='background-color: red; color: white; font-family: Chapman-Bold; font-size: 22px; padding: 10px; text-align: center; white-space: nowrap;'>{value:.0f}%</div>"
 
     progress_data["Progress To Monthly Target"] = progress_data["Progress To Monthly Target (Numeric)"].apply(
         lambda x: style_progress(x) if pd.notnull(x) else "<div></div>"
@@ -952,7 +952,7 @@ def run_dashboard():
                 }}
                 .next-fixture-minimal {{
                     background-color: #fff0f0;
-                    border: 2px solid #0047AB; /* Use Blue for the border if desired */
+                    border: 2px solid #E41B17; /* Use Blue for the border if desired */
                     border-radius: 15px;
                     margin-top: 10px;
                     padding: 15px;
@@ -972,7 +972,7 @@ def run_dashboard():
                 }}
             </style>
             <div class="next-fixture-minimal">
-                <div class="header-text">Next Fixture</div>
+                <div class="header-text">🏟️ Next Fixture</div>
                 <div class="fixture-title">{fixture_name} ({event_competition})</div>
             </div>
             """,
