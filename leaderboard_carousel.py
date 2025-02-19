@@ -668,12 +668,12 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
         if seats_remaining <= 0:
             return (
                 "<div style='background-color: red; color: white; font-family: Chapman-Bold; "
-                "font-size: 14; font-weight: bold; padding: 5px; text-align: center; white-space: nowrap;'>"
+                "font-size: 10; font-weight: bold; padding: 5px; text-align: center; white-space: nowrap;'>"
                 "SOLD OUT</div>"
             )
         else:
             return (
-                f"<div style='color: black; font-family: Chapman-Bold; font-size: 14px; font-weight: bold; "
+                f"<div style='color: black; font-family: Chapman-Bold; font-size: 18px; font-weight: bold; "
                 f"padding: 5px; text-align: center; white-space: nowrap;'>{seats_remaining}</div>"
             )
 
