@@ -528,7 +528,7 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
             /* Header Styling */
             .fixture-table th {
                 font-family: 'Chapman-Bold';
-                font-size: 20px;
+                font-size: 24px;
                 text-align: center;
                 font-weight: bold;
                 padding: 12px;
@@ -673,7 +673,7 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
             )
         else:
             return (
-                f"<div style='color: black; font-family: Chapman-Bold; font-size: 18px; font-weight: bold; "
+                f"<div style='color: black; font-family: Chapman-Bold; font-size: 24px; font-weight: bold; "
                 f"padding: 5px; text-align: center; white-space: nowrap;'>{seats_remaining}</div>"
             )
 
@@ -1144,7 +1144,7 @@ def run_dashboard():
                 padding: 5px 12px;
                 border-radius: 10px;
                 font-family: 'Northbank-N5';
-                font-size: 25px;
+                font-size: 18px;
                 font-weight: bold;
                 text-align: center;
                 border: 1px solid #E41B17;
