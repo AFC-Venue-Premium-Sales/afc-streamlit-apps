@@ -541,7 +541,7 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
             /* Table Cells */
             .fixture-table td {
                 font-family: 'Chapman-Bold';
-                font-size: 18px;
+                font-size: 24px;
                 text-align: center;
                 font-weight: bold;
                 padding: 10px;
@@ -1141,10 +1141,10 @@ def run_dashboard():
                 margin: 0 auto;
                 background-color: #fff0f0;
                 color: #E41B17;
-                padding: 10px 12px;
+                padding: 5px 12px;
                 border-radius: 10px;
                 font-family: 'Northbank-N5';
-                font-size: 20px;
+                font-size: 25px;
                 font-weight: bold;
                 text-align: center;
                 border: 1px solid #E41B17;
