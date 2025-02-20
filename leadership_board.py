@@ -480,9 +480,27 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
     Displays the inventory details for upcoming fixtures including package stock, prices, and remaining seats.
     Ensures that stock is calculated properly by subtracting actual sales. It calculates Seats sold minus Available stock at the time of the pull.
     """
+    # Use wide layout to reduce side padding
+    st.set_page_config(layout="wide")
+
+    # Inject custom CSS
     st.markdown(
-    """
+        """
         <style>
+            /* Remove default Streamlit padding on the main container */
+            .main .block-container {
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+
+            /* Remove default margins/padding so the table starts at the very top/left */
+            html, body {
+                margin: 0;
+                padding: 0;
+                height: 100%;
+                width: 100%;
+            }
+
             /* Import your fonts */
             @font-face {
                 font-family: 'Chapman-Bold';
@@ -493,31 +511,23 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
                 src: url('fonts/Northbank-N7_2789728357.ttf') format('truetype');
             }
 
-            /* Remove default margins/padding so the table starts at the very top */
-            html, body {
-                margin: 0;
-                padding: 0;
-                height: 100%;
-                width: 100%;
-            }
-
-            /* Optional Wrapper to allow horizontal scrolling if needed */
+            /* Wrapper to allow horizontal scrolling if the table is wide or zoomed in */
             .table-wrapper {
                 width: 100%;
-                overflow-x: auto; 
-                margin: 0 auto;   /* Remove extra margins here if needed */
-                padding-top: 0;   /* Ensure no padding on top */
+                margin: 0;
+                padding: 0;
+                overflow-x: auto;
             }
 
+            /* Table styling */
             .fixture-table {
-                /* Let columns auto-size based on content */
-                table-layout: auto;
-                width: 100%;
+                table-layout: auto;         /* Let columns auto-size */
+                width: max-content;         /* Don’t shrink columns; allows horizontal scrolling if wide */
                 border-collapse: collapse;
                 background-color: white;
             }
 
-            /* Header Styling */
+            /* Header styling */
             .fixture-table th {
                 font-family: 'Chapman-Bold';
                 font-size: 24px;
@@ -527,10 +537,10 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
                 border-bottom: 2px solid black;
                 background-color: #EAEAEA;
                 color: black;
-                white-space: nowrap;
+                white-space: nowrap;        /* Prevent column header wrapping */
             }
 
-            /* Table Cells */
+            /* Table cells */
             .fixture-table td {
                 font-family: 'Chapman-Bold';
                 font-size: 24px;
@@ -539,21 +549,29 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
                 padding: 10px;
                 border-bottom: 1px solid #ddd;
                 background-color: white;
-                white-space: nowrap;
+                white-space: nowrap;        /* Keep cell content on one line */
             }
 
-            /* Alternating row hover effect */
+            /* Row striping and hover */
             .fixture-table tr:nth-child(even) {
                 background-color: white !important;
             }
-
             .fixture-table tr:hover {
                 background-color: #f5f5f5;
             }
+
         </style>
         """,
-    unsafe_allow_html=True
-)
+        unsafe_allow_html=True
+    )
+
+
+
+
+
+
+
+
 
 
     # ✅ 1. Filter inventory data for the selected fixture and event competition
