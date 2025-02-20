@@ -480,8 +480,7 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
     Displays the inventory details for upcoming fixtures including package stock, prices, and remaining seats.
     Ensures that stock is calculated properly by subtracting actual sales. It calculates Seats sold minus Available stock at the time of the pull.
     """
-    # Use wide layout to reduce side padding
-    st.set_page_config(layout="wide")
+   
 
     # Inject custom CSS
     st.markdown(
