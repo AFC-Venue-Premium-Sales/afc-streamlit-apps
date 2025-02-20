@@ -481,8 +481,9 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
     Ensures that stock is calculated properly by subtracting actual sales. It calculates Seats sold minus Available stock at the time of the pull.
     """
     st.markdown(
-        """
+    """
         <style>
+            /* Import your fonts */
             @font-face {
                 font-family: 'Chapman-Bold';
                 src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
@@ -492,21 +493,11 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
                 src: url('fonts/Northbank-N7_2789728357.ttf') format('truetype');
             }
 
-            body, html {
+            /* Remove default margins/padding so the table starts at the very top */
+            html, body {
                 margin: 0;
                 padding: 0;
                 height: 100%;
-                width: 100%;
-            }
-
-            .fixture-title {
-                font-family: 'Northbank-N7';
-                font-size: 42px;
-                color: #E41B17;
-                font-weight: bold;
-                text-align: center;
-                margin: 0;
-                padding: 10px 0;
                 width: 100%;
             }
 
@@ -514,7 +505,8 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
             .table-wrapper {
                 width: 100%;
                 overflow-x: auto; 
-                margin: 0 auto;
+                margin: 0 auto;   /* Remove extra margins here if needed */
+                padding-top: 0;   /* Ensure no padding on top */
             }
 
             .fixture-table {
@@ -535,7 +527,7 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
                 border-bottom: 2px solid black;
                 background-color: #EAEAEA;
                 color: black;
-                white-space: nowrap; /* Prevent wrapping in headers */
+                white-space: nowrap;
             }
 
             /* Table Cells */
@@ -547,9 +539,10 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
                 padding: 10px;
                 border-bottom: 1px solid #ddd;
                 background-color: white;
-                white-space: nowrap; /* Prevent wrapping in table cells */
+                white-space: nowrap;
             }
 
+            /* Alternating row hover effect */
             .fixture-table tr:nth-child(even) {
                 background-color: white !important;
             }
@@ -561,6 +554,7 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
         """,
     unsafe_allow_html=True
 )
+
 
     # ✅ 1. Filter inventory data for the selected fixture and event competition
     df_fixture = merged_inventory[
