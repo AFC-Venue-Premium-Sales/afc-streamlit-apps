@@ -480,26 +480,9 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
     Displays the inventory details for upcoming fixtures including package stock, prices, and remaining seats.
     Ensures that stock is calculated properly by subtracting actual sales. It calculates Seats sold minus Available stock at the time of the pull.
     """
-   
-
-    # Inject custom CSS
     st.markdown(
-        """
+    """
         <style>
-            /* Remove default Streamlit padding on the main container */
-            .main .block-container {
-                padding: 0 !important;
-                margin: 0 !important;
-            }
-
-            /* Remove default margins/padding so the table starts at the very top/left */
-            html, body {
-                margin: 0;
-                padding: 0;
-                height: 100%;
-                width: 100%;
-            }
-
             /* Import your fonts */
             @font-face {
                 font-family: 'Chapman-Bold';
@@ -510,36 +493,44 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
                 src: url('fonts/Northbank-N7_2789728357.ttf') format('truetype');
             }
 
-            /* Wrapper to allow horizontal scrolling if the table is wide or zoomed in */
-            .table-wrapper {
-                width: 100%;
+            /* Remove default margins/padding so the table starts at the very top */
+            html, body {
                 margin: 0;
                 padding: 0;
-                overflow-x: auto;
+                height: 100%;
+                width: 100%;
             }
 
-            /* Table styling */
+            /* Optional Wrapper to allow horizontal scrolling if needed */
+            .table-wrapper {
+                width: 100%;
+                overflow-x: auto; 
+                margin: 0 auto;   /* Remove extra margins here if needed */
+                padding-top: 0;   /* Ensure no padding on top */
+            }
+
             .fixture-table {
-                table-layout: auto;         /* Let columns auto-size */
-                width: max-content;         /* Don’t shrink columns; allows horizontal scrolling if wide */
+                /* Let columns auto-size based on content */
+                table-layout: auto;
+                width: 100%;
                 border-collapse: collapse;
                 background-color: white;
             }
 
-            /* Header styling */
+            /* Header Styling */
             .fixture-table th {
                 font-family: 'Chapman-Bold';
-                font-size: 24px;
+                font-size: 20px;
                 text-align: center;
                 font-weight: bold;
                 padding: 12px;
                 border-bottom: 2px solid black;
                 background-color: #EAEAEA;
                 color: black;
-                white-space: nowrap;        /* Prevent column header wrapping */
+                white-space: nowrap;
             }
 
-            /* Table cells */
+            /* Table Cells */
             .fixture-table td {
                 font-family: 'Chapman-Bold';
                 font-size: 24px;
@@ -548,29 +539,21 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
                 padding: 10px;
                 border-bottom: 1px solid #ddd;
                 background-color: white;
-                white-space: nowrap;        /* Keep cell content on one line */
+                white-space: nowrap;
             }
 
-            /* Row striping and hover */
+            /* Alternating row hover effect */
             .fixture-table tr:nth-child(even) {
                 background-color: white !important;
             }
+
             .fixture-table tr:hover {
                 background-color: #f5f5f5;
             }
-
         </style>
         """,
-        unsafe_allow_html=True
-    )
-
-
-
-
-
-
-
-
+    unsafe_allow_html=True
+)
 
 
     # ✅ 1. Filter inventory data for the selected fixture and event competition
