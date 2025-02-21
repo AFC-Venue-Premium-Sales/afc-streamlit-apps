@@ -499,17 +499,6 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
                 width: 100%;
             }
 
-            .fixture-title {
-                font-family: 'Northbank-N7';
-                font-size: 42px;
-                color: #E41B17;
-                font-weight: bold;
-                text-align: center;
-                margin: 0;
-                padding: 10px 0;
-                width: 100%;
-            }
-
             /* Optional Wrapper to allow horizontal scrolling if needed */
             .table-wrapper {
                 width: 100%;
