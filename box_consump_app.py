@@ -97,7 +97,7 @@ if st.session_state["authenticated"]:
     version_choice = st.sidebar.radio("Select Processing Logic", ["First Version", "Updated Version"])
     
     try:
-        if version_choice == "Updated Version":
+        if version_choice == "Updated Version [Feb-21]":
             import box_consumption_app_login_v2 as app_module
         else:
             import box_consumption_app_login as app_module
