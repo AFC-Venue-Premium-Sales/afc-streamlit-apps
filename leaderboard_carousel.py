@@ -544,7 +544,7 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
                 font-size: 18px;
                 text-align: center;
                 font-weight: bold;
-                padding: 10px;
+                padding: 5px;
                 border-bottom: 1px solid #ddd;
                 background-color: white;
                 white-space: nowrap; /* Prevent wrapping in table cells */
