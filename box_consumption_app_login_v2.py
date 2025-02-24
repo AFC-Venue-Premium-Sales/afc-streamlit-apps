@@ -222,7 +222,7 @@ def process_files(box_log_file, preorders_file):
     )
 
 
-def main():
+def run():
     st.title("Box Log Processing App")
     
     with st.expander("Instructions and Information", expanded=False):
@@ -329,4 +329,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    run()
