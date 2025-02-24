@@ -52,10 +52,10 @@ def preprocess_preorders(preorders_file):
         'Event': lambda x: ', '.join(x.dropna().unique())    # Combine unique events
     })
 
-    # # ✅ Export cleaned Preorders file for validation
-    # output_path = "/Users/cmunthali/Documents/PYTHON/SALES_REPORTS/PREPROCESS/Cleaned_Preorders.xlsx"
-    # aggregated.to_excel(output_path, index=False)
-    # print(f"✅ Cleaned Preorders file saved successfully at: {output_path}")
+    # ✅ Export cleaned Preorders file for validation
+    output_path = "/Users/cmunthali/Documents/PYTHON/SALES_REPORTS/PREPROCESS/Cleaned_Preorders.xlsx"
+    aggregated.to_excel(output_path, index=False)
+    print(f"✅ Cleaned Preorders file saved successfully at: {output_path}")
 
     return aggregated
 
