@@ -94,7 +94,7 @@ if st.session_state["authenticated"]:
     st.success("✅ Logged in successfully!")
     
     # Provide a radio button for version selection in the sidebar
-    version_choice = st.sidebar.radio("Select Processing Logic", ["First Version", "Updated Version"])
+    version_choice = st.sidebar.radio("Select Processing Logic", ["First Version", "Updated Version [Feb-21]"])
     
     try:
         if version_choice == "Updated Version [Feb-21]":
