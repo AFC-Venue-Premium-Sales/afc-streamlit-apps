@@ -222,7 +222,7 @@ def process_files(box_log_file, preorders_file):
     )
 
 
-def run():
+def main():
     st.title("Box Log Processing App")
     
     with st.expander("Instructions and Information", expanded=False):
@@ -287,6 +287,7 @@ def run():
             """
             )
 
+
             # 3. Detailed Box Moves
             st.sidebar.subheader("3. Detailed Box Moves & Highlights")
             if green_details:
@@ -328,4 +329,4 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
+    main()
