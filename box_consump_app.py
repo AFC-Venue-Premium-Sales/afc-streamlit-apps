@@ -94,10 +94,10 @@ if st.session_state["authenticated"]:
     st.success("✅ Logged in successfully!")
     
     # Provide a radio button for version selection in the sidebar
-    version_choice = st.sidebar.radio("Select Processing Logic", ["Previous Version", "New Version"])
+    version_choice = st.sidebar.radio("Select Processing Logic", ["First Version", "Updated Version"])
     
     try:
-        if version_choice == "New Version":
+        if version_choice == "Updated Version":
             import box_consumption_app_login_v2 as app_module
         else:
             import box_consumption_app_login as app_module
