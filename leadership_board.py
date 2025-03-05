@@ -495,7 +495,7 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
             /* 1. Remove default Streamlit top padding (move table up) */
             .main .block-container {
             padding-top: 0rem !important; 
-            margin-top: 20px !important;
+            margin-top: 25px !important;
         }
 
 
