@@ -495,7 +495,7 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
             /* 1. Remove default Streamlit top padding (move table up) */
             .main .block-container {
                 padding-top: 0rem !important; 
-                margin-top: -70px; /* Adjust the negative margin as needed */
+                margin-top: -50px; /* Adjust the negative margin as needed */
             }
 
             body, html {
@@ -663,7 +663,7 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
         if seats_remaining <= 0:
             return (
                 "<div style='background-color: red; color: white; font-family: Chapman-Bold; "
-                "font-size: 20px; font-weight: bold; padding: 5px; text-align: center; white-space: nowrap;'>"
+                "font-size: 18px; font-weight: bold; padding: 5px; text-align: center; white-space: nowrap;'>"
                 "SOLD OUT</div>"
             )
         else:
