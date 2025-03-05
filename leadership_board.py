@@ -491,6 +491,12 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
                 font-family: 'Northbank-N7';
                 src: url('fonts/Northbank-N7_2789728357.ttf') format('truetype');
             }
+            
+            /* 1. Remove default Streamlit top padding (move table up) */
+            .main .block-container {
+                padding-top: 0rem !important; 
+                margin-top: -100px; /* Adjust the negative margin as needed */
+            }
 
             body, html {
                 margin: 0;
@@ -651,20 +657,21 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
     def style_seats_remaining(seats_remaining):
         """
         Returns a styled <div> for the "Seats Remaining" cell:
-        - If seats_remaining <= 0, shows "SOLD OUT" in red background & white text (font-size 18px)
-        - Otherwise, displays seats_remaining with the same style as your table cells
+        - If seats_remaining <= 0, shows "SOLD OUT" in red background & white text (font-size 10px)
+        - Otherwise, displays the numeric seats_remaining (font-size 18px)
         """
         if seats_remaining <= 0:
             return (
                 "<div style='background-color: red; color: white; font-family: Chapman-Bold; "
-                "font-size: 10; font-weight: bold; padding: 5px; text-align: center; white-space: nowrap;'>"
+                "font-size: 10px; font-weight: bold; padding: 5px; text-align: center; white-space: nowrap;'>"
                 "SOLD OUT</div>"
             )
         else:
             return (
-                f"<div style='color: black; font-family: Chapman-Bold; font-size: 18px; font-weight: bold; "
+                f"<div style='color: black; font-family: Chapman-Bold; font-size: 24px; font-weight: bold; "
                 f"padding: 5px; text-align: center; white-space: nowrap;'>{seats_remaining}</div>"
             )
+
 
 
     df_fixture["Seats Remaining"] = df_fixture["Seats Remaining"].apply(style_seats_remaining)
