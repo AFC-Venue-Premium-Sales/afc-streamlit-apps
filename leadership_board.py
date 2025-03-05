@@ -495,7 +495,7 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
             /* 1. Remove default Streamlit top padding (move table up) */
             .main .block-container {
             padding-top: 0rem !important; 
-            margin-top: 30px !important;
+            margin-top: 35px !important;
         }
 
 
@@ -524,7 +524,7 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
             /* Header Styling */
             .fixture-table th {
                 font-family: 'Chapman-Bold';
-                font-size: 20px;
+                font-size: 24px;
                 text-align: center;
                 font-weight: bold;
                 padding: 8px;
