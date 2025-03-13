@@ -496,9 +496,10 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
             .main .block-container {
             padding-top: 0rem !important; 
             margin-top: 35px !important;
-        }
-
-
+            margin-left: 0px !important; /* Move content to the left */
+            max-width: 85% !important; /* Reduce width for better alignment */
+            }
+            
             body, html {
                 margin: 0;
                 padding: 0;
@@ -527,7 +528,7 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
                 font-size: 24px;
                 text-align: center;
                 font-weight: bold;
-                padding: 8px;
+                padding: 3px;
                 border-bottom: 2px solid black;
                 background-color: #EAEAEA;
                 color: black;
