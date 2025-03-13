@@ -497,7 +497,6 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
             padding-top: 0rem !important; 
             margin-top: 35px !important;
             margin-left: -20px !important; /* Move content to the left */
-            max-width: 85% !important; /* Reduce width for better alignment */
             }
             
             body, html {
@@ -541,7 +540,7 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
                 font-size: 24px;
                 text-align: center;
                 font-weight: bold;
-                padding: 5px;
+                padding: 2px;
                 border-bottom: 1px solid #ddd;
                 background-color: white;
                 white-space: nowrap; /* Prevent wrapping in table cells */
