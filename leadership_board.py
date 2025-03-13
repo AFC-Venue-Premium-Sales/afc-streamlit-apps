@@ -496,7 +496,7 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
             .main .block-container {
             padding-top: 0rem !important; 
             margin-top: 35px !important;
-            margin-left: -10px !important; /* Move content to the left */
+            margin-left: -20px !important; /* Move content to the left */
             max-width: 85% !important; /* Reduce width for better alignment */
             }
             
