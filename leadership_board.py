@@ -1143,7 +1143,7 @@ def run_dashboard():
                 padding: 10px 12px;
                 border-radius: 10px;
                 font-family: 'Northbank-N5';
-                font-size: 20px;
+                font-size: 25px;
                 font-weight: bold;
                 text-align: center;
                 border: 1px solid #E41B17;
