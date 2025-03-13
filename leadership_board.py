@@ -495,7 +495,7 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
             /* 1. Remove default Streamlit top padding (move table up) */
             .main .block-container {
             padding-top: 0rem !important; 
-            margin-top: 35px !important;
+            margin-top: 40px !important;
             margin-left: -60px !important; /* Move content to the left */
             max-width: 80% !important; /* Reduce width for better alignment */
             }
@@ -542,7 +542,7 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
                 font-size: 24px;
                 text-align: center;
                 font-weight: bold;
-                padding: 2px;
+                padding: 5px;
                 border-bottom: 1px solid #ddd;
                 background-color: white;
                 white-space: nowrap; /* Prevent wrapping in table cells */
