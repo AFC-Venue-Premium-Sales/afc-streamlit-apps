@@ -11,9 +11,3 @@ libasound2
 libatk1.0-0
 libpangocairo-1.0-0
 libgtk-3-0
-
-# Required dependencies for xmlsec
-libxml2-dev
-libxmlsec1-dev
-libxmlsec1-openssl
-pkg-config
