@@ -73,15 +73,9 @@ onelogin
 streamlit-aggrid
 streamlit-autorefresh
 xlrd
-
-# Required dependencies for xmlsec and saml
 pip>=24.0
 setuptools>=68.0
 setuptools_scm>=8.0
 wheel
-
-# Install xmlsec first (before python3-saml)
 xmlsec==1.3.15
-
-# Install python3-saml AFTER xmlsec
 python3-saml==1.16.0
