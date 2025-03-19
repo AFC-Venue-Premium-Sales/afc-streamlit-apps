@@ -1140,7 +1140,7 @@ def run_dashboard():
                 margin: 0 auto;
                 background-color: #fff0f0;
                 color: #E41B17;
-                padding: 10px 12px;
+                padding: 10px 10px;
                 border-radius: 10px;
                 font-family: 'Northbank-N5';
                 font-size: 25px;
