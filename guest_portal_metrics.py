@@ -143,7 +143,9 @@ def run():
             # Step 1: Preprocess Manual
             df_manual = preprocess_manual(manual_file)
             progress_bar.progress(20)
-            st.info("✅ Step 1: Manual file processed")
+            step_1 = st.success("✅ Step 1: Manual file processed")
+            time.sleep(3)  # Wait 3 seconds
+            step_1.empty()  # Remove message
 
             # Step 2: Get API Token
             token = get_access_token()
@@ -152,24 +154,29 @@ def run():
                 st.stop()
             headers = {'Authorization': f'Bearer {token}'}
 
-            # Step 3: Fetch Event IDs
             event_ids = fetch_event_ids(headers)
             progress_bar.progress(40)
-            st.info("✅ Step 2: Event IDs retrieved")
+            step_2 = st.success("✅ Step 2: Event IDs retrieved")
+            time.sleep(3)
+            step_2.empty()
 
-            # Step 4: Fetch API Preorders
+            # Step 3: Fetch API Preorders
             df_api = fetch_api_preorders(event_ids, headers)
             progress_bar.progress(60)
-            st.info("✅ Step 3: Preorders fetched")
+            step_3 = st.success("✅ Step 3: Preorders fetched")
+            time.sleep(3)
+            step_3.empty()
 
-            # Step 5: Process API Menus
+            # Step 4: Process API Menus
             df_menu, event_map = process_api_menu(df_api)
             progress_bar.progress(80)
-            st.info("✅ Step 4: Menu processed")
+            step_4 = st.success("✅ Step 4: Menu processed")
+            time.sleep(3)
+            step_4.empty()
 
-            # Step 6: Map Event IDs and Merge
+            # Step 5: Map Event IDs and Merge
             df_manual['EventId'] = df_manual.apply(lambda row: map_event_id(row, event_map), axis=1).astype(str).fillna('')
-            merge_keys = ['EventId','Location','Event','Guest_name','Guest_email','Order_type']
+            merge_keys = ['EventId', 'Location', 'Event', 'Guest_name', 'Guest_email', 'Order_type']
             df_merged = df_manual.merge(df_menu, how='left', on=merge_keys, suffixes=('_manual', '_api'))
             df_merged = lumpsum_deduping(df_merged, merge_keys)
 
@@ -178,44 +185,47 @@ def run():
                 st.stop()
 
             progress_bar.progress(100)
-            st.success("✅ Data ready for analysis")
+            final_message = st.success("✅ Data ready for analysis")
+            time.sleep(3)
+            final_message.empty()
 
 
-        if 'Status_manual' in df_merged.columns:
-            df_merged.rename(columns={'Status_manual': 'Status'}, inplace=True)
-        if 'Status_api' in df_merged.columns:
-            df_merged.drop(columns=['Status_api'], inplace=True)
 
-        # --- Filtering ---
-        df_merged['Ordered_on'] = pd.to_datetime(df_merged['Ordered_on'], errors='coerce')
-        df_merged = df_merged[
-            (df_merged['Ordered_on'] >= pd.to_datetime(start_date)) &
-            (df_merged['Ordered_on'] <= pd.to_datetime(end_date))
-        ]
+            if 'Status_manual' in df_merged.columns:
+                df_merged.rename(columns={'Status_manual': 'Status'}, inplace=True)
+            if 'Status_api' in df_merged.columns:
+                df_merged.drop(columns=['Status_api'], inplace=True)
 
-        if 'Location' in df_merged.columns:
-            locs = sorted(df_merged['Location'].dropna().unique())
-            selected_locs = st.sidebar.multiselect("Select Location(s):", locs, default=locs)
-            df_merged = df_merged[df_merged['Location'].isin(selected_locs)]
+            # --- Filtering ---
+            df_merged['Ordered_on'] = pd.to_datetime(df_merged['Ordered_on'], errors='coerce')
+            df_merged = df_merged[
+                (df_merged['Ordered_on'] >= pd.to_datetime(start_date)) &
+                (df_merged['Ordered_on'] <= pd.to_datetime(end_date))
+            ]
 
-        if 'Order_type' in df_merged.columns:
-            order_types = sorted(df_merged['Order_type'].dropna().unique())
-            selected_types = st.sidebar.multiselect("Select Order Type(s):", order_types, default=order_types)
-            df_merged = df_merged[df_merged['Order_type'].isin(selected_types)]
+            if 'Location' in df_merged.columns:
+                locs = sorted(df_merged['Location'].dropna().unique())
+                selected_locs = st.sidebar.multiselect("Select Location(s):", locs, default=locs)
+                df_merged = df_merged[df_merged['Location'].isin(selected_locs)]
 
-        if 'Menu_Item' in df_merged.columns:
-            items = sorted(df_merged['Menu_Item'].dropna().unique())
-            selected_items = st.sidebar.multiselect("Select Menu Item(s):", items, default=items)
-            df_merged = df_merged[df_merged['Menu_Item'].isin(selected_items)]
+            if 'Order_type' in df_merged.columns:
+                order_types = sorted(df_merged['Order_type'].dropna().unique())
+                selected_types = st.sidebar.multiselect("Select Order Type(s):", order_types, default=order_types)
+                df_merged = df_merged[df_merged['Order_type'].isin(selected_types)]
 
-        if 'Status' in df_merged.columns:
-            statuses = sorted(df_merged['Status'].dropna().unique())
-            selected_statuses = st.sidebar.multiselect("Select Status(es):", statuses, default=statuses)
-            df_merged = df_merged[df_merged['Status'].isin(selected_statuses)]
+            if 'Menu_Item' in df_merged.columns:
+                items = sorted(df_merged['Menu_Item'].dropna().unique())
+                selected_items = st.sidebar.multiselect("Select Menu Item(s):", items, default=items)
+                df_merged = df_merged[df_merged['Menu_Item'].isin(selected_items)]
 
-        if df_merged.empty:
-            st.warning("⚠ No data after filtering.")
-            return
+            if 'Status' in df_merged.columns:
+                statuses = sorted(df_merged['Status'].dropna().unique())
+                selected_statuses = st.sidebar.multiselect("Select Status(es):", statuses, default=statuses)
+                df_merged = df_merged[df_merged['Status'].isin(selected_statuses)]
+
+            if df_merged.empty:
+                st.warning("⚠ No data after filtering.")
+                return
 
         # --- Metrics ---
         st.subheader("📊 Key Metrics")
