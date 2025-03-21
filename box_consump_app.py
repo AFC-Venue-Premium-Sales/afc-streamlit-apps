@@ -120,10 +120,14 @@ if st.session_state.get("authenticated", False):  # Ensure authentication exists
         st.error("❌ Could not load the application. Please try again.")
 
 # Logout Button
+# Logout Button (Without Reload)
 if st.sidebar.button("🔓 Logout"):
-    st.session_state.clear()
-    st.success("✅ You have been logged out successfully!")
-    st.rerun()
+    # Clear authentication state but keep session running
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]  # Delete all session keys
+
+    st.sidebar.success("✅ Logged out successfully!")
+
 
 # Footer Section
 st.markdown("---")
