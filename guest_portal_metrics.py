@@ -138,42 +138,48 @@ def run():
     if manual_file:
         st.success("📂 Manual file uploaded!")
         progress_bar = st.progress(0)
-        status_box = st.status("Processing data...")
 
-        df_manual = preprocess_manual(manual_file)
-        progress_bar.progress(20)
-        status_box.update(label="✅ Step 1: Manual file processed!")
+        with st.spinner("🔄 Processing data..."):
+            # Step 1: Preprocess Manual
+            df_manual = preprocess_manual(manual_file)
+            progress_bar.progress(20)
+            st.info("✅ Step 1: Manual file processed")
 
-        token = get_access_token()
-        if not token:
-            st.error("❌ Failed to connect to API.")
-            return
+            # Step 2: Get API Token
+            token = get_access_token()
+            if not token:
+                st.error("❌ Failed to retrieve API token.")
+                st.stop()
+            headers = {'Authorization': f'Bearer {token}'}
 
-        headers = {'Authorization': f'Bearer {token}'}
-        event_ids = fetch_event_ids(headers)
-        progress_bar.progress(40)
-        status_box.update(label="✅ Step 2: Event IDs retrieved")
+            # Step 3: Fetch Event IDs
+            event_ids = fetch_event_ids(headers)
+            progress_bar.progress(40)
+            st.info("✅ Step 2: Event IDs retrieved")
 
-        df_api = fetch_api_preorders(event_ids, headers)
-        progress_bar.progress(60)
-        status_box.update(label="✅ Step 3: Preorders fetched")
+            # Step 4: Fetch API Preorders
+            df_api = fetch_api_preorders(event_ids, headers)
+            progress_bar.progress(60)
+            st.info("✅ Step 3: Preorders fetched")
 
-        df_menu, event_map = process_api_menu(df_api)
-        progress_bar.progress(80)
-        status_box.update(label="✅ Step 4: Menu processed")
+            # Step 5: Process API Menus
+            df_menu, event_map = process_api_menu(df_api)
+            progress_bar.progress(80)
+            st.info("✅ Step 4: Menu processed")
 
-        df_manual['EventId'] = df_manual.apply(lambda row: map_event_id(row, event_map), axis=1).astype(str).fillna('')
-        merge_keys = ['EventId','Location','Event','Guest_name','Guest_email','Order_type']
-        df_merged = df_manual.merge(df_menu, how='left', on=merge_keys, suffixes=('_manual', '_api'))
-        df_merged = lumpsum_deduping(df_merged, merge_keys)
+            # Step 6: Map Event IDs and Merge
+            df_manual['EventId'] = df_manual.apply(lambda row: map_event_id(row, event_map), axis=1).astype(str).fillna('')
+            merge_keys = ['EventId','Location','Event','Guest_name','Guest_email','Order_type']
+            df_merged = df_manual.merge(df_menu, how='left', on=merge_keys, suffixes=('_manual', '_api'))
+            df_merged = lumpsum_deduping(df_merged, merge_keys)
 
-        if df_merged.empty:
-            st.warning("⚠ Merged data is empty.")
-            return
+            if df_merged.empty:
+                st.warning("⚠ Merged data is empty.")
+                st.stop()
 
-        progress_bar.progress(100)
-        status_box.update(label="✅ Data ready for analysis")
-        status_box.stop()
+            progress_bar.progress(100)
+            st.success("✅ Data ready for analysis")
+
 
         if 'Status_manual' in df_merged.columns:
             df_merged.rename(columns={'Status_manual': 'Status'}, inplace=True)
