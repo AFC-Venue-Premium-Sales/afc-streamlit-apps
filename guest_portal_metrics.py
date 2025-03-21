@@ -5,6 +5,9 @@ from datetime import datetime
 
 
 def run():
+    
+    st.title("📦 Guest Portal Analysis")
+    
     # --- Collapsible About Section ---
     with st.expander("ℹ️ About this App", expanded=False):
         st.markdown("""
@@ -25,8 +28,6 @@ def run():
         Please download the Pre-Orders report from RTS. 
         Use the filters on the left to **refine** your data, and see real-time **metrics** below.
         """)
-
-    st.title("📦 Guest Portal Analysis")
 
     # --- Sidebar ---
     st.sidebar.header("Upload Manual File")
