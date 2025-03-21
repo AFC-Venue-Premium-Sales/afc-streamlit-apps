@@ -119,14 +119,16 @@ if st.session_state.get("authenticated", False):  # Ensure authentication exists
         logging.error(f"❌ Failed to load main app: {e}")
         st.error("❌ Could not load the application. Please try again.")
 
-# Logout Button
-# Logout Button (Without Reload)
-if st.sidebar.button("🔓 Logout"):
-    # Clear authentication state but keep session running
-    for key in list(st.session_state.keys()):
-        del st.session_state[key]  # Delete all session keys
 
-    st.sidebar.success("✅ Logged out successfully!")
+# Logout Button (Clear Session & Redirect)
+if st.sidebar.button("🔓 Logout"):
+    # Clear all session state values
+    st.session_state.clear()
+
+    # Redirect to the main login page
+    st.experimental_set_query_params(logout="true")
+    st.rerun()
+
 
 
 # Footer Section
