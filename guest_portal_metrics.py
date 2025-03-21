@@ -151,15 +151,15 @@ def run():
         headers = {'Authorization': f'Bearer {token}'}
         event_ids = fetch_event_ids(headers)
         progress_bar.progress(40)
-        status_box.update("✅ Step 2: Event IDs retrieved")
+        status_box.update(label="✅ Step 2: Event IDs retrieved")
 
         df_api = fetch_api_preorders(event_ids, headers)
         progress_bar.progress(60)
-        status_box.update("✅ Step 3: Preorders fetched")
+        status_box.update(label="✅ Step 3: Preorders fetched")
 
         df_menu, event_map = process_api_menu(df_api)
         progress_bar.progress(80)
-        status_box.update("✅ Step 4: Menu processed")
+        status_box.update(label="✅ Step 4: Menu processed")
 
         df_manual['EventId'] = df_manual.apply(lambda row: map_event_id(row, event_map), axis=1).astype(str).fillna('')
         merge_keys = ['EventId','Location','Event','Guest_name','Guest_email','Order_type']
@@ -171,7 +171,7 @@ def run():
             return
 
         progress_bar.progress(100)
-        status_box.update("✅ Data ready for analysis")
+        status_box.update(label="✅ Data ready for analysis")
 
         if 'Status_manual' in df_merged.columns:
             df_merged.rename(columns={'Status_manual': 'Status'}, inplace=True)
