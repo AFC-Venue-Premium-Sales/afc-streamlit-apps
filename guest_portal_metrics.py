@@ -141,7 +141,7 @@ def run():
 
         df_manual = preprocess_manual(manual_file)
         progress_bar.progress(20)
-        status_box.update("✅ Step 1: Manual file processed!")
+        status_box.update(label="✅ Step 1: Manual file processed!")
 
         token = get_access_token()
         if not token:
