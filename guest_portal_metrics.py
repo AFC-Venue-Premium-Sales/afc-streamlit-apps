@@ -3,8 +3,6 @@ import pandas as pd
 import requests
 from datetime import datetime
 
-# --- UI Configuration ---
-st.set_page_config(page_title="Guest Orders Dashboard", layout="wide")
 
 def run():
     # --- Collapsible About Section ---
