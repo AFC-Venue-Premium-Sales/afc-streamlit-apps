@@ -137,8 +137,10 @@ def run():
 
     # --- App Execution ---
     if manual_file:
-        st.success("📂 Manual file uploaded!")
+        uploaded_msg = st.success("📂 Manual file uploaded!")
         progress_bar = st.progress(0)
+        time.sleep(3)  # Wait 3 seconds
+        uploaded_msg.empty()  # Remove the "Manual file uploaded!" message
 
         with st.spinner("🔄 Processing data..."):
             # Step 1: Preprocess Manual
