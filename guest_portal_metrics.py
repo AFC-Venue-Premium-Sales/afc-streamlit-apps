@@ -173,6 +173,7 @@ def run():
 
         progress_bar.progress(100)
         status_box.update(label="✅ Data ready for analysis")
+        status_box.stop()
 
         if 'Status_manual' in df_merged.columns:
             df_merged.rename(columns={'Status_manual': 'Status'}, inplace=True)
