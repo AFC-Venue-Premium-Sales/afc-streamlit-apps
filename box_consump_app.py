@@ -90,23 +90,31 @@ if not st.session_state["authenticated"]:
     st.stop()  # Prevent further execution
 
 # After Login: Let the user choose the processing version
-if st.session_state["authenticated"]:
+if st.session_state.get("authenticated", False):  # Ensure authentication exists
     st.success("✅ Logged in successfully!")
-    
+
     # Provide a radio button for version selection in the sidebar
-    version_choice = st.sidebar.radio("Select Processing Logic", ["First Version", "Updated Version [Feb-21]"])
-    
+    version_choice = st.sidebar.radio(
+        "Select Processing Logic", 
+        ["Formatting - First Version", "Formatting - Updated Version [Feb-21]", "Guest Portal Insights"]
+    )
     try:
-        if version_choice == "Updated Version [Feb-21]":
+        # Import the selected module based on user choice
+        if version_choice == "Formatting - Updated Version [Feb-21]":
             import box_consumption_app_login_v2 as app_module
-        else:
+        elif version_choice == "Formatting - First Version":
             import box_consumption_app_login as app_module
-        
+        elif version_choice == "Guest Portal Insights":
+            import guest_portal_metrics as app_module
+        else:
+            raise ImportError("Invalid selection")
+
         # Reload the module to ensure the latest code is used
         importlib.reload(app_module)
+
         # Call the run() function from the selected module
         app_module.run()
-        
+
     except ImportError as e:
         logging.error(f"❌ Failed to load main app: {e}")
         st.error("❌ Could not load the application. Please try again.")
