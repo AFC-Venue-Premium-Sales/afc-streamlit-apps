@@ -1,319 +1,266 @@
-import pandas as pd
 import streamlit as st
-from openpyxl import load_workbook
-from openpyxl.styles import PatternFill
-import re
-import io
+import pandas as pd
+import requests
+from datetime import datetime
 
-def preprocess_preorders(preorders_file):
-    """Preprocess the Preorders file to clean and standardize it."""
-    preorders = pd.read_excel(preorders_file, header=4)
-    
-    # Remove unnamed columns
-    preorders = preorders.loc[:, ~preorders.columns.str.contains("Unnamed")]
-    
-    # Standardize column names
-    preorders.columns = preorders.columns.str.strip().str.replace(" ", "_")
-    
-    # Unmerge the 'Location' column (copy value down)
-    preorders['Location'] = preorders['Location'].ffill()
-    
-    # Drop fully empty rows
-    preorders = preorders.dropna(how='all')
-    
-    # Drop rows missing critical fields
-    preorders = preorders.dropna(subset=['Event', 'Order_type'])
-    
-    # Extract individual Box Numbers from 'Location'
-    def extract_box_numbers(location):
-        return re.findall(r'\d+', str(location)) if pd.notnull(location) else []
-
-    preorders['Parsed_Box_Numbers'] = preorders['Location'].apply(extract_box_numbers)
-
-    # Expand multiple boxes into separate rows
-    preorders = preorders.explode('Parsed_Box_Numbers')
-    preorders.rename(columns={'Parsed_Box_Numbers': 'Box_Number'}, inplace=True)
-
-    # Convert Box Number to string
-    preorders['Box_Number'] = preorders['Box_Number'].astype(str).str.strip()
-    
-    # Clean the 'Total' column
-    preorders['Total'] = (
-        preorders['Total']
-        .replace('[\u00a3,]', '', regex=True)
-        .replace('', '0')
-        .astype(float, errors='ignore')
-    )
-
-    # Aggregate data for Multi-Entry Boxes
-    aggregated = preorders.groupby('Box_Number', as_index=False).agg({
-        'Total': 'sum',  # Sum totals per box
-        'Status': lambda x: ', '.join(x.dropna().unique()),  # Combine unique statuses
-        'Event': lambda x: ', '.join(x.dropna().unique())    # Combine unique events
-    })
-
-    # ✅ Export cleaned Preorders file for validation
-    output_path = "/Users/cmunthali/Documents/PYTHON/SALES_REPORTS/PREPROCESS/Cleaned_Preorders.xlsx"
-    aggregated.to_excel(output_path, index=False)
-    print(f"✅ Cleaned Preorders file saved successfully at: {output_path}")
-
-    return aggregated
-
-def preprocess_box_log(box_log_file):
-    """Preprocess the Box Log file."""
-    box_log = pd.read_excel(box_log_file, sheet_name="ExecutiveBoxesLog", header=2)
-    
-    # Define the expected column names (adjust if your file differs)
-    box_log.columns = [
-        "Box Number", "Client Name/ Company", "Box Manager",
-        "Pre Order Food (INC VAT)", "On Day Order Food (INC VAT)",
-        "On Day Order Liquor (INC VAT)", "On Day Order Soft (INC VAT)",
-        "On the Day Staff (INC VAT)", "Grand Total (INC VAT)"
-    ]
-    
-    box_log.columns = box_log.columns.str.strip()
-    box_log['Box Number'] = box_log['Box Number'].astype(str).str.strip()
-    
-    # Convert currency columns to float
-    for col in ["Pre Order Food (INC VAT)", "On Day Order Food (INC VAT)"]:
-        box_log[col] = (
-            box_log[col]
-            .replace('[\u00a3,]', '', regex=True)
-            .replace('', '0')
-            .astype(float, errors='ignore')
-        )
-    
-    return box_log
-
-def process_files(box_log_file, preorders_file):
-    """Process Box Log and Preorders files while keeping formulas intact."""
-    box_log = preprocess_box_log(box_log_file)
-    preorders = preprocess_preorders(preorders_file)
-
-    wb = load_workbook(box_log_file, data_only=False)  # Load workbook without removing formulas
-    ws = wb["ExecutiveBoxesLog"]
-
-    # Define Conditional Formatting Colors
-    green_fill = PatternFill(start_color="00FF00", end_color="00FF00", fill_type="solid")  # Green
-    yellow_fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")  # Yellow
-    red_fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")    # Red
-
-    total_green = 0
-    total_yellow = 0
-    total_red = 0
-    green_details = []
-    yellow_details = []
-    red_details = []
-
-    # Identify matching boxes in both files
-    matching_boxes = set(box_log['Box Number'].astype(str).str.strip()).intersection(
-        preorders['Box_Number'].astype(str).str.strip()
-    )
-
-    for index, row in box_log.iterrows():
-        box_number = str(row['Box Number']).strip()
-        pre_order_value = row['Pre Order Food (INC VAT)'] or 0
-        on_day_order_value = row['On Day Order Food (INC VAT)'] or 0
-
-        # Get the event from column B (assuming "Client Name/ Company" holds the event info)
-        event_value = row["Client Name/ Company"]
-
-        # Get matching records from Preorders file
-        matches = preorders[preorders['Box_Number'] == box_number]
-        status = ', '.join(matches['Status'].unique()) if not matches.empty else ""
-        preorders_total = matches['Total'].sum() if not matches.empty else 0
-
-        # Worksheet row offset (headers are rows 1-3, data starts at row 4)
-        ws_row = index + 4
-
-        # Yellow Logic:
-        # If no matching box OR if status is Pending, then:
-        if (matches.empty or 'Pending' in status) and pre_order_value > 0:
-            # Case 1: No matching record.
-            if matches.empty:
-                # For MBM events, do not move; just highlight the Pre Order Food cell yellow.
-                if event_value.strip().upper() == "MBM":
-                    ws[f"D{ws_row}"].fill = yellow_fill
-                    yellow_details.append(
-                        f"Box {box_number} (Row {ws_row}): MBM event with no matching Preorder; "
-                        f"Pre Order Food (£{pre_order_value}) marked yellow."
-                    )
-                else:
-                    # Otherwise, move the value from Pre Order Food to On Day Order Food.
-                    new_on_day_order_value = pre_order_value + on_day_order_value
-                    ws[f"D{ws_row}"].value = 0
-                    ws[f"E{ws_row}"].value = new_on_day_order_value
-                    ws[f"E{ws_row}"].fill = yellow_fill
-                    yellow_details.append(
-                        f"Box {box_number} (Row {ws_row}): No matching Preorder; moved Pre Order Food (£{pre_order_value}) "
-                        f"to On Day Order Food."
-                    )
-            # Case 2: Matching record exists but status is Pending.
-            else:
-                # If On Day Order Food already matches the Preorders total, simply mark as yellow.
-                if abs(on_day_order_value - preorders_total) < 0.01:
-                    ws[f"D{ws_row}"].fill = yellow_fill
-                    yellow_details.append(
-                        f"Box {box_number} (Row {ws_row}): Status Pending and On Day Order Food already matches Preorder total "
-                        f"(£{preorders_total}); marked yellow."
-                    )
-                else:
-                    new_on_day_order_value = pre_order_value + on_day_order_value
-                    ws[f"D{ws_row}"].value = 0
-                    ws[f"E{ws_row}"].value = new_on_day_order_value
-                    ws[f"E{ws_row}"].fill = yellow_fill
-                    yellow_details.append(
-                        f"Box {box_number} (Row {ws_row}): Status Pending; moved Pre Order Food (£{pre_order_value}) to On Day Order Food."
-                    )
-            total_yellow += 1
-
-        # Completed Logic:
-        elif box_number in matching_boxes and 'Completed' in status:
-            current_total = pre_order_value + on_day_order_value
-
-            if abs(current_total - preorders_total) < 0.01:
-                # Exact match: set Pre Order Food to Preorders total and clear On Day Order Food.
-                ws[f"D{ws_row}"].value = preorders_total
-                ws[f"E{ws_row}"].value = 0
-                ws[f"D{ws_row}"].fill = green_fill
-
-                total_green += 1
-                green_details.append(
-                    f"Box {box_number} (Row {ws_row}): Pre Order Food matched exactly (£{preorders_total:.2f})."
-                )
-            elif current_total > preorders_total:
-                # More allocated than needed: set Pre Order Food to Preorders total, keep the difference in On Day.
-                difference = current_total - preorders_total
-                ws[f"D{ws_row}"].value = preorders_total
-                ws[f"E{ws_row}"].value = difference
-
-                ws[f"D{ws_row}"].fill = green_fill
-                if difference > 0:
-                    ws[f"E{ws_row}"].fill = yellow_fill
-                    yellow_details.append(
-                        f"Box {box_number} (Row {ws_row}): Leftover £{difference:.2f} remains in On Day Order Food."
-                    )
-                total_green += 1
-                green_details.append(
-                    f"Box {box_number} (Row {ws_row}): Set Pre Order Food to £{preorders_total:.2f} (Completed)."
-                )
-            else:
-                # Not enough allocated: highlight as red.
-                ws[f"D{ws_row}"].fill = red_fill
-                ws[f"E{ws_row}"].fill = red_fill
-                total_red += 1
-                red_details.append(
-                    f"Box {box_number} (Row {ws_row}): Completed but only £{current_total:.2f} allocated vs. Preorders total of £{preorders_total:.2f}."
-                )
-
-    # Save changes without overwriting formulas
-    output = io.BytesIO()
-    wb.save(output)
-    output.seek(0)
-
-    return (
-        output,
-        green_details,
-        yellow_details,
-        red_details,
-        len(matching_boxes),
-        matching_boxes,
-        preorders
-    )
-
+# --- UI Configuration ---
+st.set_page_config(page_title="Guest Orders Dashboard", layout="wide")
 
 def run():
-    st.title("Box Log Processing App")
-    
-    with st.expander("Instructions and Information", expanded=False):
+    # --- Collapsible About Section ---
+    with st.expander("ℹ️ About this App", expanded=False):
         st.markdown("""
-        **How to Use the App:**
-        1. **Upload Files:** Use the file uploaders below to upload your Box Log and Preorders files in Excel format.
-        2. **Process Files:** After uploading both files, click the 'Process Files' button to analyze the data.
-        3. **Download Results:** Once processing is complete, a download button will appear to download the processed Box Log.
-        4. To see the metrics on the side bar again, please click **Process Files**.
+        **Welcome!** This app merges **RTS Pre-Order report** with **TJT's API Catering Preorders** 
+        to help reconcile and analyse Guest Portal activities on the Hosp Portal.
 
-        **How the App Works:**
-        - The app compares the 'Pre Order Food (INC VAT)' values in the Box Log with the 'Total' in the Preorders file.
-        - It identifies matching boxes and checks for discrepancies between the two files.
-        - Based on the comparison, it applies color highlights to the Box Log to indicate the status.
+        We have **two price columns** for clarity:
+        1. **Total**: The lump-sum from the manual file (RTS file).
+        2. **ApiPrice**: The sum of item-level prices from the Catering Pre-orders API (calculated by multiplying quantity × price).
+
+        **Definitions of Key Metrics**  
+        - **Food Menu Total**: Sum of the chosen price column for all orders marked *Food*.  
+        - **Enhancement Menu Total**: Sum for *Enhancement* orders.  
+        - **Kids Menu Total**: Sum for *Kids Food* orders.  
+        - **Highest Spending Box**: The location (Exec Box) with the greatest total spend (across all order types).  
+        - **Highest Box's Total**: The actual total spend for that box in the chosen price column.
+
+        Please download the Pre-Orders report from RTS. 
+        Use the filters on the left to **refine** your data, and see real-time **metrics** below.
         """)
 
-    st.sidebar.header("Summary & Explanations")
+    st.title("📦 Guest Portal Analysis")
 
-    box_log_file = st.file_uploader("Upload Box Log File", type=["xls", "xlsx"])
-    preorders_file = st.file_uploader("Upload Preorders File", type=["xls", "xlsx"])
+    # --- Sidebar ---
+    st.sidebar.header("Upload Manual File")
+    manual_file = st.sidebar.file_uploader("Choose the manual .xls file", type=["xls"])
 
-    if box_log_file and preorders_file:
-        if st.button("Process Files"):
-            (
-                output_file,
-                green_details,
-                yellow_details,
-                red_details,
-                total_matching_boxes,
-                matching_boxes,
-                multi_event_boxes
-            ) = process_files(box_log_file, preorders_file)
+    st.sidebar.header("Date Filter")
+    start_date = st.sidebar.date_input("Start Date", datetime(2024, 6, 18))
+    end_date = st.sidebar.date_input("End Date", datetime.now())
 
-            st.success("Files processed successfully!")
+    price_type = st.sidebar.radio("Which price column to use:", ["Total", "ApiPrice"])
 
-            # ---- Reorganized Sidebar ----
-            # 1. Matching Boxes Overview
-            st.sidebar.subheader("1. Matching Boxes Overview")
-            st.sidebar.write(f"**Total Matching Boxes:** {total_matching_boxes}")
-            if matching_boxes:
-                st.sidebar.write("**Matching Boxes:**")
-                for mb in sorted(matching_boxes):
-                    st.sidebar.write(f"- Box {mb}")
+    # --- API Config ---
+    token_url = 'https://www.tjhub3.com/export_arsenal/token'
+    events_url = "https://www.tjhub3.com/export_arsenal/Events/List"
+    preorders_url_template = "https://www.tjhub3.com/export_arsenal/CateringPreorders/List?EventId={}"
 
-            # 2. Color Highlights Explanation
-            st.sidebar.subheader("2. Color Highlights Explanation")
-            st.sidebar.markdown("""
-            - **Green:** The 'Pre Order Food' value matches the Preorders file total under a 'Completed' status.
-            - **Yellow:** The box either has a 'Pending' status, or there's an extra amount left in 'On Day Order Food'.
-            - **Red:** Indicates a mismatch (e.g., the total doesn't match the Preorders file, or other logic you define).
-            """)
+    USERNAME = 'hospitality'
+    PASSWORD = 'OkMessageSectionType000!'
 
-            # 3. Detailed Box Moves
-            st.sidebar.subheader("3. Detailed Box Moves & Highlights")
-            if green_details:
-                st.sidebar.write("**Green Highlights**")
-                for detail in green_details:
-                    st.sidebar.write(f"- {detail}")
+    @st.cache_data
+    def get_access_token():
+        data = {'Username': USERNAME, 'Password': PASSWORD, 'grant_type': 'password'}
+        response = requests.post(token_url, data=data)
+        return response.json().get('access_token') if response.status_code == 200 else None
 
-            if yellow_details:
-                st.sidebar.write("**Yellow Highlights**")
-                for detail in yellow_details:
-                    st.sidebar.write(f"- {detail}")
+    @st.cache_data
+    def fetch_event_ids(headers):
+        r = requests.get(events_url, headers=headers)
+        return [evt["Id"] for evt in r.json().get("Data", {}).get("Events", [])] if r.status_code == 200 else []
 
-            if red_details:
-                st.sidebar.write("**Red Highlights**")
-                for detail in red_details:
-                    st.sidebar.write(f"- {detail}")
+    @st.cache_data
+    def fetch_api_preorders(event_ids, headers):
+        all_data = []
+        for eid in event_ids:
+            r = requests.get(preorders_url_template.format(eid), headers=headers)
+            if r.status_code == 200:
+                all_data.extend(r.json().get("Data", {}).get("CateringPreorders", []))
+        return pd.DataFrame(all_data)
 
-            # 4. Multi-Event Boxes
-            st.sidebar.subheader("4. Multi-Event Boxes")
-            if not multi_event_boxes.empty:
-                # Group by Box_Number to show sums
-                for box, group in multi_event_boxes.groupby('Box_Number'):
-                    total_sum = group['Total'].sum()
-                    st.sidebar.write(
-                        f"- Box {box} has multiple events with a combined total of £{total_sum:.2f}"
-                    )
-            else:
-                st.sidebar.write("No multi-event boxes found.")
+    @st.cache_data
+    def preprocess_manual(file):
+        df = pd.read_excel(file, header=4)
+        df = df.loc[:, ~df.columns.str.contains("Unnamed")]
+        df.columns = df.columns.str.strip().str.replace(" ", "_")
+        df['Location'] = df['Location'].ffill().astype(str).str.strip()
+        df = df.dropna(how='all')
+        df = df.dropna(subset=['Event', 'Order_type'])
+        df['Event'] = df['Event'].astype(str).str.strip().str.split(', ')
+        df = df.explode('Event')
+        df['Guest_email'] = df['Guest_name'].str.extract(r'\(([^)]+)\)')
+        df['Guest_name'] = df['Guest_name'].str.extract(r'^(.*?)\s*\(')
+        df['Guest_email'] = df['Guest_email'].astype(str).str.lower()
+        df['Total'] = pd.to_numeric(df['Total'].astype(str).replace('[\u00a3,]', '', regex=True).replace('', '0'), errors='coerce').fillna(0)
+        df.drop_duplicates(inplace=True)
+        return df
 
-            # ---- End Reorganized Sidebar ----
+    def process_api_menu(api_df):
+        menu, event_map = [], {}
+        for _, row in api_df.iterrows():
+            guest = row.get('Guest', '')
+            guest_name = guest.split("(")[0].strip() if "(" in guest else guest
+            guest_email = guest.split("(")[-1].replace(")", "").strip().lower() if "(" in guest else None
+            loc, evt, eid = str(row.get('Location', '')).strip(), str(row.get('Event', '')).strip(), row.get('EventId')
+            if eid and loc and evt:
+                event_map[(loc, evt)] = str(eid)
+            for menu_type, key in [('Food', 'FoodMenu'), ('Kids Food', 'KidsFoodMenu'), ('Drink', 'DrinkMenu'), ('Kids Drink', 'KidsDrinkMenu')]:
+                val = row.get(key)
+                if isinstance(val, dict) and val.get('Name'):
+                    menu.append({
+                        'EventId': str(eid),
+                        'Location': loc,
+                        'Event': evt,
+                        'Guest_name': guest_name,
+                        'Guest_email': guest_email,
+                        'Order_type': menu_type,
+                        'Menu_Item': val.get('Name'),
+                        'ApiPrice': (val.get('Price') or 0) * (val.get('Quantity') or 1),
+                        'Status': row.get('Status')
+                    })
+            for pit in row.get('PreOrderItems', []):
+                menu.append({
+                    'EventId': str(eid),
+                    'Location': loc,
+                    'Event': evt,
+                    'Guest_name': guest_name,
+                    'Guest_email': guest_email,
+                    'Order_type': 'Enhancement',
+                    'Menu_Item': pit.get('ProductName'),
+                    'ApiPrice': pit.get('Price', 0),
+                    'Status': row.get('Status')
+                })
+        df_menu = pd.DataFrame(menu).drop_duplicates(subset=['EventId','Location','Event','Guest_name','Guest_email','Order_type','Menu_Item'])
+        return df_menu, event_map
 
-            # Download button
-            st.download_button(
-                "Download Processed Box Log",
-                data=output_file,
-                file_name="Processed_Box_Log.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+    def map_event_id(row, event_map):
+        return event_map.get((str(row['Location']).strip(), str(row['Event']).strip()), None)
+
+    def lumpsum_deduping(df, merge_keys):
+        if 'Ordered_on' in df.columns:
+            merge_keys.append('Ordered_on')
+        df = df.sort_values(merge_keys)
+        def clear_lumpsums(grp):
+            grp.iloc[1:, grp.columns.get_loc('Total')] = 0
+            return grp
+        return df.groupby(merge_keys, group_keys=False).apply(clear_lumpsums).drop_duplicates()
+
+    # --- App Execution ---
+    if manual_file:
+        st.success("📂 Manual file uploaded!")
+        progress_bar = st.progress(0)
+        status_box = st.status("Processing data...")
+
+        df_manual = preprocess_manual(manual_file)
+        progress_bar.progress(20)
+        status_box.update("✅ Step 1: Manual file processed!")
+
+        token = get_access_token()
+        if not token:
+            st.error("❌ Failed to connect to API.")
+            return
+
+        headers = {'Authorization': f'Bearer {token}'}
+        event_ids = fetch_event_ids(headers)
+        progress_bar.progress(40)
+        status_box.update("✅ Step 2: Event IDs retrieved")
+
+        df_api = fetch_api_preorders(event_ids, headers)
+        progress_bar.progress(60)
+        status_box.update("✅ Step 3: Preorders fetched")
+
+        df_menu, event_map = process_api_menu(df_api)
+        progress_bar.progress(80)
+        status_box.update("✅ Step 4: Menu processed")
+
+        df_manual['EventId'] = df_manual.apply(lambda row: map_event_id(row, event_map), axis=1).astype(str).fillna('')
+        merge_keys = ['EventId','Location','Event','Guest_name','Guest_email','Order_type']
+        df_merged = df_manual.merge(df_menu, how='left', on=merge_keys, suffixes=('_manual', '_api'))
+        df_merged = lumpsum_deduping(df_merged, merge_keys)
+
+        if df_merged.empty:
+            st.warning("⚠ Merged data is empty.")
+            return
+
+        progress_bar.progress(100)
+        status_box.update("✅ Data ready for analysis")
+
+        if 'Status_manual' in df_merged.columns:
+            df_merged.rename(columns={'Status_manual': 'Status'}, inplace=True)
+        if 'Status_api' in df_merged.columns:
+            df_merged.drop(columns=['Status_api'], inplace=True)
+
+        # --- Filtering ---
+        df_merged['Ordered_on'] = pd.to_datetime(df_merged['Ordered_on'], errors='coerce')
+        df_merged = df_merged[
+            (df_merged['Ordered_on'] >= pd.to_datetime(start_date)) &
+            (df_merged['Ordered_on'] <= pd.to_datetime(end_date))
+        ]
+
+        if 'Location' in df_merged.columns:
+            locs = sorted(df_merged['Location'].dropna().unique())
+            selected_locs = st.sidebar.multiselect("Select Location(s):", locs, default=locs)
+            df_merged = df_merged[df_merged['Location'].isin(selected_locs)]
+
+        if 'Order_type' in df_merged.columns:
+            order_types = sorted(df_merged['Order_type'].dropna().unique())
+            selected_types = st.sidebar.multiselect("Select Order Type(s):", order_types, default=order_types)
+            df_merged = df_merged[df_merged['Order_type'].isin(selected_types)]
+
+        if 'Menu_Item' in df_merged.columns:
+            items = sorted(df_merged['Menu_Item'].dropna().unique())
+            selected_items = st.sidebar.multiselect("Select Menu Item(s):", items, default=items)
+            df_merged = df_merged[df_merged['Menu_Item'].isin(selected_items)]
+
+        if 'Status' in df_merged.columns:
+            statuses = sorted(df_merged['Status'].dropna().unique())
+            selected_statuses = st.sidebar.multiselect("Select Status(es):", statuses, default=statuses)
+            df_merged = df_merged[df_merged['Status'].isin(selected_statuses)]
+
+        if df_merged.empty:
+            st.warning("⚠ No data after filtering.")
+            return
+
+        # --- Metrics ---
+        st.subheader("📊 Key Metrics")
+        total_orders = df_merged.shape[0]
+        total_spend = df_merged[price_type].fillna(0).sum()
+        food_total = df_merged[df_merged['Order_type'] == 'Food'][price_type].sum()
+        enhancement_total = df_merged[df_merged['Order_type'] == 'Enhancement'][price_type].sum()
+        kids_total = df_merged[df_merged['Order_type'] == 'Kids Food'][price_type].sum()
+        total_boxes = df_merged['Location'].nunique()
+
+        top_item = df_merged.groupby('Menu_Item')[price_type].sum().sort_values(ascending=False)
+        top_item_name, top_item_spend = (top_item.index[0], top_item.iloc[0]) if not top_item.empty else ("N/A", 0)
+
+        top_box = df_merged.groupby('Location')[price_type].sum().sort_values(ascending=False)
+        top_box_name, top_box_spend = (top_box.index[0], top_box.iloc[0]) if not top_box.empty else ("N/A", 0)
+
+        top_event = df_merged.groupby('Event')[price_type].sum().sort_values(ascending=False)
+        top_event_name = top_event.index[0] if not top_event.empty else "N/A"
+
+        avg_spend = df_merged.groupby(df_merged['Ordered_on'].dt.to_period('M'))[price_type].mean().mean() if not df_merged['Ordered_on'].isna().all() else 0
+
+        # --- Display ---
+        r1c1, r1c2, r1c3, r1c4 = st.columns(4)
+        r1c1.metric("Total PreOrders", total_orders)
+        r1c2.metric("Total Spend (£)", f"£{total_spend:,.2f}")
+        r1c3.metric("Avg. Monthly Spend", f"£{avg_spend:,.2f}")
+        r1c4.metric("Total Boxes Found", total_boxes)
+
+        r2c1, r2c2, r2c3, r2c4 = st.columns(4)
+        r2c1.metric("Food Menu Total", f"£{food_total:,.2f}")
+        r2c2.metric("Enhancement Menu Total", f"£{enhancement_total:,.2f}")
+        r2c3.metric("Kids Menu Total", f"£{kids_total:,.2f}")
+        r2c4.metric("Highest Spending Box", top_box_name)
+
+        r3c1, r3c2, r3c3, r3c4 = st.columns(4)
+        r3c1.metric("Top Menu Item", top_item_name)
+        r3c2.metric("Top Item Spend", f"£{top_item_spend:,.2f}")
+        r3c3.metric("Highest Box's Total", f"£{top_box_spend:,.2f}")
+        r3c4.metric("Highest Spending Event", top_event_name)
+
+        # --- Table & Download ---
+        with st.expander("📋 Merged Data Table (click to expand)"):
+            st.dataframe(df_merged, use_container_width=True)
+
+        csv = df_merged.to_csv(index=False).encode('utf-8')
+        st.download_button("⬇️ Download Processed Data", csv, "processed_merged_orders.csv", "text/csv")
+
+    else:
+        st.info("Please upload a manual file to begin analysis.")
 
 
+# --- Entry Point ---
 if __name__ == "__main__":
     run()
