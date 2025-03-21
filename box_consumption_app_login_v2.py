@@ -223,8 +223,7 @@ def process_files(box_log_file, preorders_file):
 
 
 def run():
-    st.title("Box Log Processing App")
-    
+
     with st.expander("Instructions and Information", expanded=False):
         st.markdown("""
         **How to Use the App:**
