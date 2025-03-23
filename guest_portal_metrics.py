@@ -51,7 +51,8 @@ def run():
     start_date = st.sidebar.date_input("Start Date", datetime(2024, 6, 18))
     end_date = st.sidebar.date_input("End Date", datetime.now())
 
-    # price_type = st.sidebar.radio("Which price column to use:", ["Total", "Api Price"])
+    price_type = st.sidebar.radio("Which price column to use:", ["RTS Total", "Api Total"])
+    
 
     # --- API Config ---
     token_url = 'https://www.tjhub3.com/export_arsenal/token'
