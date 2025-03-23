@@ -51,7 +51,7 @@ def run():
     start_date = st.sidebar.date_input("Start Date", datetime(2024, 6, 18))
     end_date = st.sidebar.date_input("End Date", datetime.now())
 
-    price_type = st.sidebar.radio("Which price column to use:", ["RTS Total", "Api Total"])
+    price_type = st.sidebar.radio("Which price column to use:", ["Total", "Api Price"])
     
 
     # --- API Config ---
