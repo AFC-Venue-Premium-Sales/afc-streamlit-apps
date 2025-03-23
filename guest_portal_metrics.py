@@ -10,25 +10,38 @@ def run():
     st.title("📦 Guest Portal Analysis")
     
     # --- Collapsible About Section ---
-    with st.expander("ℹ️ About this App", expanded=False):
+    # --- Collapsible About Section ---
+    # --- Collapsible About Section ---
+    with st.expander("ℹ️ About this Dashboard", expanded=False):
         st.markdown("""
-        **Welcome!** This app merges **RTS Pre-Order report** with **TJT's API Catering Preorders** 
-        to help reconcile and analyse Guest Portal activities on the Hosp Portal.
+        **Welcome to the Guest Portal Insights Dashboard**  
+        This tool combines data from the **RTS Pre-Order Report** with **TJT's Catering Preorders API**  
+        to give you a consolidated view of activities on the hospitality website's Guest Portal.
 
-        We have **two price columns** for clarity:
-        1. **Total**: The lump-sum from the manual file (RTS file).
-        2. **ApiPrice**: The sum of item-level prices from the Catering Pre-orders API (calculated by multiplying quantity × price).
+        ### 🧠 What it does:
+        - Helps the **Premium Service Team** understand guest ordering behaviour.
+        - Validates pre-orders across multiple sources.
+        - Will soon support tracking of **guest draw-down credit** and **invitation usage**.
 
-        **Definitions of Key Metrics**  
-        - **Food Menu Total**: Sum of the chosen price column for all orders marked *Food*.  
-        - **Enhancement Menu Total**: Sum for *Enhancement* orders.  
-        - **Kids Menu Total**: Sum for *Kids Food* orders.  
-        - **Highest Spending Box**: The location (Exec Box) with the greatest total spend (across all order types).  
-        - **Highest Box's Total**: The actual total spend for that box in the chosen price column.
+        ### 📂 Getting Started:
+        1. **Download the RTS Pre-Order Report** from:  
+        [RTS Portal – Pre-Orders](https://www.tjhub3.com/Rts_Arsenal_Hospitality/Suites/Reports/PreOrders/Index)
+        2. Save the file locally, then upload it via the **sidebar**. Please do not edit or make changes to this file before uploading.
+        3. The dashboard will automatically fetch matching data from the TJT API and process everything behind the scenes.
 
-        Please download the Pre-Orders report from RTS. 
-        Use the filters on the left to **refine** your data, and see real-time **metrics** below.
+        ### 🎛️ How to Use the Dashboard:
+        - Use the filters on the **left-hand side** to select date range, order types, menu items, box locations, and order status.
+        - All key metrics will update live — including:
+            - Total Spend
+            - Top Menu Item
+            - Highest Spending Event and Box
+            - Menu Category Totals
+        - Scroll down to view the full merged dataset or **download it** for deeper analysis.
+
+        ---
         """)
+
+
 
     # --- Sidebar ---
     st.sidebar.header("Upload Manual File")
