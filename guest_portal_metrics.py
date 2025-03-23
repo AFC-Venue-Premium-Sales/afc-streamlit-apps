@@ -15,12 +15,12 @@ def run():
     with st.expander("ℹ️ About this Dashboard", expanded=False):
         st.markdown("""
         **Welcome to the Guest Portal Insights Dashboard**  
-        This tool combines data from the **RTS Pre-Order Report** with **TJT's Catering Preorders API**  
+        This tool combines data from the **RTS Pre-Order Report** with **TJT's Catering Pre-orders API**  
         to give you a consolidated view of activities on the hospitality website's Guest Portal.
 
         ### 🧠 What it does:
-        - Helps the **Premium Service Team** understand guest ordering behaviour.
-        - Validates pre-orders across multiple sources.
+        - Helps the **Premium Service Team** with tracking and processing catering pre-orders.
+        - Validates pre-orders across multiple sources to give 
         - Will soon support tracking of **guest draw-down credit** and **invitation usage**.
 
         ### 📂 Getting Started:
@@ -51,7 +51,7 @@ def run():
     start_date = st.sidebar.date_input("Start Date", datetime(2024, 6, 18))
     end_date = st.sidebar.date_input("End Date", datetime.now())
 
-    price_type = st.sidebar.radio("Which price column to use:", ["Total", ""])
+    # price_type = st.sidebar.radio("Which price column to use:", ["Total", "Api Price"])
 
     # --- API Config ---
     token_url = 'https://www.tjhub3.com/export_arsenal/token'
