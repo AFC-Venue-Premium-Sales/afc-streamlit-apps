@@ -100,7 +100,6 @@ def run():
         Extract item-level data from the Catering Preorders API, including:
          - OrderedAmount
          - PricePerUnit
-         - Vat
          - ApiPrice = OrderedAmount × PricePerUnit
         """
         menu = []
@@ -130,7 +129,6 @@ def run():
                 if isinstance(val, dict) and val.get('Name'):
                     price_per_unit = val.get('Price', 0)
                     ordered_amount = val.get('Quantity', 1)
-                    vat = val.get('Vat', 0)  # if present
                     api_price = price_per_unit * ordered_amount
 
                     menu.append({
@@ -143,7 +141,6 @@ def run():
                         'Menu_Item': val.get('Name'),
                         'OrderedAmount': ordered_amount,
                         'PricePerUnit': price_per_unit,
-                        'Vat': vat,
                         'ApiPrice': api_price,
                         'Status': status
                     })
@@ -152,7 +149,6 @@ def run():
             for pit in row.get('PreOrderItems', []):
                 price_per_unit = pit.get('Price', 0)
                 ordered_amount = pit.get('OrderedAmount', 1)  # If not present, default 1
-                vat = pit.get('Vat', 0)
                 api_price = price_per_unit * ordered_amount
 
                 menu.append({
@@ -165,7 +161,6 @@ def run():
                     'Menu_Item': pit.get('ProductName'),
                     'OrderedAmount': ordered_amount,
                     'PricePerUnit': price_per_unit,
-                    'Vat': vat,
                     'ApiPrice': api_price,
                     'Status': status
                 })
