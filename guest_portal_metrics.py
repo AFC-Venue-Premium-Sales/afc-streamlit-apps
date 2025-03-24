@@ -58,8 +58,10 @@ def run():
     @st.cache_data
     def get_access_token():
         data = {"Username": USERNAME, "Password": PASSWORD, "grant_type": "password"}
-        response = requests.post(token_url, data=data)
-        return response.json().get("access_token") if response.status_code == 200 else None
+        resp = requests.post(token_url, data=data)
+        if resp.status_code == 200:
+            return resp.json().get("access_token")
+        return None
 
     @st.cache_data
     def fetch_event_details(headers):
@@ -68,14 +70,14 @@ def run():
         if r.status_code != 200:
             return []
         events = r.json().get("Data", {}).get("Events", [])
-        # Build list of dictionaries with Id, Name, and KickOffEventStart
+        # Return "EventId", "Event", "KickOffEventStart"
         return [
             {
                 "EventId": e["Id"],
                 "Event": e["Name"].strip(),
                 "KickOffEventStart": e.get("KickOffEventStart")
             }
-            for e in events if e.get("KickOffEventStart")
+            for e in events
         ]
 
     @st.cache_data
@@ -95,158 +97,178 @@ def run():
         df["Location"] = df["Location"].ffill().astype(str).str.strip()
         df = df.dropna(how="all")
         df = df.dropna(subset=["Event", "Order_type"])
+
+        # Explode if multiple events in one cell
         df["Event"] = df["Event"].astype(str).str.strip().str.split(", ")
         df = df.explode("Event")
+
+        # Extract guest email from guest_name
         df["Guest_email"] = df["Guest_name"].str.extract(r"\(([^)]+)\)")
         df["Guest_name"] = df["Guest_name"].str.extract(r"^(.*?)\s*\(")
         df["Guest_email"] = df["Guest_email"].astype(str).str.lower()
-        df["Total"] = pd.to_numeric(
-            df["Total"].astype(str)
+
+        # Clean up 'Total'
+        df["Total"] = (
+            df["Total"]
+            .astype(str)
             .replace("[\u00a3,]", "", regex=True)
-            .replace("", "0"),
-            errors="coerce"
-        ).fillna(0)
-        # Parse Event_Date if it exists in manual file
+            .replace("", "0")
+        )
+        df["Total"] = pd.to_numeric(df["Total"], errors="coerce").fillna(0)
+
+        # If there's an Event_Date column, parse it
         if "Event_Date" in df.columns:
-            df["Event_Date"] = pd.to_datetime(df["Event_Date"], dayfirst=True, errors="coerce")
+            df["Event_Date"] = pd.to_datetime(df["Event_Date"], errors="coerce")
+
         df.drop_duplicates(inplace=True)
         return df
 
-    def process_api_menu(api_df):
+    def process_api_menu(df_api):
         """
-        Extract item-level data from the Catering Preorders API.
-        Now extracts:
-         - OrderedAmount, PricePerUnit, Vat, and calculates ApiPrice.
-         Uses "KickOffEventStart" from the API as the event date.
+        Convert the combined preorders + events data
+        into item-level rows, each with Price, Qty, etc.
         """
         menu = []
         event_map = {}
-        for _, row in api_df.iterrows():
-            guest = row.get("Guest", "")
-            guest_name = guest.split("(")[0].strip() if "(" in guest else guest
-            guest_email = guest.split("(")[-1].replace(")", "").strip().lower() if "(" in guest else None
+
+        for _, row in df_api.iterrows():
+            guest_raw = row.get("Guest", "") or ""
+            guest_name = guest_raw.split("(")[0].strip() if "(" in guest_raw else guest_raw
+            guest_email = None
+            if "(" in guest_raw and ")" in guest_raw:
+                guest_email = guest_raw.split("(")[-1].replace(")", "").strip().lower()
+
             loc = str(row.get("Location", "")).strip()
             evt = str(row.get("Event", "")).strip()
             eid = row.get("EventId")
-            # Use KickOffEventStart from API as event date; convert to datetime and then to date
+
+            # Convert KickOffEventStart to date
             raw_date = row.get("KickOffEventStart")
             event_date_api = pd.to_datetime(raw_date, errors="coerce").date() if raw_date else None
-            status = row.get("Status")
 
-            # Build event mapping key: (Location, Event, event_date)
+            # Build event_map for (Location, Event, date) -> EventId
             if eid and loc and evt and event_date_api:
                 event_map[(loc, evt, event_date_api)] = str(eid)
 
-            # For Food / Kids Food / Drink / Kids Drink
+            status = row.get("Status")
+
+            # Food, KidsFood, Drink, KidsDrink
             for menu_type, key in [
                 ("Food", "FoodMenu"),
                 ("Kids Food", "KidsFoodMenu"),
                 ("Drink", "DrinkMenu"),
-                ("Kids Drink", "KidsDrinkMenu")
+                ("Kids Drink", "KidsDrinkMenu"),
             ]:
                 val = row.get(key)
                 if isinstance(val, dict) and val.get("Name"):
-                    price_per_unit = val.get("Price", 0)
-                    ordered_amount = val.get("Quantity", 1)
-                    api_price = price_per_unit * ordered_amount
+                    qty = val.get("Quantity", 1)
+                    price = val.get("Price", 0)
+                    final_price = price * qty
+
                     menu.append({
                         "EventId": str(eid),
                         "Location": loc,
                         "Event": evt,
-                        "KickOffEventStart": event_date_api,  # This is the API event date
+                        "KickOffEventStart": event_date_api,
                         "Guest_name": guest_name,
                         "Guest_email": guest_email,
                         "Order_type": menu_type,
                         "Menu_Item": val.get("Name"),
-                        "OrderedAmount": ordered_amount,
-                        "PricePerUnit": price_per_unit,
-                        "ApiPrice": api_price,
+                        "OrderedAmount": qty,
+                        "PricePerUnit": price,
+                        "ApiPrice": final_price,
                         "Status": status
                     })
 
-            # For Enhancements (PreOrderItems)
-            for pit in row.get("PreOrderItems", []):
-                price_per_unit = pit.get("Price", 0)
-                ordered_amount = pit.get("OrderedAmount", 1)
-                api_price = price_per_unit * ordered_amount
-                menu.append({
-                    "EventId": str(eid),
-                    "Location": loc,
-                    "Event": evt,
-                    "KickOffEventStart": event_date_api,
-                    "Guest_name": guest_name,
-                    "Guest_email": guest_email,
-                    "Order_type": "Enhancement",
-                    "Menu_Item": pit.get("ProductName"),
-                    "OrderedAmount": ordered_amount,
-                    "PricePerUnit": price_per_unit,
-                    "ApiPrice": api_price,
-                    "Status": status
-                })
+            # Enhancements (PreOrderItems)
+            pre_items = row.get("PreOrderItems", [])
+            if isinstance(pre_items, list):
+                for pit in pre_items:
+                    qty = pit.get("OrderedAmount", 1)
+                    price = pit.get("Price", 0)
+                    final_price = price * qty
+                    menu.append({
+                        "EventId": str(eid),
+                        "Location": loc,
+                        "Event": evt,
+                        "KickOffEventStart": event_date_api,
+                        "Guest_name": guest_name,
+                        "Guest_email": guest_email,
+                        "Order_type": "Enhancement",
+                        "Menu_Item": pit.get("ProductName"),
+                        "OrderedAmount": qty,
+                        "PricePerUnit": price,
+                        "ApiPrice": final_price,
+                        "Status": status
+                    })
 
-        df_menu = pd.DataFrame(menu).drop_duplicates(
-            subset=["EventId", "Location", "Event", "Guest_name", "Guest_email", "Order_type", "Menu_Item"]
-        )
+        df_menu = pd.DataFrame(menu)
+        if not df_menu.empty:
+            df_menu.drop_duplicates(
+                subset=["EventId","Location","Event","Guest_name","Guest_email","Order_type","Menu_Item"],
+                inplace=True
+            )
         return df_menu, event_map
 
     def map_event_id(row, event_map):
         """
-        Map the manual row to an EventId using (Location, Event, Event_Date).
-        Manual file should have an Event_Date column (datetime).
+        Use the manual file's (Location, Event, Event_Date)
+        to find the correct EventId from event_map.
         """
-        evt_name = str(row["Event"]).strip()
         loc = str(row["Location"]).strip()
-        # If manual file has Event_Date, convert to date:
+        evt = str(row["Event"]).strip()
+        date_val = None
         if "Event_Date" in row and pd.notna(row["Event_Date"]):
-            evt_date = row["Event_Date"].date()
-        else:
-            evt_date = None
-        return event_map.get((loc, evt_name, evt_date), None)
+            date_val = row["Event_Date"].date()
+
+        return event_map.get((loc, evt, date_val), None)
 
     def lumpsum_deduping(df, merge_keys):
         if "Ordered_on" in df.columns:
             merge_keys.append("Ordered_on")
         df = df.sort_values(merge_keys)
+
         def clear_lumpsums(grp):
             if len(grp) > 1:
                 grp.iloc[1:, grp.columns.get_loc("Total")] = 0
             return grp
+
         return df.groupby(merge_keys, group_keys=False).apply(clear_lumpsums).drop_duplicates()
 
-    # --- App Execution ---
+    # --- MAIN EXECUTION ---
     if manual_file:
         st.success("📂 Manual file uploaded!")
         progress_bar = st.progress(0)
         time.sleep(3)
 
         with st.spinner("🔄 Processing data..."):
-            # Step 1: Preprocess Manual
+            # 1) Preprocess manual
             df_manual = preprocess_manual(manual_file)
             progress_bar.progress(20)
 
-            # Step 2: Get API Token
+            # 2) Token
             token = get_access_token()
             if not token:
                 st.error("❌ Failed to retrieve API token.")
                 st.stop()
             headers = {"Authorization": f"Bearer {token}"}
 
-            # Step 3: Fetch Events from Events/List
-            df_events = pd.DataFrame(fetch_event_details(headers))
+            # 3) Fetch event details
+            events_list = fetch_event_details(headers)  # returns a list of dict
+            df_events = pd.DataFrame(events_list)
             progress_bar.progress(40)
-            # Convert df_events into a DataFrame with proper columns
+
+            # If df_events is not empty, parse KickOffEventStart
             if not df_events.empty:
-                df_events = df_events[["Id", "Name", "KickOffEventStart"]].rename(
-                    columns={"Id": "EventId", "Name": "Event"}
-                )
                 df_events["KickOffEventStart"] = pd.to_datetime(df_events["KickOffEventStart"], errors="coerce").dt.date
 
-            # Step 4: Fetch API Preorders
+            # 4) Fetch API Preorders
             event_ids = df_events["EventId"].unique().tolist() if not df_events.empty else []
             df_api_pre = fetch_api_preorders(event_ids, headers)
             progress_bar.progress(60)
 
-            # Step 5: Merge Events into Preorders so each row gets KickOffEventStart
+            # 5) Merge events + preorders on EventId
+            # So each row has KickOffEventStart from events
             df_api = df_api_pre.merge(
                 df_events,
                 how="left",
@@ -254,31 +276,31 @@ def run():
                 right_on="EventId",
                 suffixes=("", "_evt")
             )
-            # Use official event name from df_events if available
-            df_api["Event"] = df_api["Event_evt"].fillna(df_api["Event"])
-            df_api.drop(columns=["Event_evt"], inplace=True)
+            # If there's an "Event_evt", let's use it as the official name
+            if "Event_evt" in df_api.columns:
+                df_api["Event"] = df_api["Event_evt"].fillna(df_api["Event"])
+                df_api.drop(columns=["Event_evt"], inplace=True)
 
             progress_bar.progress(80)
 
-            # Step 6: Process API Menu from combined API data
+            # 6) Build df_menu from combined data
             df_menu, event_map = process_api_menu(df_api)
 
-            # Step 7: Map EventId to manual file using (Location, Event, Event_Date)
-            # Ensure manual file's Event_Date is datetime
-            if "Event_Date" in df_manual.columns:
-                df_manual["Event_Date"] = pd.to_datetime(df_manual["Event_Date"], dayfirst=True, errors="coerce")
-            else:
+            # 7) Map EventId to manual
+            if "Event_Date" not in df_manual.columns:
                 st.error("Manual file is missing 'Event_Date' column.")
                 st.stop()
-            df_manual["EventId"] = df_manual.apply(lambda row: map_event_id(row, event_map), axis=1).astype(str).fillna("")
 
-            # Merge manual and API menu data
-            merge_keys = ["EventId", "Location", "Event", "Guest_name", "Guest_email", "Order_type"]
+            df_manual["Event_Date"] = pd.to_datetime(df_manual["Event_Date"], dayfirst=True, errors="coerce")
+            df_manual["EventId"] = df_manual.apply(lambda r: map_event_id(r, event_map), axis=1).astype(str).fillna("")
+
+            # 8) Merge
+            merge_keys = ["EventId","Location","Event","Guest_name","Guest_email","Order_type"]
             df_merged = df_manual.merge(
                 df_menu,
                 how="left",
                 on=merge_keys,
-                suffixes=("_manual", "_api")
+                suffixes=("_manual","_api")
             )
             df_merged = lumpsum_deduping(df_merged, merge_keys)
 
@@ -290,8 +312,9 @@ def run():
             st.success("✅ Data ready for analysis")
             time.sleep(3)
 
+            # Tidy up statuses
             if "Status_manual" in df_merged.columns:
-                df_merged.rename(columns={"Status_manual": "Status"}, inplace=True)
+                df_merged.rename(columns={"Status_manual":"Status"}, inplace=True)
             if "Status_api" in df_merged.columns:
                 df_merged.drop(columns=["Status_api"], inplace=True)
 
