@@ -219,9 +219,25 @@ def run():
 
     # --- MAIN EXECUTION ---
     if manual_file:
-        st.success("📂 Manual file uploaded!")
-        progress_bar = st.progress(0)
-        time.sleep(3)
+        placeholder_success = st.empty()
+        placeholder_progress = st.empty()
+
+        placeholder_success.success("📂 Manual file uploaded!")
+        progress_bar = placeholder_progress.progress(0)
+
+        for i in range(1, 101, 10):
+            progress_bar.progress(i)
+            time.sleep(0.1)  # Quick progress animation
+
+        time.sleep(3)  # Hold the success message and progress bar for 3 seconds
+
+        placeholder_success.empty()
+        placeholder_progress.empty()
+
+    # if manual_file:
+    #     st.success("📂 Manual file uploaded!")
+    #     progress_bar = st.progress(0)
+    #     time.sleep(3)
 
         with st.spinner("🔄 Processing data..."):
             # 1) Preprocess manual file
@@ -384,10 +400,17 @@ def run():
         api_total_final = df_merged["ApiPrice"].fillna(0).sum()
         # st.info(f"Total from RTS (manual file) after merging: £{rts_total_final:,.2f}")
         # st.info(f"Total from API Price after merging: £{api_total_final:,.2f}")
-        toast1 = st.toast(f"RTS Total: £{rts_total_final:,.2f}")
-        toast2 = st.toast(f"API Total: £{api_total_final:,.2f}")
-        toast1.close()
-        toast2.close()
+        toast_placeholder1 = st.empty()
+        toast_placeholder2 = st.empty()
+
+        toast_placeholder1.info(f"RTS Total: £{rts_total_final:,.2f}")
+        toast_placeholder2.info(f"API Total: £{api_total_final:,.2f}")
+
+        time.sleep(10)
+
+        toast_placeholder1.empty()
+        toast_placeholder2.empty()
+
 
         
         with st.expander("📋 Merged Data Table (click to expand)"):
