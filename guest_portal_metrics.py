@@ -268,9 +268,9 @@ def run():
                 df_menu["EventId"] = pd.to_numeric(df_menu["EventId"], errors="coerce").fillna(0).astype(int)
             
             # 7) Display total from API Price (calculated on API menu)
-            if not df_menu.empty and "ApiPrice" in df_menu.columns:
-                api_total_final = df_menu["ApiPrice"].sum()
-                st.info(f"Total from API Price after merging: £{api_total_final:,.2f}")
+            # if not df_menu.empty and "ApiPrice" in df_menu.columns:
+            #     api_total_final = df_menu["ApiPrice"].sum()
+            #     st.info(f"Total from API Price after merging: £{api_total_final:,.2f}")
             
             # 8) Map EventId to manual file using (Location, Event, Event_Date)
             if "Event_Date" not in df_manual.columns:
@@ -382,8 +382,13 @@ def run():
         # --- Display Totals AFTER merging ---
         rts_total_final = df_merged["Total"].sum()
         api_total_final = df_merged["ApiPrice"].fillna(0).sum()
-        st.info(f"Total from RTS (manual file) after merging: £{rts_total_final:,.2f}")
-        st.info(f"Total from API Price after merging: £{api_total_final:,.2f}")
+        # st.info(f"Total from RTS (manual file) after merging: £{rts_total_final:,.2f}")
+        # st.info(f"Total from API Price after merging: £{api_total_final:,.2f}")
+        toast1 = st.toast(f"RTS Total: £{rts_total_final:,.2f}")
+        toast2 = st.toast(f"API Total: £{api_total_final:,.2f}")
+        toast1.close()
+        toast2.close()
+
         
         with st.expander("📋 Merged Data Table (click to expand)"):
             st.dataframe(df_merged, use_container_width=True)
