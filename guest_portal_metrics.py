@@ -52,7 +52,7 @@ def run():
     start_date = st.sidebar.date_input("Start Date", datetime(2024, 6, 18))
     end_date = st.sidebar.date_input("End Date", datetime.now())
 
-    price_type = st.sidebar.radio("Which price column to use:", ["Total", "Api Price"])
+    price_type = st.sidebar.radio("Which price column to use:", ["Total", "ApiPrice"])
     
 
     # --- API Config ---
@@ -294,7 +294,7 @@ def run():
             output.seek(0)
 
             st.download_button(
-                label="⬇️ Download Processed Data (XLSX)",
+                label="⬇️ Download Processed Data",
                 data=output,
                 file_name="processed_merged_orders.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
