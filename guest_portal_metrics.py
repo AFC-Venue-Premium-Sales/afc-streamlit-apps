@@ -79,8 +79,7 @@ def run():
         df['Location'] = df['Location'].ffill().astype(str).str.strip()
         df = df.dropna(how='all')
         df = df.dropna(subset=['Event', 'Order_type'])
-        # Ensure Event_Date is preserved from manual file
-        # (Assumes the manual file has an 'Event_Date' column)
+        # Preserve Event_Date from manual file (assumes column exists)
         df['Event_Date'] = pd.to_datetime(df['Event_Date'], errors='coerce')
         df['Event'] = df['Event'].astype(str).str.strip().str.split(', ')
         df = df.explode('Event')
@@ -96,13 +95,11 @@ def run():
 
     def process_api_menu(api_df):
         """
-        Extract item-level data from the API.
-        Now also extract:
-         - OrderedAmount
-         - PricePerUnit
-         - Vat
-         and recalculate ApiPrice as OrderedAmount * PricePerUnit.
-        Also, use the API's 'StartTime' as the event date.
+        Extract item-level data from the Catering Preorders API.
+        Now extracts:
+         - OrderedAmount, PricePerUnit, Vat
+         and calculates ApiPrice as OrderedAmount * PricePerUnit.
+         Also uses "KickOffEventStart" as the event date for mapping.
         """
         menu = []
         event_map = {}
@@ -113,8 +110,8 @@ def run():
             loc = str(row.get('Location', '')).strip()
             evt = str(row.get('Event', '')).strip()
             eid = row.get('EventId')
-            # Extract event date from API – using 'StartTime'
-            event_date_api = row.get("StartTime")  # e.g., "2025-01-12T09:00:00"
+            # Use KickOffEventStart as event date from API
+            event_date_api = row.get("KickOffEventStart")
             if eid and loc and evt:
                 event_map[(loc, evt, event_date_api)] = str(eid)
             for menu_type, key in [
@@ -133,7 +130,7 @@ def run():
                         'EventId': str(eid),
                         'Location': loc,
                         'Event': evt,
-                        # We'll merge on Event_Date from manual, so we don't include API event date here.
+                        # We'll merge on the manual file's Event_Date later.
                         'Ordered_Event_Date': event_date_api,
                         'Guest_name': guest_name,
                         'Guest_email': guest_email,
@@ -147,7 +144,7 @@ def run():
                     })
             for pit in row.get('PreOrderItems', []):
                 price_per_unit = pit.get('Price', 0)
-                ordered_amount = pit.get('OrderedAmount', 1)  # If not present, default to 1
+                ordered_amount = pit.get('OrderedAmount', 1)
                 vat = pit.get('Vat', 0)
                 api_price = price_per_unit * ordered_amount
                 menu.append({
@@ -171,8 +168,7 @@ def run():
         return df_menu, event_map
 
     def map_event_id(row, event_map):
-        # Use the manual file's Event_Date in the key along with Location and Event.
-        # We assume the manual file has an 'Event_Date' column.
+        # Use the manual file's Event_Date along with Location and Event for mapping.
         manual_date = row.get("Event_Date")
         return event_map.get((str(row['Location']).strip(), str(row['Event']).strip(), manual_date), None)
 
@@ -231,8 +227,7 @@ def run():
 
             # Step 6: Map Event IDs and Merge
             df_manual['EventId'] = df_manual.apply(lambda row: map_event_id(row, event_map), axis=1).astype(str).fillna('')
-            # Include 'Event_Date' as a merge key
-            merge_keys = ['EventId','Location','Event','Event_Date','Guest_name','Guest_email','Order_type']
+            merge_keys = ['EventId', 'Location', 'Event', 'Event_Date', 'Guest_name', 'Guest_email', 'Order_type']
             df_merged = df_manual.merge(
                 df_menu,
                 how='left',
@@ -344,6 +339,7 @@ def run():
 
     else:
         st.info("Please upload the RTS Pre-order file to begin analysis.")
+
 
 if __name__ == "__main__":
     run()
