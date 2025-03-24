@@ -219,30 +219,34 @@ def run():
 
     # --- MAIN EXECUTION ---
     if manual_file:
-        placeholder_success = st.empty()
-        placeholder_progress = st.empty()
+        # Initial Upload Progress
+        upload_success_placeholder = st.empty()
+        upload_progress_placeholder = st.empty()
 
-        placeholder_success.success("📂 Manual file uploaded!")
-        progress_bar = placeholder_progress.progress(0)
+        upload_success_placeholder.success("📂 Manual file uploaded!")
+        upload_progress_bar = upload_progress_placeholder.progress(0)
 
         for i in range(1, 101, 10):
-            progress_bar.progress(i)
+            upload_progress_bar.progress(i)
             time.sleep(0.1)  # Quick progress animation
 
-        time.sleep(3)  # Hold the success message and progress bar for 3 seconds
+        time.sleep(1)  # Brief pause to show full bar
 
-        placeholder_success.empty()
-        placeholder_progress.empty()
+        upload_success_placeholder.empty()
+        upload_progress_placeholder.empty()
 
-    # if manual_file:
-    #     st.success("📂 Manual file uploaded!")
-    #     progress_bar = st.progress(0)
-    #     time.sleep(3)
-
+        # --- Data Processing with Spinner ---
         with st.spinner("🔄 Processing data..."):
+
+            # Prepare clearly named progress bar placeholders
+            process_progress_placeholder = st.empty()
+            process_success_placeholder = st.empty()
+            process_progress_bar = process_progress_placeholder.progress(0)
+
             # 1) Preprocess manual file
             df_manual = preprocess_manual(manual_file)
-            progress_bar.progress(20)
+            process_progress_bar.progress(20)
+            time.sleep(0.2)
 
             # 2) Get API Token
             token = get_access_token()
@@ -254,7 +258,9 @@ def run():
             # 3) Fetch event details from Events/List
             events_list = fetch_event_details(headers)
             df_events = pd.DataFrame(events_list)
-            progress_bar.progress(40)
+            process_progress_bar.progress(40)
+            time.sleep(0.2)
+
             if not df_events.empty:
                 df_events["KickOffEventStart"] = pd.to_datetime(
                     df_events["KickOffEventStart"], errors="coerce"
@@ -263,7 +269,8 @@ def run():
             # 4) Fetch API Preorders
             event_ids = df_events["EventId"].unique().tolist() if not df_events.empty else []
             df_api_pre = fetch_api_preorders(event_ids, headers)
-            progress_bar.progress(60)
+            process_progress_bar.progress(60)
+            time.sleep(0.2)
 
             # 5) Merge events into preorders so each row gets KickOffEventStart
             df_api = df_api_pre.merge(
@@ -275,29 +282,24 @@ def run():
             if "Event_evt" in df_api.columns:
                 df_api["Event"] = df_api["Event_evt"].fillna(df_api["Event"])
                 df_api.drop(columns=["Event_evt"], inplace=True)
-            progress_bar.progress(80)
+            process_progress_bar.progress(80)
+            time.sleep(0.2)
 
             # 6) Build df_menu from combined API data
             df_menu, event_map = process_api_menu(df_api)
-            # Convert EventId in df_menu to numeric so it matches df_manual
             if "EventId" in df_menu.columns:
                 df_menu["EventId"] = pd.to_numeric(df_menu["EventId"], errors="coerce").fillna(0).astype(int)
-            
-            # 7) Display total from API Price (calculated on API menu)
-            # if not df_menu.empty and "ApiPrice" in df_menu.columns:
-            #     api_total_final = df_menu["ApiPrice"].sum()
-            #     st.info(f"Total from API Price after merging: £{api_total_final:,.2f}")
-            
-            # 8) Map EventId to manual file using (Location, Event, Event_Date)
+
+            # 7) Map EventId to manual file using (Location, Event, Event_Date)
             if "Event_Date" not in df_manual.columns:
                 st.error("Manual file is missing 'Event_Date' column.")
                 st.stop()
+
             df_manual["Event_Date"] = pd.to_datetime(df_manual["Event_Date"], dayfirst=True, errors="coerce")
             df_manual["EventId"] = df_manual.apply(lambda r: map_event_id(r, event_map), axis=1)
-            # Convert EventId in manual to numeric (0 for missing)
             df_manual["EventId"] = pd.to_numeric(df_manual["EventId"], errors="coerce").fillna(0).astype(int)
-            
-            # 9) Merge manual and API menu data
+
+            # 8) Merge manual and API menu data
             merge_keys = ["EventId", "Location", "Event", "Guest_name", "Guest_email", "Order_type"]
             df_merged = df_manual.merge(
                 df_menu,
@@ -306,25 +308,19 @@ def run():
                 suffixes=("_manual", "_api")
             )
             df_merged = lumpsum_deduping(df_merged, merge_keys)
+
             if df_merged.empty:
                 st.warning("⚠ Merged data is empty.")
                 st.stop()
 
-            placeholder_progress = st.empty()
-            placeholder_success = st.empty()
-
-            # Show progress bar
-            progress_bar = placeholder_progress.progress(100)
-
-            # Show success message
-            placeholder_success.success("✅ Data ready for analysis")
-
-            # Hold for 3 seconds
+            # 9) Finalize progress
+            process_progress_bar.progress(100)
+            process_success_placeholder.success("✅ Data ready for analysis")
             time.sleep(3)
 
-            # Clear both
-            placeholder_progress.empty()
-            placeholder_success.empty()
+            # Clear placeholders after completion
+            process_progress_placeholder.empty()
+            process_success_placeholder.empty()
 
 
             # Tidy up status columns
