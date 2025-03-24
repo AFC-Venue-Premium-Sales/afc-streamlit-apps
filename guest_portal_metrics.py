@@ -5,13 +5,9 @@ import time
 from datetime import datetime
 from io import BytesIO
 
-
 def run():
-    
     st.title("📦 Guest Portal Analysis")
-    
-    # --- Collapsible About Section ---
-    # --- Collapsible About Section ---
+
     # --- Collapsible About Section ---
     with st.expander("ℹ️ About this Dashboard", expanded=False):
         st.markdown("""
@@ -21,28 +17,25 @@ def run():
 
         ### 🧠 What it does:
         - Helps the **Premium Service Team** with tracking and processing catering pre-orders.
-        - Validates pre-orders across multiple sources to give 
+        - Validates pre-orders across multiple sources.
         - Will soon support tracking of **guest draw-down credit** and **invitation usage**.
 
         ### 📂 Getting Started:
         1. **Download the RTS Pre-Order Report** from:  
-        [RTS Portal – Pre-Orders](https://www.tjhub3.com/Rts_Arsenal_Hospitality/Suites/Reports/PreOrders/Index)
+           [RTS Portal – Pre-Orders](https://www.tjhub3.com/Rts_Arsenal_Hospitality/Suites/Reports/PreOrders/Index)
         2. Save the file locally, then upload it via the **sidebar**. Please do not edit or make changes to this file before uploading.
         3. The dashboard will automatically fetch matching data from the TJT API and process everything behind the scenes.
 
         ### 🎛️ How to Use the Dashboard:
         - Use the filters on the **left-hand side** to select date range, order types, menu items, box locations, and order status.
         - All key metrics will update live — including:
-            - Total Spend
-            - Top Menu Item
-            - Highest Spending Event and Box
-            - Menu Category Totals
+          - Total Spend
+          - Top Menu Item
+          - Highest Spending Event and Box
+          - Menu Category Totals
         - Scroll down to view the full merged dataset or **download it** for deeper analysis.
-
         ---
         """)
-
-
 
     # --- Sidebar ---
     st.sidebar.header("Upload Manual File")
@@ -53,7 +46,6 @@ def run():
     end_date = st.sidebar.date_input("End Date", datetime.now())
 
     price_type = st.sidebar.radio("Which price column to use:", ["Total", "ApiPrice"])
-    
 
     # --- API Config ---
     token_url = 'https://www.tjhub3.com/export_arsenal/token'
@@ -96,22 +88,51 @@ def run():
         df['Guest_email'] = df['Guest_name'].str.extract(r'\(([^)]+)\)')
         df['Guest_name'] = df['Guest_name'].str.extract(r'^(.*?)\s*\(')
         df['Guest_email'] = df['Guest_email'].astype(str).str.lower()
-        df['Total'] = pd.to_numeric(df['Total'].astype(str).replace('[\u00a3,]', '', regex=True).replace('', '0'), errors='coerce').fillna(0)
+        df['Total'] = pd.to_numeric(df['Total'].astype(str)
+                                    .replace('[\u00a3,]', '', regex=True)
+                                    .replace('', '0'),
+                                    errors='coerce').fillna(0)
         df.drop_duplicates(inplace=True)
         return df
 
     def process_api_menu(api_df):
-        menu, event_map = [], {}
+        """
+        Extract item-level data from the Catering Preorders API, including:
+         - OrderedAmount
+         - PricePerUnit
+         - Vat
+         - ApiPrice = OrderedAmount × PricePerUnit
+        """
+        menu = []
+        event_map = {}
+
         for _, row in api_df.iterrows():
             guest = row.get('Guest', '')
             guest_name = guest.split("(")[0].strip() if "(" in guest else guest
             guest_email = guest.split("(")[-1].replace(")", "").strip().lower() if "(" in guest else None
-            loc, evt, eid = str(row.get('Location', '')).strip(), str(row.get('Event', '')).strip(), row.get('EventId')
+            loc = str(row.get('Location', '')).strip()
+            evt = str(row.get('Event', '')).strip()
+            eid = row.get('EventId')
+            status = row.get('Status')
+
+            # Build a dictionary for (Location, Event) -> EventId
             if eid and loc and evt:
                 event_map[(loc, evt)] = str(eid)
-            for menu_type, key in [('Food', 'FoodMenu'), ('Kids Food', 'KidsFoodMenu'), ('Drink', 'DrinkMenu'), ('Kids Drink', 'KidsDrinkMenu')]:
+
+            # For Food / KidsFood / Drink / KidsDrink
+            for menu_type, key in [
+                ('Food', 'FoodMenu'),
+                ('Kids Food', 'KidsFoodMenu'),
+                ('Drink', 'DrinkMenu'),
+                ('Kids Drink', 'KidsDrinkMenu')
+            ]:
                 val = row.get(key)
                 if isinstance(val, dict) and val.get('Name'):
+                    price_per_unit = val.get('Price', 0)
+                    ordered_amount = val.get('Quantity', 1)
+                    vat = val.get('Vat', 0)  # if present
+                    api_price = price_per_unit * ordered_amount
+
                     menu.append({
                         'EventId': str(eid),
                         'Location': loc,
@@ -120,10 +141,20 @@ def run():
                         'Guest_email': guest_email,
                         'Order_type': menu_type,
                         'Menu_Item': val.get('Name'),
-                        'ApiPrice': (val.get('Price') or 0) * (val.get('Quantity') or 1),
-                        'Status': row.get('Status')
+                        'OrderedAmount': ordered_amount,
+                        'PricePerUnit': price_per_unit,
+                        'Vat': vat,
+                        'ApiPrice': api_price,
+                        'Status': status
                     })
+
+            # For Enhancements (PreOrderItems)
             for pit in row.get('PreOrderItems', []):
+                price_per_unit = pit.get('Price', 0)
+                ordered_amount = pit.get('OrderedAmount', 1)  # If not present, default 1
+                vat = pit.get('Vat', 0)
+                api_price = price_per_unit * ordered_amount
+
                 menu.append({
                     'EventId': str(eid),
                     'Location': loc,
@@ -132,10 +163,16 @@ def run():
                     'Guest_email': guest_email,
                     'Order_type': 'Enhancement',
                     'Menu_Item': pit.get('ProductName'),
-                    'ApiPrice': pit.get('Price', 0),
-                    'Status': row.get('Status')
+                    'OrderedAmount': ordered_amount,
+                    'PricePerUnit': price_per_unit,
+                    'Vat': vat,
+                    'ApiPrice': api_price,
+                    'Status': status
                 })
-        df_menu = pd.DataFrame(menu).drop_duplicates(subset=['EventId','Location','Event','Guest_name','Guest_email','Order_type','Menu_Item'])
+
+        df_menu = pd.DataFrame(menu).drop_duplicates(
+            subset=['EventId','Location','Event','Guest_name','Guest_email','Order_type','Menu_Item']
+        )
         return df_menu, event_map
 
     def map_event_id(row, event_map):
@@ -145,25 +182,28 @@ def run():
         if 'Ordered_on' in df.columns:
             merge_keys.append('Ordered_on')
         df = df.sort_values(merge_keys)
+
         def clear_lumpsums(grp):
+            # Keep lumpsum in first row, set subsequent to 0
             grp.iloc[1:, grp.columns.get_loc('Total')] = 0
             return grp
+
         return df.groupby(merge_keys, group_keys=False).apply(clear_lumpsums).drop_duplicates()
 
     # --- App Execution ---
     if manual_file:
         uploaded_msg = st.success("📂 Manual file uploaded!")
         progress_bar = st.progress(0)
-        time.sleep(3)  # Wait 3 seconds
-        uploaded_msg.empty()  # Remove the "Manual file uploaded!" message
+        time.sleep(3)
+        uploaded_msg.empty()
 
         with st.spinner("🔄 Processing data..."):
             # Step 1: Preprocess Manual
             df_manual = preprocess_manual(manual_file)
             progress_bar.progress(20)
             step_1 = st.success("✅ Step 1: Manual file processed")
-            time.sleep(3)  # Wait 3 seconds
-            step_1.empty()  # Remove message
+            time.sleep(3)
+            step_1.empty()
 
             # Step 2: Get API Token
             token = get_access_token()
@@ -172,30 +212,36 @@ def run():
                 st.stop()
             headers = {'Authorization': f'Bearer {token}'}
 
+            # Step 3: Fetch Event IDs
             event_ids = fetch_event_ids(headers)
             progress_bar.progress(40)
             step_2 = st.success("✅ Step 2: Event IDs retrieved")
             time.sleep(3)
             step_2.empty()
 
-            # Step 3: Fetch API Preorders
+            # Step 4: Fetch API Preorders
             df_api = fetch_api_preorders(event_ids, headers)
             progress_bar.progress(60)
             step_3 = st.success("✅ Step 3: Preorders fetched")
             time.sleep(3)
             step_3.empty()
 
-            # Step 4: Process API Menus
+            # Step 5: Process API Menu
             df_menu, event_map = process_api_menu(df_api)
             progress_bar.progress(80)
             step_4 = st.success("✅ Step 4: Menu processed")
             time.sleep(3)
             step_4.empty()
 
-            # Step 5: Map Event IDs and Merge
+            # Step 6: Map Event IDs and Merge
             df_manual['EventId'] = df_manual.apply(lambda row: map_event_id(row, event_map), axis=1).astype(str).fillna('')
-            merge_keys = ['EventId', 'Location', 'Event', 'Guest_name', 'Guest_email', 'Order_type']
-            df_merged = df_manual.merge(df_menu, how='left', on=merge_keys, suffixes=('_manual', '_api'))
+            merge_keys = ['EventId','Location','Event','Guest_name','Guest_email','Order_type']
+            df_merged = df_manual.merge(
+                df_menu,
+                how='left',
+                on=merge_keys,
+                suffixes=('_manual', '_api')
+            )
             df_merged = lumpsum_deduping(df_merged, merge_keys)
 
             if df_merged.empty:
@@ -207,8 +253,7 @@ def run():
             time.sleep(3)
             final_message.empty()
 
-
-
+            # Rename status columns if needed
             if 'Status_manual' in df_merged.columns:
                 df_merged.rename(columns={'Status_manual': 'Status'}, inplace=True)
             if 'Status_api' in df_merged.columns:
@@ -221,21 +266,25 @@ def run():
                 (df_merged['Ordered_on'] <= pd.to_datetime(end_date))
             ]
 
+            # Filter by Location
             if 'Location' in df_merged.columns:
                 locs = sorted(df_merged['Location'].dropna().unique())
                 selected_locs = st.sidebar.multiselect("Select Location(s):", locs, default=locs)
                 df_merged = df_merged[df_merged['Location'].isin(selected_locs)]
 
+            # Filter by Order_type
             if 'Order_type' in df_merged.columns:
                 order_types = sorted(df_merged['Order_type'].dropna().unique())
                 selected_types = st.sidebar.multiselect("Select Order Type(s):", order_types, default=order_types)
                 df_merged = df_merged[df_merged['Order_type'].isin(selected_types)]
 
+            # Filter by Menu_Item
             if 'Menu_Item' in df_merged.columns:
                 items = sorted(df_merged['Menu_Item'].dropna().unique())
                 selected_items = st.sidebar.multiselect("Select Menu Item(s):", items, default=items)
                 df_merged = df_merged[df_merged['Menu_Item'].isin(selected_items)]
 
+            # Filter by Status
             if 'Status' in df_merged.columns:
                 statuses = sorted(df_merged['Status'].dropna().unique())
                 selected_statuses = st.sidebar.multiselect("Select Status(es):", statuses, default=statuses)
@@ -254,35 +303,43 @@ def run():
         kids_total = df_merged[df_merged['Order_type'] == 'Kids Food'][price_type].sum()
         total_boxes = df_merged['Location'].nunique()
 
+        # Top Item
         top_item = df_merged.groupby('Menu_Item')[price_type].sum().sort_values(ascending=False)
         top_item_name, top_item_spend = (top_item.index[0], top_item.iloc[0]) if not top_item.empty else ("N/A", 0)
 
+        # Top Box
         top_box = df_merged.groupby('Location')[price_type].sum().sort_values(ascending=False)
         top_box_name, top_box_spend = (top_box.index[0], top_box.iloc[0]) if not top_box.empty else ("N/A", 0)
 
+        # Top Event
         top_event = df_merged.groupby('Event')[price_type].sum().sort_values(ascending=False)
         top_event_name = top_event.index[0] if not top_event.empty else "N/A"
 
-        avg_spend = df_merged.groupby(df_merged['Ordered_on'].dt.to_period('M'))[price_type].mean().mean() if not df_merged['Ordered_on'].isna().all() else 0
+        # Average Monthly Spend
+        if not df_merged['Ordered_on'].isna().all():
+            avg_spend = df_merged.groupby(df_merged['Ordered_on'].dt.to_period('M'))[price_type].mean().mean()
+        else:
+            avg_spend = 0
 
         # --- Display ---
-        r1c1, r1c2, r1c3, r1c4 = st.columns(4)
-        r1c1.metric("Total PreOrders", total_orders)
-        r1c2.metric("Total Spend (£)", f"£{total_spend:,.2f}")
-        r1c3.metric("Avg. Monthly Spend", f"£{avg_spend:,.2f}")
-        r1c4.metric("Total Boxes Found", total_boxes)
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Total PreOrders", total_orders)
+        c2.metric("Total Spend (£)", f"£{total_spend:,.2f}")
+        c3.metric("Avg. Monthly Spend", f"£{avg_spend:,.2f}")
+        c4.metric("Total Boxes Found", total_boxes)
 
-        r2c1, r2c2, r2c3, r2c4 = st.columns(4)
-        r2c1.metric("Food Menu Total", f"£{food_total:,.2f}")
-        r2c2.metric("Enhancement Menu Total", f"£{enhancement_total:,.2f}")
-        r2c3.metric("Kids Menu Total", f"£{kids_total:,.2f}")
-        r2c4.metric("Highest Spending Box", top_box_name)
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Food Menu Total", f"£{food_total:,.2f}")
+        c2.metric("Enhancement Menu Total", f"£{enhancement_total:,.2f}")
+        c3.metric("Kids Menu Total", f"£{kids_total:,.2f}")
+        c4.metric("Highest Spending Box", top_box_name)
 
-        r3c1, r3c2, r3c3, r3c4 = st.columns(4)
-        r3c1.metric("Top Menu Item", top_item_name)
-        r3c2.metric("Top Item Spend", f"£{top_item_spend:,.2f}")
-        r3c3.metric("Highest Box's Total", f"£{top_box_spend:,.2f}")
-        r3c4.metric("Highest Spending Event", top_event_name)
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Top Menu Item", top_item_name)
+        c2.metric("Top Item Spend", f"£{top_item_spend:,.2f}")
+        c3.metric("Highest Box's Total", f"£{top_box_spend:,.2f}")
+        c4.metric("Highest Spending Event", top_event_name)
+
         # --- Table & Download ---
         with st.expander("📋 Merged Data Table (click to expand)"):
             st.dataframe(df_merged, use_container_width=True)
@@ -300,16 +357,8 @@ def run():
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
 
-        # # --- Table & Download ---
-        # with st.expander("📋 Merged Data Table (click to expand)"):
-        #     st.dataframe(df_merged, use_container_width=True)
-
-        # csv = df_merged.to_csv(index=False).encode('utf-8')
-        # st.download_button("⬇️ Download Processed Data", csv, "processed_merged_orders.csv", "text/csv")
-
     else:
         st.info("Please upload the RTS Pre-order file to begin analysis.")
-
 
 # --- Entry Point ---
 if __name__ == "__main__":
