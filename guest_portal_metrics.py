@@ -6,6 +6,7 @@ from datetime import datetime
 from io import BytesIO
 
 def run():
+    
     st.title("📦 Guest Portal Analysis")
     
     # --- Collapsible About Section ---
@@ -99,7 +100,7 @@ def run():
         Now extracts:
          - OrderedAmount, PricePerUnit, Vat
          and calculates ApiPrice as OrderedAmount * PricePerUnit.
-         Also uses "KickOffEventStart" as the event date for mapping.
+         Uses "KickOffEventStart" as the event date from the API.
         """
         menu = []
         event_map = {}
@@ -110,7 +111,7 @@ def run():
             loc = str(row.get('Location', '')).strip()
             evt = str(row.get('Event', '')).strip()
             eid = row.get('EventId')
-            # Use KickOffEventStart as event date from API
+            # Use KickOffEventStart from API as event date
             event_date_api = row.get("KickOffEventStart")
             if eid and loc and evt:
                 event_map[(loc, evt, event_date_api)] = str(eid)
@@ -130,8 +131,7 @@ def run():
                         'EventId': str(eid),
                         'Location': loc,
                         'Event': evt,
-                        # We'll merge on the manual file's Event_Date later.
-                        'Ordered_Event_Date': event_date_api,
+                        'Event_Date': event_date_api,  # We'll use this field to merge with manual file
                         'Guest_name': guest_name,
                         'Guest_email': guest_email,
                         'Order_type': menu_type,
@@ -151,7 +151,7 @@ def run():
                     'EventId': str(eid),
                     'Location': loc,
                     'Event': evt,
-                    'Ordered_Event_Date': event_date_api,
+                    'Event_Date': event_date_api,
                     'Guest_name': guest_name,
                     'Guest_email': guest_email,
                     'Order_type': 'Enhancement',
@@ -227,6 +227,7 @@ def run():
 
             # Step 6: Map Event IDs and Merge
             df_manual['EventId'] = df_manual.apply(lambda row: map_event_id(row, event_map), axis=1).astype(str).fillna('')
+            # Merge keys now include 'Event_Date'
             merge_keys = ['EventId', 'Location', 'Event', 'Event_Date', 'Guest_name', 'Guest_email', 'Order_type']
             df_merged = df_manual.merge(
                 df_menu,
