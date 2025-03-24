@@ -70,7 +70,6 @@ def run():
         if r.status_code != 200:
             return []
         events = r.json().get("Data", {}).get("Events", [])
-        # Return "EventId", "Event", "KickOffEventStart"
         return [
             {
                 "EventId": e["Id"],
@@ -146,11 +145,11 @@ def run():
             raw_date = row.get("KickOffEventStart")
             event_date_api = pd.to_datetime(raw_date, errors="coerce").date() if raw_date else None
 
+            status = row.get("Status")
+
             # Build event_map for (Location, Event, date) -> EventId
             if eid and loc and evt and event_date_api:
                 event_map[(loc, evt, event_date_api)] = str(eid)
-
-            status = row.get("Status")
 
             # Food, KidsFood, Drink, KidsDrink
             for menu_type, key in [
@@ -254,13 +253,15 @@ def run():
             headers = {"Authorization": f"Bearer {token}"}
 
             # 3) Fetch event details
-            events_list = fetch_event_details(headers)  # returns a list of dict
+            events_list = fetch_event_details(headers)
             df_events = pd.DataFrame(events_list)
             progress_bar.progress(40)
 
             # If df_events is not empty, parse KickOffEventStart
             if not df_events.empty:
-                df_events["KickOffEventStart"] = pd.to_datetime(df_events["KickOffEventStart"], errors="coerce").dt.date
+                df_events["KickOffEventStart"] = pd.to_datetime(
+                    df_events["KickOffEventStart"], errors="coerce"
+                ).dt.date
 
             # 4) Fetch API Preorders
             event_ids = df_events["EventId"].unique().tolist() if not df_events.empty else []
@@ -268,12 +269,10 @@ def run():
             progress_bar.progress(60)
 
             # 5) Merge events + preorders on EventId
-            # So each row has KickOffEventStart from events
             df_api = df_api_pre.merge(
                 df_events,
                 how="left",
-                left_on="EventId",
-                right_on="EventId",
+                on="EventId",
                 suffixes=("", "_evt")
             )
             # If there's an "Event_evt", let's use it as the official name
@@ -292,7 +291,11 @@ def run():
                 st.stop()
 
             df_manual["Event_Date"] = pd.to_datetime(df_manual["Event_Date"], dayfirst=True, errors="coerce")
-            df_manual["EventId"] = df_manual.apply(lambda r: map_event_id(r, event_map), axis=1).astype(str).fillna("")
+            # 7b) Convert manual file's EventId to numeric eventually
+            df_manual["EventId"] = df_manual.apply(lambda r: map_event_id(r, event_map), axis=1)
+
+            # Convert to numeric (int) if you prefer 0 for missing
+            df_manual["EventId"] = pd.to_numeric(df_manual["EventId"], errors="coerce").fillna(0).astype(int)
 
             # 8) Merge
             merge_keys = ["EventId","Location","Event","Guest_name","Guest_email","Order_type"]
@@ -401,9 +404,34 @@ def run():
         with st.expander("📋 Merged Data Table (click to expand)"):
             st.dataframe(df_merged, use_container_width=True)
 
+            # Convert 'EventId' to numeric if we haven't already
+            if df_merged["EventId"].dtype != "int64":
+                df_merged["EventId"] = pd.to_numeric(df_merged["EventId"], errors="coerce").fillna(0).astype(int)
+
+            # Prepare XLSX
             output = BytesIO()
             with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
                 df_merged.to_excel(writer, index=False, sheet_name="Merged Data")
+
+                # --- Format the columns as currency or int ---
+                workbook = writer.book
+                worksheet = writer.sheets["Merged Data"]
+
+                # Create a currency format
+                currency_fmt = workbook.add_format({"num_format": '£#,##0.00'})
+
+                # For these columns, apply the currency format
+                for col_name in ["Total", "PricePerUnit", "ApiPrice"]:
+                    if col_name in df_merged.columns:
+                        col_idx = df_merged.columns.get_loc(col_name)
+                        worksheet.set_column(col_idx, col_idx, 12, currency_fmt)
+
+                # If we want EventId as an integer
+                if "EventId" in df_merged.columns:
+                    int_fmt = workbook.add_format({"num_format": "0"})
+                    eid_idx = df_merged.columns.get_loc("EventId")
+                    worksheet.set_column(eid_idx, eid_idx, 10, int_fmt)
+
             output.seek(0)
 
             st.download_button(
