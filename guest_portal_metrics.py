@@ -418,7 +418,7 @@ def run():
         toast_placeholder1.info(f"RTS Total: £{rts_total_final:,.2f}")
         toast_placeholder2.info(f"API Total: £{api_total_final:,.2f}")
 
-        time.sleep(10)
+        time.sleep(5)
 
         toast_placeholder1.empty()
         toast_placeholder2.empty()
