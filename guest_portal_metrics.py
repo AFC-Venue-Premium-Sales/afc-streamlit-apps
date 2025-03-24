@@ -162,7 +162,6 @@ def run():
                     'Menu_Item': pit.get('ProductName'),
                     'OrderedAmount': ordered_amount,
                     'PricePerUnit': price_per_unit,
-                    'Vat': vat,
                     'ApiPrice': api_price,
                     'Status': status
                 })
