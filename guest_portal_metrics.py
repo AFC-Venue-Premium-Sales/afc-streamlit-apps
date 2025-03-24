@@ -310,9 +310,22 @@ def run():
                 st.warning("⚠ Merged data is empty.")
                 st.stop()
 
-            progress_bar.progress(100)
-            st.success("✅ Data ready for analysis")
+            placeholder_progress = st.empty()
+            placeholder_success = st.empty()
+
+            # Show progress bar
+            progress_bar = placeholder_progress.progress(100)
+
+            # Show success message
+            placeholder_success.success("✅ Data ready for analysis")
+
+            # Hold for 3 seconds
             time.sleep(3)
+
+            # Clear both
+            placeholder_progress.empty()
+            placeholder_success.empty()
+
 
             # Tidy up status columns
             if "Status_manual" in df_merged.columns:
@@ -398,8 +411,7 @@ def run():
         # --- Display Totals AFTER merging ---
         rts_total_final = df_merged["Total"].sum()
         api_total_final = df_merged["ApiPrice"].fillna(0).sum()
-        # st.info(f"Total from RTS (manual file) after merging: £{rts_total_final:,.2f}")
-        # st.info(f"Total from API Price after merging: £{api_total_final:,.2f}")
+
         toast_placeholder1 = st.empty()
         toast_placeholder2 = st.empty()
 
@@ -410,7 +422,6 @@ def run():
 
         toast_placeholder1.empty()
         toast_placeholder2.empty()
-
 
         
         with st.expander("📋 Merged Data Table (click to expand)"):
