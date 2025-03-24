@@ -111,8 +111,9 @@ def run():
             loc = str(row.get('Location', '')).strip()
             evt = str(row.get('Event', '')).strip()
             eid = row.get('EventId')
-            # Use KickOffEventStart from API as event date
-            event_date_api = row.get("KickOffEventStart")
+            # Use KickOffEventStart from API as event date and convert to datetime
+            raw_date = row.get("KickOffEventStart")
+            event_date_api = pd.to_datetime(raw_date) if raw_date else None
             if eid and loc and evt:
                 event_map[(loc, evt, event_date_api)] = str(eid)
             for menu_type, key in [
@@ -131,7 +132,7 @@ def run():
                         'EventId': str(eid),
                         'Location': loc,
                         'Event': evt,
-                        'Event_Date': event_date_api,  # We'll use this field to merge with manual file
+                        'Event_Date': event_date_api,  # Use this field for merge
                         'Guest_name': guest_name,
                         'Guest_email': guest_email,
                         'Order_type': menu_type,
@@ -168,7 +169,7 @@ def run():
         return df_menu, event_map
 
     def map_event_id(row, event_map):
-        # Use the manual file's Event_Date along with Location and Event for mapping.
+        # Use the manual file's Event_Date (datetime) along with Location and Event for mapping.
         manual_date = row.get("Event_Date")
         return event_map.get((str(row['Location']).strip(), str(row['Event']).strip(), manual_date), None)
 
@@ -227,7 +228,7 @@ def run():
 
             # Step 6: Map Event IDs and Merge
             df_manual['EventId'] = df_manual.apply(lambda row: map_event_id(row, event_map), axis=1).astype(str).fillna('')
-            # Merge keys now include 'Event_Date'
+            # Merge keys include Event_Date now
             merge_keys = ['EventId', 'Location', 'Event', 'Event_Date', 'Guest_name', 'Guest_email', 'Order_type']
             df_merged = df_manual.merge(
                 df_menu,
