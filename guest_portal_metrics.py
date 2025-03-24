@@ -288,21 +288,20 @@ def run():
         with st.expander("📋 Merged Data Table (click to expand)"):
             st.dataframe(df_merged, use_container_width=True)
 
-        # Prepare Excel output
+        # --- XLSX Download ---
         output = BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             df_merged.to_excel(writer, index=False, sheet_name='Merged Data')
 
-        # Rewind the buffer
-        output.seek(0)
+        output.seek(0)  # Reset buffer
 
-        # Download as XLSX
         st.download_button(
-            label="⬇️ Download Processed Data",
+            label="⬇️ Download Processed Data (XLSX)",
             data=output,
             file_name="processed_merged_orders.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
     else:
         st.info("Please upload a manual file to begin analysis.")
 
