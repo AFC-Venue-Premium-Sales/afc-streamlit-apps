@@ -232,7 +232,7 @@ def run():
             headers = {"Authorization": f"Bearer {token}"}
 
             # Step 3: Fetch Events from Events/List
-            df_events = pd.DataFrame(fetch_event_ids(headers))
+            df_events = pd.DataFrame(fetch_event_details(headers))
             progress_bar.progress(40)
             # Convert df_events into a DataFrame with proper columns
             if not df_events.empty:
