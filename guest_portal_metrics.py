@@ -64,7 +64,7 @@ def run():
     @st.cache_data
     def fetch_event_ids(headers):
         r = requests.get(events_url, headers=headers)
-        return [evt for evt in r.json().get("Data", {}).get("Events", [])] if r.status_code == 200 else []
+        return [evt["Id"] for evt in r.json().get("Data", {}).get("Events", [])] if r.status_code == 200 else []
 
     @st.cache_data
     def fetch_api_preorders(event_ids, headers):
@@ -92,7 +92,6 @@ def run():
                                     .replace('[\u00a3,]', '', regex=True)
                                     .replace('', '0'),
                                     errors='coerce').fillna(0)
-        df['Event_Date'] = pd.to_datetime(df['Event_Date'], errors='coerce')
         df.drop_duplicates(inplace=True)
         return df
 
@@ -113,12 +112,11 @@ def run():
             loc = str(row.get('Location', '')).strip()
             evt = str(row.get('Event', '')).strip()
             eid = row.get('EventId')
-            start_time = row.get('StartTime')  # This is the 'KickOffEventStart' for event date
             status = row.get('Status')
 
-            # Build a dictionary for (Location, Event, Event_Date) -> EventId
-            if eid and loc and evt and start_time:
-                event_map[(loc, evt, start_time)] = str(eid)
+            # Build a dictionary for (Location, Event) -> EventId
+            if eid and loc and evt:
+                event_map[(loc, evt)] = str(eid)
 
             # For Food / KidsFood / Drink / KidsDrink
             for menu_type, key in [
@@ -164,6 +162,7 @@ def run():
                     'Menu_Item': pit.get('ProductName'),
                     'OrderedAmount': ordered_amount,
                     'PricePerUnit': price_per_unit,
+
                     'ApiPrice': api_price,
                     'Status': status
                 })
@@ -174,7 +173,7 @@ def run():
         return df_menu, event_map
 
     def map_event_id(row, event_map):
-        return event_map.get((str(row['Location']).strip(), str(row['Event']).strip(), row['Event_Date']), None)
+        return event_map.get((str(row['Location']).strip(), str(row['Event']).strip()), None)
 
     def lumpsum_deduping(df, merge_keys):
         if 'Ordered_on' in df.columns:
