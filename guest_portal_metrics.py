@@ -304,11 +304,11 @@ def run():
         # with st.expander("📋 Merged Data Table (click to expand)"):
         #     st.dataframe(df_merged, use_container_width=True)
 
-        csv = df_merged.to_csv(index=False).encode('utf-8')
-        st.download_button("⬇️ Download Processed Data", csv, "processed_merged_orders.csv", "text/csv")
+        # csv = df_merged.to_csv(index=False).encode('utf-8')
+        # st.download_button("⬇️ Download Processed Data", csv, "processed_merged_orders.csv", "text/csv")
 
     else:
-        st.info("Please upload a manual file to begin analysis.")
+        st.info("Please upload the RTS Pre-order file to begin analysis.")
 
 
 # --- Entry Point ---
