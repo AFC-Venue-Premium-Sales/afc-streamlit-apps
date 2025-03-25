@@ -39,7 +39,7 @@ def run():
 
     # --- Sidebar ---
     st.sidebar.header("Upload Manual File")
-    manual_file = st.sidebar.file_uploader("Choose the manual .xls file", type=["xls"])
+    manual_file = st.sidebar.file_uploader("Load RTS Pre-Orders .xls file", type=["xls"])
 
     st.sidebar.header("Date Filter")
     start_date = st.sidebar.date_input("Start Date", datetime(2024, 6, 18))
