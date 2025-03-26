@@ -526,8 +526,22 @@ def run():
         if consolidated_file and selected_event:
             # st.markdown("### Processing Consolidated Payment Report (Assigning Payment Status)...")
             with st.spinner("Merging Payment Status data..."):
+                # df_consolidated = preprocess_consolidated_payment_report(consolidated_file)
+                # df_consolidated["Event"] = selected_event
+                
                 df_consolidated = preprocess_consolidated_payment_report(consolidated_file)
-                df_consolidated["Event"] = selected_event
+
+                # ✅ Validate the Event matches
+                if "Event" in df_consolidated.columns:
+                    match_count = df_consolidated["Event"].astype(str).str.strip().str.lower().eq(selected_event.strip().lower()).sum()
+                    total_rows = len(df_consolidated)
+                    if match_count != total_rows:
+                        st.error(f"❌ The consolidated file does not match the selected event: '{selected_event}'")
+                        st.stop()
+                else:
+                    df_consolidated["Event"] = selected_event
+
+            
                 df_consolidated = standardize_location(df_consolidated, "Location")
                 df_consolidated["Event"] = df_consolidated["Event"].astype(str).str.strip().str.lower()
 
