@@ -485,7 +485,7 @@ def run():
         st.markdown("### 📋 Merged PreOrders + Api Catering Data Table")
         merged_cols = [
             "EventId", "Event", "Location", "Event_Date", "Guest_name", "Guest_email",
-            "Ordered_on", "Licence_type", "Order_type", "Menu_Item",
+            "Ordered_on", "Licence_type", "Order_type", "Menu_Item", "Status"
             "PreOrderTotal", "OrderedAmount", "PricePerUnit", "ApiPrice"
         ]
         with st.expander("Click to view Merged Data Table", expanded=False):
@@ -514,7 +514,7 @@ def run():
 
         output.seek(0)
         st.download_button(
-            label="⬇️ Download Processed Data",
+            label="⬇️ Download Merged Processed Data",
             data=output,
             file_name="processed_merged_orders.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -584,7 +584,7 @@ def run():
 
                 final_cols = [
                     "EventId", "Event", "Location", "Event_Date", "Guest_name", "Guest_email",
-                    "Ordered_on", "Licence_type", "Order_type", "Menu_Item",
+                    "Ordered_on", "Licence_type", "Order_type", "Menu_Item", "Total"
                     "PreOrderTotal", "OrderedAmount", "PricePerUnit", "ApiPrice",
                     "ConsolidatedPaymentType", "ConsolidatedPaymentStatus"
                 ]
