@@ -610,7 +610,7 @@ def run():
             st.download_button(
                 "⬇️ Download Final Data with Consolidated Payment Status",
                 data=output_final,
-                file_name="final_merged_with_payment_status.xlsx",
+                file_name="consolidated_processed_file.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
         else:
