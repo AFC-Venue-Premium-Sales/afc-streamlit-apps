@@ -529,31 +529,36 @@ def run():
                 # Step 1: Preprocess the consolidated payment file
                 df_consolidated = preprocess_consolidated_payment_report(consolidated_file)
 
-                # Step 2: Assign selected event to consolidated file
+                # Step 2: Assign selected event name to all rows
                 df_consolidated["Event"] = selected_event
 
-                # Step 3: Validate using Location cross-check
-                expected_locations = (
-                    df_merged[df_merged["Event"].str.strip().str.lower() == selected_event.strip().lower()]
-                    ["Location"]
-                    .str.lower()
-                    .unique()
-                )
+                # Step 3: Load fixture list from internal source (not user upload)
+                try:
+                    fixture_df = pd.read_excel("fixture_list.xlsx")
+                    valid_locations = (
+                        fixture_df[fixture_df["Fixture Name"].str.strip().str.lower() == selected_event.strip().lower()]
+                        ["Location"]
+                        .astype(str)
+                        .str.strip()
+                        .str.lower()
+                        .unique()
+                    )
+                except Exception as e:
+                    st.error(f"❌ Could not load internal fixture list for validation.\n\n{e}")
+                    st.stop()
 
-                consolidated_locations = df_consolidated["Location"].str.lower().unique()
-                unexpected_locations = set(consolidated_locations) - set(expected_locations)
+                # Step 4: Compare locations between file and known locations for the event
+                consolidated_locations = df_consolidated["Location"].astype(str).str.strip().str.lower().unique()
+                unexpected_locations = set(consolidated_locations) - set(valid_locations)
 
                 if unexpected_locations:
                     st.error(
                         f"❌ The consolidated file includes boxes that are **not part** of the selected event: '{selected_event}'\n\n"
-                        f"Unexpected Locations: {', '.join(unexpected_locations)}"
+                        f"Unexpected Locations: {', '.join(sorted(unexpected_locations))}"
                     )
                     st.stop()
 
-                else:
-                    # If no Event column, assume it's the correct one and assign selected_event
-                    df_consolidated["Event"] = selected_event
-            
+                # Step 5: Standardize + prepare merged data for processing
                 df_consolidated = standardize_location(df_consolidated, "Location")
                 df_consolidated["Event"] = df_consolidated["Event"].astype(str).str.strip().str.lower()
 
@@ -565,9 +570,10 @@ def run():
                 df_completed = df_completed[df_completed["Event"] == selected_event_lower]
 
                 if df_completed.empty:
-                    st.warning("No Completed orders found for the selected event. Please select the right event")
+                    st.warning("No Completed orders found for the selected event. Please select the correct fixture.")
                     st.stop()
 
+                # Step 6: Calculate box-level totals
                 df_box_totals = (
                     df_completed
                     .groupby(["Location", "Event"], as_index=False)["PreOrderTotal"]
@@ -578,6 +584,7 @@ def run():
                 df_box_merged = df_box_totals.merge(df_consolidated, how="left", on=["Location", "Event"])
                 df_box_merged["PaymentStatus"] = df_box_merged.apply(assign_payment_status, axis=1)
 
+                # Step 7: Merge status back
                 df_box_merged = df_box_merged[["Location", "Event", "PaymentStatus"]]
                 df_completed = df_completed.merge(df_box_merged, on=["Location", "Event"], how="left")
                 df_completed = df_completed.rename(columns={"PaymentStatus": "ConsolidatedPaymentType"})
@@ -585,7 +592,7 @@ def run():
                     lambda x: "Completed" if x == "Credit Card" else ("Pending" if x == "Drawdown" else "")
                 )
 
-                # Restore title case
+                # Restore casing
                 df_completed["Location"] = df_completed["Location"].str.title()
                 df_completed["Event"] = df_completed["Event"].str.title()
 
@@ -603,10 +610,10 @@ def run():
             st.markdown("### 📋 Event Consolidated Payment Table")
             with st.expander("Click to view Final Data Table with Consolidated Payment Filters", expanded=False):
                 st.markdown("""
-                            This will help the user identify which transactions are paid by **Drawdown Credit** or by **Credit Card** payment. 
-                            1. Drawdown Credit payments will have a **Pending** ConsolidatedPaymentStatus as these transactions still require invoicing.
-                            2. Credit Card payments will have **Completed** ConsolidatedPaymentStatus as these transactions have already been settled.
-                            """)
+                    This will help identify which transactions are paid by **Drawdown Credit** or **Credit Card**.
+                    - **Pending** = Drawdown Credit (requires invoicing)
+                    - **Completed** = Credit Card (settled)
+                """)
                 st.dataframe(df_completed[final_cols], use_container_width=True)
 
             output_final = BytesIO()
@@ -620,8 +627,9 @@ def run():
                 file_name="consolidated_processed_file.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
+
         else:
-            st.info("Please upload an event consolidated payment file for further metrics **and** select an event on the sidebar dropdown to proceed.")
+            st.info("Please upload an event consolidated payment file **and** select a fixture from the dropdown to proceed.")
 
 
 
