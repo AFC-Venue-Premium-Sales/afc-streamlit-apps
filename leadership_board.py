@@ -77,7 +77,7 @@ targets_data = pd.DataFrame({
     # "BenT":      [35000, 35000, 30000, 25000, 20000, 15000],
 }).set_index(["Month", "Year"])
 
-valid_sales_executives =  ["dcoppin", "millies", "bgardiner", "dmontague", "jedwards"]
+valid_sales_executives =  ["dcoppin", "bgardiner", "dmontague", "jedwards"]
 # valid_services_executives = ["HayleyA", "BethNW", "BenT", "jmurphy", "MeganS"]
 
 def load_budget_targets():
@@ -186,7 +186,7 @@ def calculate_monthly_progress(data, start_date, end_date, targets_data):
         "bgardiner": "Bobby",
         "dcoppin": "David",
         "jedwards": "Joey",
-        "millies": "Millie",
+        
     }
     progress_data["Sales Exec"] = progress_data["Sales Exec"].map(user_mapping).fillna(progress_data["Sales Exec"])
 
@@ -390,7 +390,7 @@ def generate_scrolling_messages(data, budget_df, df_inventory):
         top_fixture_message = "📉 No sales recorded today."
 
     # ✅ **Top Selling Exec with Name Mapping**
-    valid_executives = ["dcoppin", "millies", "bgardiner", "dmontague", "jedwards"]
+    valid_executives = ["dcoppin", "bgardiner", "dmontague", "jedwards"]
 
     # Apply user mapping
     user_mapping = {
@@ -398,7 +398,6 @@ def generate_scrolling_messages(data, budget_df, df_inventory):
         "bgardiner": "Bobby",
         "dcoppin":   "David",
         "jedwards":  "Joey",
-        "millies":   "Millie",
         # "HayleyA":   "Hayley",
         # "BethNW":    "Beth",
         # "BenT":      "Ben",
@@ -717,7 +716,7 @@ def run_dashboard():
     # --------------------------------------------------------------------------
 
     # For sales + services
-    valid_sales_executives = ["dcoppin", "millies", "bgardiner", "dmontague", "jedwards"]
+    valid_sales_executives = ["dcoppin", "bgardiner", "dmontague", "jedwards"]
     # valid_services_executives = ["HayleyA", "BethNW", "BenT", "jmurphy", "MeganS"]
 
     
