@@ -98,14 +98,25 @@ def run():
     st.sidebar.header("Upload Consolidated Payment Report")
     consolidated_file = st.sidebar.file_uploader("Load Consolidated Payment .xls file", type=["xls"])
 
+    st.sidebar.header("Upload Fixture List")
+    fixture_file = st.sidebar.file_uploader("Load Fixture List .xlsx file", type=["xlsx"])
+
     selected_event = None
-    if consolidated_file:
+    fixture_list = []
+
+    if fixture_file is not None:
         try:
-            fixture_df = pd.read_excel("/Users/cmunthali/Documents/PYTHON/APPS/fixture_list.xlsx")
-            fixture_list = fixture_df["Fixture Name"].tolist()
-            selected_event = st.sidebar.selectbox("Select Event for Consolidated Report", fixture_list)
+            fixture_df = pd.read_excel(fixture_file)
+            if "Fixture Name" not in fixture_df.columns:
+                st.sidebar.error("❌ 'Fixture Name' column not found in uploaded file.")
+            else:
+                fixture_list = fixture_df["Fixture Name"].dropna().unique().tolist()
         except Exception as e:
-            st.error("Error loading fixture list: " + str(e))
+            st.sidebar.error(f"❌ Failed to read fixture list: {e}")
+
+    if consolidated_file and fixture_list:
+        selected_event = st.sidebar.selectbox("Select Event for Consolidated Report", fixture_list)
+
 
     st.sidebar.header("Data Filters")
     start_date = st.sidebar.date_input("Start Date", datetime(2024, 6, 18))
