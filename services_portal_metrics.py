@@ -64,6 +64,9 @@ def run():
         ### 🧠 What it does:
         - Helps the **Premium Service Team** with tracking and processing catering pre-orders.
         - Validates pre-orders across multiple sources.
+            - RTS PreOrders
+            - CateringPreorders tracked via TJT's API
+            - RTS Event Consolidated Payments
         - Will soon support tracking of **guest draw-down credit** and **invitation usage**.
 
         ### 📂 Getting Started:
@@ -71,9 +74,15 @@ def run():
            [RTS Portal – Pre-Orders](https://www.tjhub3.com/Rts_Arsenal_Hospitality/Suites/Reports/PreOrders/Index)
         2. Save the file locally, then upload it via the **sidebar**. Please do not edit or change this file before uploading.
         3. The dashboard will automatically fetch matching data from the TJT API and process everything behind the scenes.
+        4. To get details on full consolidated Event Payments:
+            - Download the file from RTS - (https://www.tjhub3.com/Rts_Arsenal_Hospitality/Suites/Reports/ConsolidatedPayment/Index)
+            - Load this fle under **Upload Consolidated Payment Report**
+            - Make sure to select the Event that you downloaded from RTS on the side bar.
+            - This will produce a table with Consolidated Payment Status to help with invoicing.
 
         ### 🎛️ How to Use the Dashboard:
         - Use the filters on the **left-hand side** to select date range, order types, menu items, box locations, and order status.
+        - Filters will affect both output tables
         - All key metrics will update live — including:
           - Total Spend
           - Top Menu Item
@@ -94,7 +103,7 @@ def run():
         try:
             fixture_df = pd.read_excel("/Users/cmunthali/Documents/PYTHON/APPS/fixture_list.xlsx")
             fixture_list = fixture_df["Fixture Name"].tolist()
-            selected_event = st.sidebar.selectbox("Select Event for Payment Report", fixture_list)
+            selected_event = st.sidebar.selectbox("Select Event for Consolidated Report", fixture_list)
         except Exception as e:
             st.error("Error loading fixture list: " + str(e))
 
@@ -460,114 +469,127 @@ def run():
         time.sleep(2)
         toast_placeholder1.empty()
         toast_placeholder2.empty()
+        
+        df_merged = df_merged.rename(columns = {"Total": "PreOrderTotal",
+                                    "Status": "PreOrderStatus"})
+        
 
-        with st.expander("📋 Merged Data Table (click to expand)"):
-            st.dataframe(df_merged)
-            output_merged = BytesIO()
-            with pd.ExcelWriter(output_merged, engine="xlsxwriter") as writer:
-                df_merged.to_excel(writer, index=False, sheet_name="Merged")
-            output_merged.seek(0)
-            st.download_button(
-                "⬇️ Download Merged Data",
-                data=output_merged,
-                file_name="merged_rts_api.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+        # 📋 Merged Data Table Section
+        st.markdown("### 📋 Merged PreOrders + Api Catering Data Table")
+        merged_cols = [
+            "EventId", "Event", "Location", "Event_Date", "Guest_name", "Guest_email",
+            "Ordered_on", "Licence_type", "Order_type", "Menu_Item",
+            "PreOrderTotal", "OrderedAmount", "PricePerUnit", "ApiPrice"
+        ]
+        with st.expander("Click to view Merged Data Table", expanded=False):
+            st.dataframe(df_merged[merged_cols], use_container_width=True)
+
+        # Ensure EventId is numeric
+        if df_merged["EventId"].dtype != "int64":
+            df_merged["EventId"] = pd.to_numeric(df_merged["EventId"], errors="coerce").fillna(0).astype(int)
+
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+            df_merged[merged_cols].to_excel(writer, index=False, sheet_name="Merged Data")
+            workbook = writer.book
+            worksheet = writer.sheets["Merged Data"]
+
+            currency_fmt = workbook.add_format({"num_format": "£#,##0.00"})
+            for col in ["PreOrderTotal", "PricePerUnit", "ApiPrice"]:
+                if col in df_merged.columns:
+                    col_idx = df_merged.columns.get_loc(col)
+                    worksheet.set_column(col_idx, col_idx, 12, currency_fmt)
+
+            if "EventId" in df_merged.columns:
+                int_fmt = workbook.add_format({"num_format": "0"})
+                eid_idx = df_merged.columns.get_loc("EventId")
+                worksheet.set_column(eid_idx, eid_idx, 10, int_fmt)
+
+        output.seek(0)
+        st.download_button(
+            label="⬇️ Download Processed Data",
+            data=output,
+            file_name="processed_merged_orders.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
         ######################################################################
         # Consolidated Payment Report Processing & Payment Status Assignment
         ######################################################################
-        # --- Consolidated Payment Report Processing & Payment Status ---
         if consolidated_file and selected_event:
-            st.markdown("### Processing Consolidated Payment Report (Assigning Payment Status)...")
+            # st.markdown("### Processing Consolidated Payment Report (Assigning Payment Status)...")
             with st.spinner("Merging Payment Status data..."):
-                # 1) Read & preprocess the consolidated payment file
                 df_consolidated = preprocess_consolidated_payment_report(consolidated_file)
-                st.write(df_consolidated.head(15))
-                st.write(df_consolidated.columns)
-
-                
-                # 2) Add the 'Event' column so it can be merged by (Location, Event)
                 df_consolidated["Event"] = selected_event
-                
-                # Debug: see what columns we have
-                st.write("🔍 FULL CONSOLIDATED DATA AFTER PREPROCESSING:")
-                st.dataframe(df_consolidated.head(20))
-                
-                # 3) Standardize 'Location' and 'Event'
                 df_consolidated = standardize_location(df_consolidated, "Location")
-                df_consolidated["Event"] = (
-                    df_consolidated["Event"]
-                    .astype(str)
-                    .str.strip()
-                    .str.lower()
-                )
-                
-                # 4) Copy merged data & filter for "Completed" orders
+                df_consolidated["Event"] = df_consolidated["Event"].astype(str).str.strip().str.lower()
+
                 df_completed = df_merged.copy()
                 df_completed = standardize_location(df_completed, "Location")
                 df_completed["Event"] = df_completed["Event"].astype(str).str.strip().str.lower()
-                df_completed = df_completed[df_completed["Status"] == "Completed"]
-                
-                # 5) Filter only rows matching the selected event
+                df_completed = df_completed[df_completed["PreOrderStatus"] == "Completed"]
                 selected_event_lower = selected_event.strip().lower()
                 df_completed = df_completed[df_completed["Event"] == selected_event_lower]
-                
+
                 if df_completed.empty:
-                    st.warning("No Completed orders found for the selected event.")
+                    st.warning("No Completed orders found for the selected event. Please select the right event")
                     st.stop()
-                
-                # 6) Calculate box-level totals (summing the 'Total' column)
+
                 df_box_totals = (
                     df_completed
-                    .groupby(["Location", "Event"], as_index=False)["Total"]
+                    .groupby(["Location", "Event"], as_index=False)["PreOrderTotal"]
                     .sum()
-                    .rename(columns={"Total": "BoxTotal"})
+                    .rename(columns={"PreOrderTotal": "BoxTotal"})
                 )
-                
-                # 7) Merge box totals with consolidated payment data
-                df_box_merged = df_box_totals.merge(
-                    df_consolidated, how="left", on=["Location", "Event"]
-                )
-                
-                # 8) Assign PaymentStatus based on drawdown vs credit card match
+
+                df_box_merged = df_box_totals.merge(df_consolidated, how="left", on=["Location", "Event"])
                 df_box_merged["PaymentStatus"] = df_box_merged.apply(assign_payment_status, axis=1)
-                
-                # 9) Merge PaymentStatus back into the completed orders DataFrame
+
                 df_box_merged = df_box_merged[["Location", "Event", "PaymentStatus"]]
-                df_completed = df_completed.merge(
-                    df_box_merged, on=["Location", "Event"], how="left"
+                df_completed = df_completed.merge(df_box_merged, on=["Location", "Event"], how="left")
+                df_completed = df_completed.rename(columns={"PaymentStatus": "ConsolidatedPaymentType"})
+                df_completed["ConsolidatedPaymentStatus"] = df_completed["ConsolidatedPaymentType"].apply(
+                    lambda x: "Completed" if x == "Credit Card" else ("Pending" if x == "Drawdown" else "")
                 )
-                
-                # 10) Reorder columns (create empty columns if missing)
+
+                # Restore title case
+                df_completed["Location"] = df_completed["Location"].str.title()
+                df_completed["Event"] = df_completed["Event"].str.title()
+
                 final_cols = [
-                    "Location", "Event", "Event_Date", "Guest_name", "Licence_type",
-                    "Ordered_on", "Order_type", "Total", "Status", "Available_card",
-                    "Card_payment", "Guest_email", "EventId", "KickOffEventStart",
-                    "Menu_Item", "OrderedAmount", "PricePerUnit", "ApiPrice",
-                    "PaymentStatus"
+                    "EventId", "Event", "Location", "Event_Date", "Guest_name", "Guest_email",
+                    "Ordered_on", "Licence_type", "Order_type", "Menu_Item",
+                    "PreOrderTotal", "OrderedAmount", "PricePerUnit", "ApiPrice",
+                    "ConsolidatedPaymentType", "ConsolidatedPaymentStatus"
                 ]
                 for col in final_cols:
                     if col not in df_completed.columns:
                         df_completed[col] = ""
-                df_completed = df_completed[final_cols]
-            
-            st.markdown("### Final Data with Payment Status")
-            st.dataframe(df_completed, use_container_width=True)
 
-            # Optional: Download button
+            # 📋 Final Data Table Section
+            st.markdown("### 📋 Event Consolidated Payment Table")
+            with st.expander("Click to view Final Data Table with Consolidated Payment Filters", expanded=False):
+                st.markdown("""
+                            This will help the user identify which transactions are paid by **Drawdown Credit** or by **Credit Card** payment. 
+                            1. Drawdown Credit payments will have a **Pending** ConsolidatedPaymentStatus as these transactions still require invoicing.
+                            2. Credit Card payments will have **Completed** ConsolidatedPaymentStatus as these transactions have already been settled.
+                            """)
+                st.dataframe(df_completed[final_cols], use_container_width=True)
+
             output_final = BytesIO()
             with pd.ExcelWriter(output_final, engine="xlsxwriter") as writer:
-                df_completed.to_excel(writer, index=False, sheet_name="Final Data")
+                df_completed[final_cols].to_excel(writer, index=False, sheet_name="Final Data")
             output_final.seek(0)
+
             st.download_button(
-                "⬇️ Download Final Data with Payment Status",
+                "⬇️ Download Final Data with Consolidated Payment Status",
                 data=output_final,
                 file_name="final_merged_with_payment_status.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
         else:
-            st.info("Please upload a consolidated payment file **and** select an event to process.")
+            st.info("Please upload an event consolidated payment file for further metrics **and** select an event on the sidebar dropdown to proceed.")
+
 
 
 
