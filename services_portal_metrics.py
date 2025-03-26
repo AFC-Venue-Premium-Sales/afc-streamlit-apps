@@ -522,27 +522,34 @@ def run():
         ######################################################################
         # Consolidated Payment Report Processing & Payment Status Assignment
         ######################################################################
+        # The code snippet provided is a part of a Python script. Here's a breakdown of what it is
+        # doing:
         if consolidated_file and selected_event:
-            # st.markdown("### Processing Consolidated Payment Report (Assigning Payment Status)...")
             with st.spinner("Merging Payment Status data..."):
-                # df_consolidated = preprocess_consolidated_payment_report(consolidated_file)
-                # df_consolidated["Event"] = selected_event
-                
+                # Step 1: Preprocess the consolidated payment file
                 df_consolidated = preprocess_consolidated_payment_report(consolidated_file)
 
-                if "Event" in df_consolidated.columns:
-                    # Standardize and compare
-                    df_consolidated["Event"] = df_consolidated["Event"].astype(str).str.strip().str.lower()
-                    selected_event_lower = selected_event.strip().lower()
+                # Step 2: Assign selected event to consolidated file
+                df_consolidated["Event"] = selected_event
 
-                    # Count matches
-                    match_count = df_consolidated["Event"].eq(selected_event_lower).sum()
-                    total_rows = len(df_consolidated)
+                # Step 3: Validate using Location cross-check
+                expected_locations = (
+                    df_merged[df_merged["Event"].str.strip().str.lower() == selected_event.strip().lower()]
+                    ["Location"]
+                    .str.lower()
+                    .unique()
+                )
 
-                    if match_count != total_rows:
-                        st.error(f"❌ The uploaded consolidated payment file does not match the selected event: '{selected_event}'.\n\n"
-                                f"Only {match_count} out of {total_rows} rows matched.")
-                        st.stop()
+                consolidated_locations = df_consolidated["Location"].str.lower().unique()
+                unexpected_locations = set(consolidated_locations) - set(expected_locations)
+
+                if unexpected_locations:
+                    st.error(
+                        f"❌ The consolidated file includes boxes that are **not part** of the selected event: '{selected_event}'\n\n"
+                        f"Unexpected Locations: {', '.join(unexpected_locations)}"
+                    )
+                    st.stop()
+
                 else:
                     # If no Event column, assume it's the correct one and assign selected_event
                     df_consolidated["Event"] = selected_event
@@ -615,7 +622,6 @@ def run():
             )
         else:
             st.info("Please upload an event consolidated payment file for further metrics **and** select an event on the sidebar dropdown to proceed.")
-
 
 
 
