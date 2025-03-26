@@ -93,29 +93,25 @@ def run():
         """)
 
     # --- Sidebar ---
+    # --- Sidebar ---
     st.sidebar.header("Upload RTS Pre-Orders File")
     manual_file = st.sidebar.file_uploader("Load RTS Pre-Orders .xls file", type=["xls"])
     st.sidebar.header("Upload Consolidated Payment Report")
     consolidated_file = st.sidebar.file_uploader("Load Consolidated Payment .xls file", type=["xls"])
 
-    st.sidebar.header("Upload Fixture List")
-    fixture_file = st.sidebar.file_uploader("Load Fixture List .xlsx file", type=["xlsx"])
-
+    # --- Load fixture list from local repo directory ---
     selected_event = None
     fixture_list = []
 
-    if fixture_file is not None:
-        try:
-            fixture_df = pd.read_excel(fixture_file)
-            if "Fixture Name" not in fixture_df.columns:
-                st.sidebar.error("❌ 'Fixture Name' column not found in uploaded file.")
-            else:
-                fixture_list = fixture_df["Fixture Name"].dropna().unique().tolist()
-        except Exception as e:
-            st.sidebar.error(f"❌ Failed to read fixture list: {e}")
+    try:
+        fixture_df = pd.read_excel("fixture_list.xlsx")  # make sure the file is in the same directory as your script
+        fixture_list = fixture_df["Fixture Name"].dropna().unique().tolist()
+    except Exception as e:
+        st.sidebar.error(f"❌ Failed to load fixture list from file: {e}")
 
     if consolidated_file and fixture_list:
         selected_event = st.sidebar.selectbox("Select Event for Consolidated Report", fixture_list)
+
 
 
     st.sidebar.header("Data Filters")
