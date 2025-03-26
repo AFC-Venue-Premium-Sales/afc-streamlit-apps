@@ -55,11 +55,11 @@ def run():
     st.title("📦 Guest Portal Analysis")
 
     # --- Collapsible About Section ---
-    with st.expander("ℹ️ About this Dashboard", expanded=False):
+    with st.expander("ℹ️ About this Tool", expanded=False):
         st.markdown("""
-        **Welcome to the Guest Portal Insights Dashboard**  
+        **Welcome to the Guest Portal Insights Tool**  
         This tool combines data from the **RTS Pre-Order Report** with **TJT's Catering Pre-orders API**  
-        to give you a consolidated view of activities on the hospitality website's Guest Portal.
+        to give you a consolidated view of Box Holder PreOrders.  
 
         ### 🧠 What it does:
         - Helps the **Premium Service Team** with tracking and processing catering pre-orders.
@@ -67,7 +67,6 @@ def run():
             - RTS PreOrders
             - CateringPreorders tracked via TJT's API
             - RTS Event Consolidated Payments
-        - Will soon support tracking of **guest draw-down credit** and **invitation usage**.
 
         ### 📂 Getting Started:
         1. **Download the RTS Pre-Order Report** from:  
@@ -75,7 +74,7 @@ def run():
         2. Save the file locally, then upload it via the **sidebar**. Please do not edit or change this file before uploading.
         3. The dashboard will automatically fetch matching data from the TJT API and process everything behind the scenes.
         4. To get details on full consolidated Event Payments:
-            - Download the file from RTS - (https://www.tjhub3.com/Rts_Arsenal_Hospitality/Suites/Reports/ConsolidatedPayment/Index)
+            - [RTS Portal – Consolidated Payments](https://www.tjhub3.com/Rts_Arsenal_Hospitality/Suites/Reports/ConsolidatedPayment/Index)
             - Load this fle under **Upload Consolidated Payment Report**
             - Make sure to select the Event that you downloaded from RTS on the side bar.
             - This will produce a table with Consolidated Payment Status to help with invoicing.
