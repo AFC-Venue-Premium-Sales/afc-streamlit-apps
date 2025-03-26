@@ -519,7 +519,6 @@ def run():
             file_name="processed_merged_orders.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-
         ######################################################################
         # Consolidated Payment Report Processing & Payment Status Assignment
         ######################################################################
@@ -531,16 +530,22 @@ def run():
                 
                 df_consolidated = preprocess_consolidated_payment_report(consolidated_file)
 
-                # ✅ Validate the Event matches
                 if "Event" in df_consolidated.columns:
-                    match_count = df_consolidated["Event"].astype(str).str.strip().str.lower().eq(selected_event.strip().lower()).sum()
+                    # Standardize and compare
+                    df_consolidated["Event"] = df_consolidated["Event"].astype(str).str.strip().str.lower()
+                    selected_event_lower = selected_event.strip().lower()
+
+                    # Count matches
+                    match_count = df_consolidated["Event"].eq(selected_event_lower).sum()
                     total_rows = len(df_consolidated)
+
                     if match_count != total_rows:
-                        st.error(f"❌ The consolidated file does not match the selected event: '{selected_event}'")
+                        st.error(f"❌ The uploaded consolidated payment file does not match the selected event: '{selected_event}'.\n\n"
+                                f"Only {match_count} out of {total_rows} rows matched.")
                         st.stop()
                 else:
+                    # If no Event column, assume it's the correct one and assign selected_event
                     df_consolidated["Event"] = selected_event
-
             
                 df_consolidated = standardize_location(df_consolidated, "Location")
                 df_consolidated["Event"] = df_consolidated["Event"].astype(str).str.strip().str.lower()
