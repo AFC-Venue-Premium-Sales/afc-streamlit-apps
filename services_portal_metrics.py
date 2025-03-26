@@ -485,7 +485,7 @@ def run():
         st.markdown("### 📋 Merged PreOrders + Api Catering Data Table")
         merged_cols = [
             "EventId", "Event", "Location", "Event_Date", "Guest_name", "Guest_email",
-            "Ordered_on", "Licence_type", "Order_type", "Menu_Item", "PreOrderStatus"
+            "Ordered_on", "Licence_type", "Order_type", "Menu_Item", "PreOrderStatus",
             "PreOrderTotal", "OrderedAmount", "PricePerUnit", "ApiPrice"
         ]
         with st.expander("Click to view Merged Data Table", expanded=False):
