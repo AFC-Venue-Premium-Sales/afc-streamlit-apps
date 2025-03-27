@@ -525,27 +525,32 @@ def run():
                 # Preprocess the consolidated payment report
                 df_consolidated = preprocess_consolidated_payment_report(consolidated_file)
 
-                # Check for required columns: "Event" and "EventDate"
-                if "Event" in df_consolidated.columns and "EventDate" in df_consolidated.columns:
-                    # Standardize the Event column and convert EventDate to a proper date
-                    df_consolidated["Event"] = df_consolidated["Event"].astype(str).str.strip().str.lower()
-                    df_consolidated["EventDate"] = pd.to_datetime(df_consolidated["EventDate"], errors="coerce").dt.date
-                    selected_event_lower = selected_event.strip().lower()
+                # Require that the consolidated file has both "Event" and "EventDate" columns.
+                if not ("Event" in df_consolidated.columns and "EventDate" in df_consolidated.columns):
+                    st.error("The consolidated payment file must contain 'Event' and 'EventDate' columns for matching.")
+                    st.stop()
 
-                    # Build a mask to check if each row matches the selected event and date
-                    match_mask = (df_consolidated["Event"] == selected_event_lower) & (df_consolidated["EventDate"] == selected_event_date)
-                    match_count = match_mask.sum()
-                    total_rows = len(df_consolidated)
+                # Standardize the Event column and convert EventDate to a proper date
+                df_consolidated["Event"] = df_consolidated["Event"].astype(str).str.strip().str.lower()
+                df_consolidated["EventDate"] = pd.to_datetime(df_consolidated["EventDate"], errors="coerce").dt.date
+                selected_event_lower = selected_event.strip().lower()
 
-                    if match_count != total_rows:
-                        st.error(f"❌ The uploaded consolidated payment file does not match the selected event and date: '{selected_event}' on '{selected_event_date}'.\n\n"
-                                f"Only {match_count} out of {total_rows} rows matched.")
-                        st.stop()
-                    # Optionally, filter to matching rows:
-                    df_consolidated = df_consolidated[match_mask].copy()
-                else:
-                    # If missing, assume file is correct and assign selected_event
-                    df_consolidated["Event"] = selected_event
+                # Build a mask to check that every row matches the selected event and date
+                match_mask = (
+                    (df_consolidated["Event"] == selected_event_lower) &
+                    (df_consolidated["EventDate"] == selected_event_date)
+                )
+                match_count = match_mask.sum()
+                total_rows = len(df_consolidated)
+
+                if match_count != total_rows:
+                    st.error(
+                        f"❌ The uploaded consolidated payment file does not match the selected event and date: '{selected_event}' on '{selected_event_date}'.\n\n"
+                        f"Only {match_count} out of {total_rows} rows matched."
+                    )
+                    st.stop()
+                # If they all match, keep the matching rows (which should be all rows)
+                df_consolidated = df_consolidated[match_mask].copy()
 
                 # Standardize Location
                 df_consolidated = standardize_location(df_consolidated, "Location")
@@ -638,7 +643,16 @@ def run():
                 for col in export_cols:
                     if col not in df_export.columns:
                         df_export[col] = ""
-                st.dataframe(df_export[export_cols], use_container_width=True)
+                st.dataframe(
+                    df_export[export_cols].style.format({
+                        "PreOrderTotal": "£{:,.2f}",
+                        "PricePerUnit": "£{:,.2f}",
+                        "TotalPrice": "£{:,.2f}",
+                        "ApiPrice": "£{:,.2f}"
+                    }),
+                    use_container_width=True
+                )
+
                 # Create Executive Box Total summary for export
                 df_summary = (
                     df_export.groupby("Location", as_index=False)["TotalPrice"]
