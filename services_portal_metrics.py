@@ -102,6 +102,7 @@ def run():
     # --- Sidebar ---
     st.sidebar.header("Upload RTS Pre-Orders File")
     manual_file = st.sidebar.file_uploader("Load RTS Pre-Orders .xls file", type=["xls"])
+    
     st.sidebar.header("Upload Consolidated Payment Report")
     consolidated_file = st.sidebar.file_uploader("Load Consolidated Payment .xls file", type=["xls"])
 
@@ -110,13 +111,43 @@ def run():
     fixture_list = []
 
     try:
-        fixture_df = pd.read_excel("fixture_list.xlsx")  # make sure the file is in the same directory as your script
-        fixture_list = fixture_df["FixtureName"].dropna().unique().tolist()
+        fixture_df = pd.read_excel("fixture_list.xlsx")
+        # Standardize columns
+        fixture_df["FixtureName"] = fixture_df["FixtureName"].astype(str).str.strip()
+        # Convert the fixture date column to an actual date
+        fixture_df["FixtureDate"] = pd.to_datetime(fixture_df["FixtureDate"], errors="coerce").dt.date
     except Exception as e:
         st.sidebar.error(f"❌ Failed to load fixture list from file: {e}")
+        st.stop()
+        
+    # Gather all possible fixture names
+    all_fixture_names = fixture_df["FixtureName"].dropna().unique().tolist()
 
-    if consolidated_file and fixture_list:
-        selected_event = st.sidebar.selectbox("Select Event for Consolidated Report", fixture_list)
+    # Let the user select which fixture they're dealing with
+    selected_event = st.sidebar.selectbox(
+        "Select Event (Fixture) for Consolidated Report",
+        all_fixture_names
+    )
+
+    # Filter down to the rows for the chosen fixture name
+    matching_rows = fixture_df[fixture_df["FixtureName"] == selected_event]
+    possible_dates = sorted(matching_rows["FixtureDate"].dropna().unique())
+
+    if len(possible_dates) == 0:
+        st.warning("No date info found for this fixture in fixture_list.xlsx.")
+        selected_event_date = None
+    elif len(possible_dates) == 1:
+        # Exactly one date for this fixture -> no extra user input needed
+        selected_event_date = possible_dates[0]
+    else:
+        # More than one possible date -> show a second dropdown
+        selected_event_date = st.sidebar.selectbox(
+            "Multiple possible dates found for this fixture. Please select which date applies:",
+            possible_dates
+        )
+
+    # if consolidated_file and fixture_list:
+    #     selected_event = st.sidebar.selectbox("Select Event for Consolidated Report", fixture_list)
 
 
 
@@ -529,28 +560,33 @@ def run():
         ######################################################################
         # Consolidated Payment Report Processing & Payment Status Assignment
         ######################################################################
-        if consolidated_file and selected_event:
+        if consolidated_file and selected_event and selected_event_date:
             with st.spinner("Merging Payment Status data..."):
                 # Preprocess the consolidated payment report
                 df_consolidated = preprocess_consolidated_payment_report(consolidated_file)
 
-                if "Event" in df_consolidated.columns:
-                    # Standardize and compare
+                # Check for required columns: "Event" and "EventDate"
+                if "Event" in df_consolidated.columns and "EventDate" in df_consolidated.columns:
+                    # Standardize the Event column and convert EventDate to a proper date
                     df_consolidated["Event"] = df_consolidated["Event"].astype(str).str.strip().str.lower()
+                    df_consolidated["EventDate"] = pd.to_datetime(df_consolidated["EventDate"], errors="coerce").dt.date
                     selected_event_lower = selected_event.strip().lower()
 
-                    # Count matches
-                    match_count = df_consolidated["Event"].eq(selected_event_lower).sum()
+                    # Count matches based on both event name and event date
+                    match_mask = (df_consolidated["Event"] == selected_event_lower) & (df_consolidated["EventDate"] == selected_event_date)
+                    match_count = match_mask.sum()
                     total_rows = len(df_consolidated)
 
                     if match_count != total_rows:
-                        st.error(f"❌ The uploaded consolidated payment file does not match the selected event: '{selected_event}'.\n\n"
+                        st.error(f"❌ The uploaded consolidated payment file does not match the selected event and date: '{selected_event}' on '{selected_event_date}'.\n\n"
                                 f"Only {match_count} out of {total_rows} rows matched.")
                         st.stop()
+                    # Optionally, filter the consolidated data further:
+                    df_consolidated = df_consolidated[match_mask].copy()
                 else:
-                    # If no Event column, assume it's the correct one and assign selected_event
+                    # If the Event or EventDate columns are missing, assume the file is correct and assign selected_event
                     df_consolidated["Event"] = selected_event
-                
+
                 # Standardize Location
                 df_consolidated = standardize_location(df_consolidated, "Location")
                 df_consolidated["Event"] = df_consolidated["Event"].astype(str).str.strip().str.lower()
@@ -560,11 +596,16 @@ def run():
                 df_completed = standardize_location(df_completed, "Location")
                 df_completed["Event"] = df_completed["Event"].astype(str).str.strip().str.lower()
                 df_completed = df_completed[df_completed["PreOrderStatus"] == "Completed"]
+
+                # Filter df_completed by both selected event and selected event date
                 selected_event_lower = selected_event.strip().lower()
-                df_completed = df_completed[df_completed["Event"] == selected_event_lower]
+                df_completed = df_completed[
+                    (df_completed["Event"] == selected_event_lower) &
+                    (df_completed["Event_Date"].dt.date == selected_event_date)
+                ]
 
                 if df_completed.empty:
-                    st.warning("No Completed orders found for the selected event. Please select the right event")
+                    st.warning("No Completed orders found for the selected event and date. Please select the right event/date combination.")
                     st.stop()
 
                 # Calculate Box Totals
@@ -607,7 +648,7 @@ def run():
                 for col in final_cols:
                     if col not in df_completed.columns:
                         df_completed[col] = ""
-                
+
                 # Extract the summary of total prepaid for each Executive Box dynamically     
                 df_exec_summary = df_box_totals[["Location", "BoxTotal"]]
                 df_exec_summary["BoxTotal"] = df_exec_summary["BoxTotal"].apply(lambda x: f"£{x:,.2f}")
@@ -615,6 +656,10 @@ def run():
                 # Sidebar Layout for Executive Box Totals
                 st.sidebar.markdown("### 📊 Executive Box Total Prepaid")
                 st.sidebar.write(df_exec_summary)
+
+
+
+
 
             # 📋 Final Data Table Section
             st.markdown("### 📋 Event Consolidated Payment Table")
