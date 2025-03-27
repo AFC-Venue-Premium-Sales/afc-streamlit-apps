@@ -69,8 +69,8 @@ def run():
             - RTS Event Consolidated Payments
 
         ### 📂 Getting Started:
-        1. **Download the RTS Pre-Order Report** from:  
-           [RTS Portal – Pre-Orders](https://www.tjhub3.com/Rts_Arsenal_Hospitality/Suites/Reports/PreOrders/Index)
+        1. **Download the RTS Pre-Order Report** from:
+            - [RTS Portal – Pre-Orders](https://www.tjhub3.com/Rts_Arsenal_Hospitality/Suites/Reports/PreOrders/Index)
         2. Save the file locally, then upload it via the **sidebar**. Please do not edit or change this file before uploading.
         3. The dashboard will automatically fetch matching data from the TJT API and process everything behind the scenes.
         4. To get details on full consolidated Event Payments:
@@ -592,26 +592,74 @@ def run():
                         df_completed[col] = ""
 
             # 📋 Final Data Table Section
+            # 📋 Final Data Table Section
             st.markdown("### 📋 Event Consolidated Payment Table")
             with st.expander("Click to view Final Data Table with Consolidated Payment Filters", expanded=False):
                 st.markdown("""
-                            This will help the user identify which transactions are paid by **Drawdown Credit** or by **Credit Card** payment. 
-                            1. Drawdown Credit payments will have a **Pending** ConsolidatedPaymentStatus as these transactions still require invoicing.
-                            2. Credit Card payments will have **Completed** ConsolidatedPaymentStatus as these transactions have already been settled.
-                            """)
-                st.dataframe(df_completed[final_cols], use_container_width=True)
+                    This will help the user identify which transactions are paid by **Drawdown Credit** or by **Credit Card** payment.  
+                    1. Drawdown Credit payments will have a **Pending** ConsolidatedPaymentStatus as these transactions still require invoicing.  
+                    2. Credit Card payments will have **Completed** ConsolidatedPaymentStatus as these transactions have already been settled.
+                """)
 
-            output_final = BytesIO()
-            with pd.ExcelWriter(output_final, engine="xlsxwriter") as writer:
-                df_completed[final_cols].to_excel(writer, index=False, sheet_name="Final Data")
-            output_final.seek(0)
+                # Prepare and rename columns
+                df_export = df_completed.copy()
+                if "ApiPrice" in df_export.columns:
+                    df_export.rename(columns={"ApiPrice": "TotalPrice"}, inplace=True)
+                if "PreOrderTotal" in df_export.columns:
+                    df_export.drop(columns=["PreOrderTotal"], inplace=True)
 
-            st.download_button(
-                "⬇️ Download Final Data with Consolidated Payment Status",
-                data=output_final,
-                file_name="consolidated_processed_file.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+                # Final columns to export
+                export_cols = [
+                    "EventId", "Event", "Location", "Event_Date", "Guest_name", "Guest_email",
+                    "Ordered_on", "Licence_type", "Order_type", "Menu_Item", "PreOrderStatus",
+                    "OrderedAmount", "PricePerUnit", "TotalPrice",
+                    "ConsolidatedPaymentType", "ConsolidatedPaymentStatus"
+                ]
+                for col in export_cols:
+                    if col not in df_export.columns:
+                        df_export[col] = ""
+
+                # Display final table
+                st.dataframe(df_export[export_cols], use_container_width=True)
+
+                # Create Executive Box Total summary
+                df_summary = (
+                    df_export.groupby("Location", as_index=False)["TotalPrice"]
+                    .sum()
+                    .rename(columns={"TotalPrice": "Total Prepaid"})
+                )
+
+                # Write to Excel
+                output_final = BytesIO()
+                with pd.ExcelWriter(output_final, engine="xlsxwriter") as writer:
+                    # Sheet 1: Final Data
+                    df_export[export_cols].to_excel(writer, index=False, sheet_name="Final Data")
+
+                    # Sheet 2: Exec Box Total
+                    df_summary.to_excel(writer, index=False, sheet_name="Exec Box Total")
+
+                    # Formatting
+                    workbook = writer.book
+                    currency_fmt = workbook.add_format({"num_format": "£#,##0.00"})
+
+                    # Format TotalPrice in Final Data
+                    if "TotalPrice" in df_export.columns:
+                        col_idx = df_export.columns.get_loc("TotalPrice")
+                        writer.sheets["Final Data"].set_column(col_idx, col_idx, 14, currency_fmt)
+
+                    # Format Total Prepaid in summary tab
+                    if "Total Prepaid" in df_summary.columns:
+                        prepaid_idx = df_summary.columns.get_loc("Total Prepaid")
+                        writer.sheets["Exec Box Total"].set_column(prepaid_idx, prepaid_idx, 14, currency_fmt)
+
+                output_final.seek(0)
+                st.download_button(
+                    "⬇️ Download Final Data with Consolidated Payment Status",
+                    data=output_final,
+                    file_name="consolidated_processed_file.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+
         else:
             st.info("Please upload an event consolidated payment file for further metrics **and** select an event on the sidebar dropdown to proceed.")
 
