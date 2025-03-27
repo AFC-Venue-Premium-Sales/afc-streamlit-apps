@@ -566,7 +566,7 @@ def run():
                     .sum()
                     .rename(columns={"PreOrderTotal": "BoxTotal"})
                 )
-
+                # Your existing code: Merge payment status and update df_completed
                 df_box_merged = df_box_totals.merge(df_consolidated, how="left", on=["Location", "Event"])
                 df_box_merged["PaymentStatus"] = df_box_merged.apply(assign_payment_status, axis=1)
 
@@ -590,6 +590,32 @@ def run():
                 for col in final_cols:
                     if col not in df_completed.columns:
                         df_completed[col] = ""
+
+                # Now, add the paginated metric cards for Exec Box total after processing df_completed
+                # Group by Location to get total per box
+                df_exec_summary = (
+                    df_completed.groupby("Location", as_index=False)["ApiPrice"]
+                    .sum()
+                    .sort_values(by="ApiPrice", ascending=False)
+                )
+
+                # Format as currency
+                df_exec_summary["TotalPriceFormatted"] = df_exec_summary["ApiPrice"].apply(lambda x: f"£{x:,.0f}")
+
+                # Paginate - 10 cards per page
+                cards_per_page = 10
+                total_pages = math.ceil(len(df_exec_summary) / cards_per_page)
+                page_number = st.number_input("Page", min_value=1, max_value=total_pages, value=1, step=1)
+
+                start_idx = (page_number - 1) * cards_per_page
+                end_idx = start_idx + cards_per_page
+                df_page = df_exec_summary.iloc[start_idx:end_idx]
+
+                # Show metric cards for this page
+                st.markdown("### 🧾 Exec Box Spend Summary")
+                cols = st.columns(len(df_page))  # Dynamic column layout per page
+                for i, row in enumerate(df_page.itertuples(index=False)):
+                    cols[i].metric(label=row.Location.title(), value=row.TotalPriceFormatted)
 
             # 📋 Final Data Table Section
             # 📋 Final Data Table Section
