@@ -718,14 +718,17 @@ def run():
                             prepaid_idx = df_summary.columns.get_loc("Total Prepaid")
                             writer.sheets["Exec Box Total"].set_column(prepaid_idx, prepaid_idx, 14, currency_fmt)
                     output_final.seek(0)
+                    
+                    # Sanitize the fixture name by converting to lowercase and replacing spaces with underscores.
+                    filename = f"consolidated_{selected_event.lower().replace(' ', '_')}_file.xlsx"
+
                     st.download_button(
                         "⬇️ Download Final Data with Consolidated Payment Status",
                         data=output_final,
-                        # file_name="consolidated_processed_file.xlsx",
-                        # Sanitize the fixture name by converting to lowercase and replacing spaces with underscores.
-                        filename = f"consolidated_{selected_event.lower().replace(' ', '_')}_file.xlsx",
+                        file_name=filename,
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
+
         else:
             st.info("Please upload an event consolidated payment file for further metrics **and** select an event on the sidebar dropdown to proceed.")
 
