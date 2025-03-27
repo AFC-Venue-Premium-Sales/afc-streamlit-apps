@@ -385,30 +385,47 @@ def run():
             process_progress_bar.progress(90)
             time.sleep(0.2)
 
-            # Filter by date range and other sidebar filters
+            # Convert "Ordered_on" to datetime
             df_merged["Ordered_on"] = pd.to_datetime(df_merged["Ordered_on"], errors="coerce")
+
+            # Apply date range filter
             start_dt = pd.to_datetime(start_date)
             end_dt = pd.to_datetime(end_date)
             df_merged = df_merged[(df_merged["Ordered_on"] >= start_dt) & (df_merged["Ordered_on"] <= end_dt)]
+
+            # 1) LOCATION FILTER
             if "Location" in df_merged.columns:
-                locs = sorted(df_merged["Location"].dropna().unique())
-                selected_locs = st.sidebar.multiselect("Select Location(s):", locs)
-                df_merged = df_merged[df_merged["Location"].isin(selected_locs)]
+                with st.sidebar.expander("Location Filter", expanded=False):
+                    locs = sorted(df_merged["Location"].dropna().unique())
+                    selected_locs = st.multiselect("Select Location(s):", locs, default=locs)
+                    df_merged = df_merged[df_merged["Location"].isin(selected_locs)]
+
+            # 2) ORDER TYPE FILTER
             if "Order_type" in df_merged.columns:
-                order_types = sorted(df_merged["Order_type"].dropna().unique())
-                selected_types = st.sidebar.multiselect("Select Order Type(s):", order_types, default=order_types)
-                df_merged = df_merged[df_merged["Order_type"].isin(selected_types)]
+                with st.sidebar.expander("Order Type Filter", expanded=False):
+                    order_types = sorted(df_merged["Order_type"].dropna().unique())
+                    selected_types = st.multiselect("Select Order Type(s):", order_types, default=order_types)
+                    df_merged = df_merged[df_merged["Order_type"].isin(selected_types)]
+
+            # 3) MENU ITEM FILTER
             if "Menu_Item" in df_merged.columns:
-                items = sorted(df_merged["Menu_Item"].dropna().unique())
-                selected_items = st.sidebar.multiselect("Select Menu Item(s):", items, default=items)
-                df_merged = df_merged[df_merged["Menu_Item"].isin(selected_items)]
+                with st.sidebar.expander("Menu Item Filter", expanded=False):
+                    items = sorted(df_merged["Menu_Item"].dropna().unique())
+                    selected_items = st.multiselect("Select Menu Item(s):", items, default=items)
+                    df_merged = df_merged[df_merged["Menu_Item"].isin(selected_items)]
+
+            # 4) STATUS FILTER
             if "Status" in df_merged.columns:
-                statuses = sorted(df_merged["Status"].dropna().unique())
-                selected_statuses = st.sidebar.multiselect("Select Status(es):", statuses, default=statuses)
-                df_merged = df_merged[df_merged["Status"].isin(selected_statuses)]
+                with st.sidebar.expander("Status Filter", expanded=False):
+                    statuses = sorted(df_merged["Status"].dropna().unique())
+                    selected_statuses = st.multiselect("Select Status(es):", statuses, default=statuses)
+                    df_merged = df_merged[df_merged["Status"].isin(selected_statuses)]
+
+            # Final check
             if df_merged.empty:
                 st.warning("⚠ No data after filtering.")
-                return
+                st.stop()
+
 
             process_progress_bar.progress(100)
             process_success_placeholder.success("✅ Data ready for analysis")
