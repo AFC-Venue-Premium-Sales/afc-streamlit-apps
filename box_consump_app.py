@@ -5,7 +5,7 @@ import os
 import logging
 import importlib
 
-st.set_page_config(page_title="EXEC BOX LOG ANALYSIS", layout="wide")
+st.set_page_config(page_title="Premium Services Box Log Tooling", layout="wide")
 
 
 # Configure logging
