@@ -100,7 +100,6 @@ def run():
         """)
 
     # --- Sidebar ---
-    # --- Sidebar ---
     st.sidebar.header("Upload RTS Pre-Orders File")
     manual_file = st.sidebar.file_uploader("Load RTS Pre-Orders .xls file", type=["xls"])
     st.sidebar.header("Upload Consolidated Payment Report")
@@ -112,7 +111,7 @@ def run():
 
     try:
         fixture_df = pd.read_excel("fixture_list.xlsx")  # make sure the file is in the same directory as your script
-        fixture_list = fixture_df["Fixture Name"].dropna().unique().tolist()
+        fixture_list = fixture_df["FixtureName"].dropna().unique().tolist()
     except Exception as e:
         st.sidebar.error(f"❌ Failed to load fixture list from file: {e}")
 
@@ -617,10 +616,6 @@ def run():
                 st.sidebar.markdown("### 📊 Executive Box Total Prepaid")
                 st.sidebar.write(df_exec_summary)
 
-
-
-
-            # 📋 Final Data Table Section
             # 📋 Final Data Table Section
             st.markdown("### 📋 Event Consolidated Payment Table")
             with st.expander("Click to view Final Data Table with Consolidated Payment Filters", expanded=False):
