@@ -128,11 +128,11 @@ def run():
 
     # If there are multiple event dates, show an extra dropdown to select the event date
     if len(selected_fixture_dates) > 1:
-        selected_event_date = st.sidebar.selectbox(
+        selected_event = st.sidebar.selectbox(
             "Select Event Date", selected_fixture_dates, format_func=lambda x: pd.to_datetime(x).strftime("%Y-%m-%d %H:%M:%S")
         )
     else:
-        selected_event_date = selected_fixture_dates[0]  # Automatically select if only one date
+        selected_event = selected_fixture_dates[0]  # Automatically select if only one date
 
     # --- Data Filters ---
     st.sidebar.header("Data Filters")
