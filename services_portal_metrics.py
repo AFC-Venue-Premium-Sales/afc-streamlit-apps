@@ -28,33 +28,25 @@ def standardize_location(df, loc_col="Location"):
 ############################################################################
 def assign_payment_status(row):
     """
-    Compares the box-level total (BoxTotal) with the consolidated Drawdown,
-    Credit Card, Purchase Order, and EFT amounts. Rounds both sides to two decimals,
-    then does an exact equality check (==). If they match exactly, returns the appropriate payment status.
+    Compares the box-level total (BoxTotal) with the consolidated Drawdown
+    and Credit Card amounts. Rounds both sides to two decimals, then does
+    an exact equality check (==). If they match exactly, returns "Drawdown"
+    or "Credit Card". Otherwise, returns "".
     """
     total_val = row.get("BoxTotal", 0)
     drawdown_val = row.get("Drawdown", 0)
     credit_val = row.get("Credit Card", 0)
-    purchase_order_val = row.get("Purchase orders", 0)
-    eft_val = row.get("EFT", 0)
 
     total_2dec = round(total_val, 2)
     drawdown_2dec = round(drawdown_val, 2)
     credit_2dec = round(credit_val, 2)
-    purchase_order_2dec = round(purchase_order_val, 2)
-    eft_2dec = round(eft_val, 2)
 
     if drawdown_2dec > 0 and total_2dec == drawdown_2dec:
         return "Drawdown"
     elif credit_2dec > 0 and total_2dec == credit_2dec:
         return "Credit Card"
-    elif purchase_order_2dec > 0 and total_2dec == purchase_order_2dec:
-        return "Purchase Order"
-    elif eft_2dec > 0 and total_2dec == eft_2dec:
-        return "EFT"
     else:
         return ""
-
 
 ############################################################################
 # Main Streamlit App
@@ -100,6 +92,7 @@ def run():
         """)
 
     # --- Sidebar ---
+    # --- Sidebar ---
     st.sidebar.header("Upload RTS Pre-Orders File")
     manual_file = st.sidebar.file_uploader("Load RTS Pre-Orders .xls file", type=["xls"])
     st.sidebar.header("Upload Consolidated Payment Report")
@@ -110,34 +103,21 @@ def run():
     fixture_list = []
 
     try:
-        fixture_df = pd.read_excel("fixture_list.xlsx")  # Make sure this file is updated and in the same directory as your script
-        fixture_list = fixture_df[["FixtureName", "EventDate"]].dropna().to_dict(orient="records")
+        fixture_df = pd.read_excel("fixture_list.xlsx")  # make sure the file is in the same directory as your script
+        fixture_list = fixture_df["Fixture Name"].dropna().unique().tolist()
     except Exception as e:
         st.sidebar.error(f"❌ Failed to load fixture list from file: {e}")
 
-    # --- Fixture and Event Date Selection ---
-    selected_fixture_name = None
-    if fixture_list:
-        fixture_names = [f["FixtureName"] for f in fixture_list]
-        selected_fixture_name = st.sidebar.selectbox("Select Fixture for Consolidated Report", fixture_names)
+    if consolidated_file and fixture_list:
+        selected_event = st.sidebar.selectbox("Select Event for Consolidated Report", fixture_list)
 
-    # Find all event dates for the selected fixture
-    selected_fixture_dates = [
-        f["EventDate"] for f in fixture_list if f["FixtureName"] == selected_fixture_name
-    ]
 
-    # If there are multiple event dates, show an extra dropdown to select the event date
-    if len(selected_fixture_dates) > 1:
-        selected_event_date = st.sidebar.selectbox(
-            "Select Event Date", selected_fixture_dates, format_func=lambda x: pd.to_datetime(x).strftime("%Y-%m-%d %H:%M:%S")
-        )
-    else:
-        selected_event_date = selected_fixture_dates[0]  # Automatically select if only one date
 
-    # --- Data Filters ---
     st.sidebar.header("Data Filters")
     start_date = st.sidebar.date_input("Start Date", datetime(2024, 6, 18))
     end_date = st.sidebar.date_input("End Date", datetime.now())
+    price_type = st.sidebar.radio("Which price column to use:", ["Total", "ApiPrice"])
+    
 
     # --- API Config ---
     token_url = "https://www.tjhub3.com/export_arsenal/token"
@@ -145,7 +125,6 @@ def run():
     preorders_url_template = "https://www.tjhub3.com/export_arsenal/CateringPreorders/List?EventId={}"
     USERNAME = "hospitality"
     PASSWORD = "OkMessageSectionType000!"
-
 
     @st.cache_data
     def get_access_token():
@@ -319,7 +298,6 @@ def run():
             df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
         
         return df
-
 
 
     if manual_file:
@@ -631,6 +609,10 @@ def run():
                 st.sidebar.markdown("### 📊 Executive Box Total Prepaid")
                 st.sidebar.write(df_exec_summary)
 
+
+
+
+            # 📋 Final Data Table Section
             # 📋 Final Data Table Section
             st.markdown("### 📋 Event Consolidated Payment Table")
             with st.expander("Click to view Final Data Table with Consolidated Payment Filters", expanded=False):
