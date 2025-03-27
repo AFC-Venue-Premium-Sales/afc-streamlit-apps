@@ -132,7 +132,7 @@ def run():
 
     # Filter down to the rows for the chosen fixture name
     matching_rows = fixture_df[fixture_df["FixtureName"] == selected_event]
-    possible_dates = sorted(matching_rows["FixtureDate"].dropna().unique())
+    possible_dates = sorted(matching_rows["EventDate"].dropna().unique())
 
     if len(possible_dates) == 0:
         st.warning("No date info found for this fixture in fixture_list.xlsx.")
