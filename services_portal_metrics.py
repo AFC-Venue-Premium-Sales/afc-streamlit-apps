@@ -7,8 +7,6 @@ from datetime import datetime
 from io import BytesIO
 
 
-st.set_page_config(page_title="Guest Portal Analysis", layout="wide")
-
 ############################################################################
 # Standardize Location Strings
 ############################################################################
