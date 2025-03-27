@@ -85,6 +85,7 @@ def run():
             - [RTS Portal – Consolidated Payments](https://www.tjhub3.com/Rts_Arsenal_Hospitality/Suites/Reports/ConsolidatedPayment/Index)
             - Load this file under **Upload Consolidated Payment Report**
             - Make sure to select the Event that you downloaded from RTS on the sidebar.
+            - If a fixture is in multiple tournaments, to ensure parity, you'll be prompted to select the relevant fixture date. 
             - This will produce a table with Consolidated Payment Status to help with invoicing.
         ---
         """)
@@ -112,7 +113,7 @@ def run():
 
     # Let the user select which fixture they're dealing with
     selected_event = st.sidebar.selectbox(
-        "Select Event (Fixture) for Consolidated Report",
+        "Select Fixture for Consolidated Report",
         all_fixture_names
     )
 
@@ -127,7 +128,7 @@ def run():
         selected_event_date = possible_dates[0]
     else:
         selected_event_date = st.sidebar.selectbox(
-            "Multiple possible dates found for this fixture. Please select which date applies:",
+            "Multiple possible fixture dates found. Please select which date applies:",
             possible_dates
         )
 
