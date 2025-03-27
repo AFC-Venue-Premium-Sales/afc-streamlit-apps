@@ -112,7 +112,7 @@ def run():
 
     try:
         fixture_df = pd.read_excel("fixture_list.xlsx")  # make sure the file is in the same directory as your script
-        fixture_list = fixture_df["Fixture Name"].dropna().unique().tolist()
+        fixture_list = fixture_df["FixtureName"].dropna().unique().tolist()
     except Exception as e:
         st.sidebar.error(f"❌ Failed to load fixture list from file: {e}")
 
