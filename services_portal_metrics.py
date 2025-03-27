@@ -281,7 +281,7 @@ def run():
         
         # 4) Keep only the columns you need
         #    Make sure these names match EXACTLY what appears in df.columns after step 2
-        keep_cols = ["Location", "Drawdown", "Credit Card"]
+        keep_cols = ["Location", "Drawdown", "Credit Card", "Purchase orders", "EFT"]
         df = df[keep_cols].copy()
         
         # 5) Drop fully empty rows and any "total" rows
@@ -289,7 +289,7 @@ def run():
         df = df[~df["Location"].astype(str).str.lower().str.contains("total", na=False)]
         
         # 6) Convert currency columns
-        for col in ["Drawdown", "Credit Card"]:
+        for col in ["Drawdown", "Credit Card","Purchase orders", "EFT"]:
             df[col] = (
                 df[col]
                 .astype(str)
@@ -523,11 +523,8 @@ def run():
         # Consolidated Payment Report Processing & Payment Status Assignment
         ######################################################################
         if consolidated_file and selected_event:
-            # st.markdown("### Processing Consolidated Payment Report (Assigning Payment Status)...")
             with st.spinner("Merging Payment Status data..."):
-                # df_consolidated = preprocess_consolidated_payment_report(consolidated_file)
-                # df_consolidated["Event"] = selected_event
-                
+                # Preprocess the consolidated payment report
                 df_consolidated = preprocess_consolidated_payment_report(consolidated_file)
 
                 if "Event" in df_consolidated.columns:
@@ -546,10 +543,12 @@ def run():
                 else:
                     # If no Event column, assume it's the correct one and assign selected_event
                     df_consolidated["Event"] = selected_event
-            
+                
+                # Standardize Location
                 df_consolidated = standardize_location(df_consolidated, "Location")
                 df_consolidated["Event"] = df_consolidated["Event"].astype(str).str.strip().str.lower()
 
+                # Process completed orders from merged data
                 df_completed = df_merged.copy()
                 df_completed = standardize_location(df_completed, "Location")
                 df_completed["Event"] = df_completed["Event"].astype(str).str.strip().str.lower()
@@ -561,6 +560,7 @@ def run():
                     st.warning("No Completed orders found for the selected event. Please select the right event")
                     st.stop()
 
+                # Calculate Box Totals
                 df_box_totals = (
                     df_completed
                     .groupby(["Location", "Event"], as_index=False)["PreOrderTotal"]
@@ -568,20 +568,29 @@ def run():
                     .rename(columns={"PreOrderTotal": "BoxTotal"})
                 )
 
+                # Merge the box totals with the consolidated payment data
                 df_box_merged = df_box_totals.merge(df_consolidated, how="left", on=["Location", "Event"])
+
+                # Apply payment status
                 df_box_merged["PaymentStatus"] = df_box_merged.apply(assign_payment_status, axis=1)
 
+                # Filter and merge back with completed orders
                 df_box_merged = df_box_merged[["Location", "Event", "PaymentStatus"]]
                 df_completed = df_completed.merge(df_box_merged, on=["Location", "Event"], how="left")
+
+                # Rename PaymentStatus to ConsolidatedPaymentType
                 df_completed = df_completed.rename(columns={"PaymentStatus": "ConsolidatedPaymentType"})
+
+                # Define ConsolidatedPaymentStatus based on PaymentType
                 df_completed["ConsolidatedPaymentStatus"] = df_completed["ConsolidatedPaymentType"].apply(
-                    lambda x: "Completed" if x == "Credit Card" else ("Pending" if x == "Drawdown" else "")
+                    lambda x: "Completed" if x in ["Credit Card", "Purchase Orders", "EFT"] else ("Pending" if x == "Drawdown" else "")
                 )
 
-                # Restore title case
+                # Restore title case for Location and Event
                 df_completed["Location"] = df_completed["Location"].str.title()
                 df_completed["Event"] = df_completed["Event"].str.title()
 
+                # Prepare final columns
                 final_cols = [
                     "EventId", "Event", "Location", "Event_Date", "Guest_name", "Guest_email",
                     "Ordered_on", "Licence_type", "Order_type", "Menu_Item", "PreOrderStatus",
@@ -599,6 +608,8 @@ def run():
                 # Sidebar Layout for Executive Box Totals
                 st.sidebar.markdown("### 📊 Executive Box Total Prepaid")
                 st.sidebar.write(df_exec_summary)
+
+
 
 
             # 📋 Final Data Table Section
