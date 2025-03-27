@@ -600,8 +600,6 @@ def run():
                 st.sidebar.markdown("### 📊 Executive Box Total Prepaid")
                 st.sidebar.write(df_exec_summary)
 
-                # Add the logout button at the bottom
-                st.sidebar.button("Logout")
 
             # 📋 Final Data Table Section
             # 📋 Final Data Table Section
