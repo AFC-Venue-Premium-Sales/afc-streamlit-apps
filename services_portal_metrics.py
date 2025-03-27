@@ -721,7 +721,9 @@ def run():
                     st.download_button(
                         "⬇️ Download Final Data with Consolidated Payment Status",
                         data=output_final,
-                        file_name="consolidated_processed_file.xlsx",
+                        # file_name="consolidated_processed_file.xlsx",
+                        # Sanitize the fixture name by converting to lowercase and replacing spaces with underscores.
+                        filename = f"consolidated_{selected_event.lower().replace(' ', '_')}_file.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
         else:
