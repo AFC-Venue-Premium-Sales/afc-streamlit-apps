@@ -5,6 +5,9 @@ import os
 import logging
 import importlib
 
+st.set_page_config(page_title="EXEC BOX LOG ANALYSIS", layout="wide")
+
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - [%(levelname)s] - %(message)s")
 
