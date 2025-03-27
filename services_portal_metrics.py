@@ -100,7 +100,6 @@ def run():
         """)
 
     # --- Sidebar ---
-    # --- Sidebar ---
     st.sidebar.header("Upload RTS Pre-Orders File")
     manual_file = st.sidebar.file_uploader("Load RTS Pre-Orders .xls file", type=["xls"])
     st.sidebar.header("Upload Consolidated Payment Report")
@@ -111,13 +110,81 @@ def run():
     fixture_list = []
 
     try:
-        fixture_df = pd.read_excel("fixture_list.xlsx")  # make sure the file is in the same directory as your script
-        fixture_list = fixture_df["FixtureName"].dropna().unique().tolist()
+        fixture_df = pd.read_excel("fixture_list.xlsx")  # Make sure this file is updated and in the same directory as your script
+        fixture_list = fixture_df[["FixtureName", "EventDate"]].dropna().to_dict(orient="records")
     except Exception as e:
         st.sidebar.error(f"❌ Failed to load fixture list from file: {e}")
 
-    if consolidated_file and fixture_list:
-        selected_event = st.sidebar.selectbox("Select Event for Consolidated Report", fixture_list)
+    # User selects the fixture
+    selected_fixture_name = None
+    if fixture_list:
+        fixture_names = [f["FixtureName"] for f in fixture_list]
+        selected_fixture_name = st.sidebar.selectbox("Select Fixture for Consolidated Report", fixture_names)
+
+    # Find event dates for the selected fixture
+    selected_fixture_dates = [
+        f["EventDate"] for f in fixture_list if f["FixtureName"] == selected_fixture_name
+    ]
+
+    # User selects the event date (if there are multiple dates for the same fixture)
+    if len(selected_fixture_dates) > 1:
+        selected_event_date = st.sidebar.selectbox(
+            "Select Event Date", selected_fixture_dates, format_func=lambda x: pd.to_datetime(x).strftime("%Y-%m-%d %H:%M:%S")
+        )
+    else:
+        selected_event_date = selected_fixture_dates[0]  # Automatically select if there's only one date
+
+    # --- Consolidated File Processing ---
+    if consolidated_file and selected_fixture_name:
+        with st.spinner("Merging Payment Status data..."):
+            # Preprocess the consolidated file
+            df_consolidated = preprocess_consolidated_payment_report(consolidated_file)
+
+            # Standardize Location and match the selected fixture with event date
+            df_consolidated = standardize_location(df_consolidated, "Location")
+            df_consolidated["Event"] = selected_fixture_name.strip().lower()  # Assign selected event to column
+
+            # Filter rows where both FixtureName and EventDate match the selected ones
+            df_consolidated = df_consolidated[
+                (df_consolidated["Event"] == selected_fixture_name.strip().lower()) &
+                (df_consolidated["Event_Date"] == selected_event_date)
+            ]
+
+            if df_consolidated.empty:
+                st.warning(f"No matching data found for {selected_fixture_name} on {selected_event_date}. Please check the fixture and event date.")
+                st.stop()
+
+            # Continue with your processing as normal...
+            df_box_totals = (
+                df_consolidated.groupby(["Location", "Event"], as_index=False)["PreOrderTotal"]
+                .sum()
+                .rename(columns={"PreOrderTotal": "BoxTotal"})
+            )
+
+            # Continue with merging, payment status assignments, etc.
+            df_box_merged = df_box_totals.merge(df_consolidated, how="left", on=["Location", "Event"])
+            df_box_merged["PaymentStatus"] = df_box_merged.apply(assign_payment_status, axis=1)
+
+            df_box_merged = df_box_merged[["Location", "Event", "PaymentStatus"]]
+            df_consolidated = df_consolidated.merge(df_box_merged, on=["Location", "Event"], how="left")
+
+            # Handle "Completed" status for other payment types
+            df_consolidated["ConsolidatedPaymentStatus"] = df_consolidated["ConsolidatedPaymentType"].apply(
+                lambda x: "Completed" if x in ["Credit Card", "Purchase orders", "EFT"] else ("Pending" if x == "Drawdown" else "")
+            )
+
+            # Final steps: restore title case, etc.
+            df_consolidated["Location"] = df_consolidated["Location"].str.title()
+
+            # Display the updated DataFrame
+            final_cols = [
+                "EventId", "Event", "Location", "Event_Date", "Guest_name", "Guest_email",
+                "Ordered_on", "Licence_type", "Order_type", "Menu_Item", "PreOrderStatus",
+                "PreOrderTotal", "OrderedAmount", "PricePerUnit", "ApiPrice",
+                "ConsolidatedPaymentType", "ConsolidatedPaymentStatus"
+            ]
+
+            st.dataframe(df_consolidated[final_cols], use_container_width=True)
 
 
 
