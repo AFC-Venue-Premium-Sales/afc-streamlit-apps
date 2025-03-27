@@ -544,31 +544,34 @@ def run():
         ######################################################################
         # Consolidated Payment Report Processing & Payment Status Assignment
         ######################################################################
-        if consolidated_file and selected_event:
+        if consolidated_file and selected_event_date:
             with st.spinner("Merging Payment Status data..."):
                 # Preprocess the consolidated payment report
                 df_consolidated = preprocess_consolidated_payment_report(consolidated_file)
 
-                if "Event" in df_consolidated.columns:
-                    # Standardize and compare
-                    df_consolidated["Event"] = df_consolidated["Event"].astype(str).str.strip().str.lower()
-                    selected_event_lower = selected_event.strip().lower()
+                # Standardize and compare Event
+                df_consolidated["Event"] = df_consolidated["Event"].astype(str).str.strip().str.lower()
+                selected_event_lower = selected_event.strip().lower()
 
-                    # Count matches
-                    match_count = df_consolidated["Event"].eq(selected_event_lower).sum()
-                    total_rows = len(df_consolidated)
+                # Count matches
+                match_count = df_consolidated["Event"].eq(selected_event_lower).sum()
+                total_rows = len(df_consolidated)
 
-                    if match_count != total_rows:
-                        st.error(f"❌ The uploaded consolidated payment file does not match the selected event: '{selected_event}'.\n\n"
-                                f"Only {match_count} out of {total_rows} rows matched.")
-                        st.stop()
-                else:
-                    # If no Event column, assume it's the correct one and assign selected_event
-                    df_consolidated["Event"] = selected_event
+                if match_count != total_rows:
+                    st.error(f"❌ The uploaded consolidated payment file does not match the selected event: '{selected_event}'.\n\n"
+                            f"Only {match_count} out of {total_rows} rows matched.")
+                    st.stop()
                 
+                # If no Event column, assume it's the correct one and assign selected_event
+                if "Event" not in df_consolidated.columns:
+                    df_consolidated["Event"] = selected_event
+
                 # Standardize Location
                 df_consolidated = standardize_location(df_consolidated, "Location")
                 df_consolidated["Event"] = df_consolidated["Event"].astype(str).str.strip().str.lower()
+
+                # Ensure Event_Date is in datetime format
+                df_consolidated["Event_Date"] = pd.to_datetime(df_consolidated["Event_Date"], errors="coerce")
 
                 # Process completed orders from merged data
                 df_completed = df_merged.copy()
@@ -578,14 +581,22 @@ def run():
                 selected_event_lower = selected_event.strip().lower()
                 df_completed = df_completed[df_completed["Event"] == selected_event_lower]
 
+                # Handle case where no completed orders exist
                 if df_completed.empty:
                     st.warning("No Completed orders found for the selected event. Please select the right event")
                     st.stop()
 
+                # Check and filter by event date if selected
+                if selected_event_date:
+                    df_consolidated = df_consolidated[df_consolidated["Event_Date"] == selected_event_date]
+
+                if df_consolidated.empty:
+                    st.warning(f"No data found for {selected_event} on {selected_event_date}. Please check the fixture and event date.")
+                    st.stop()
+
                 # Calculate Box Totals
                 df_box_totals = (
-                    df_completed
-                    .groupby(["Location", "Event"], as_index=False)["PreOrderTotal"]
+                    df_completed.groupby(["Location", "Event"], as_index=False)["PreOrderTotal"]
                     .sum()
                     .rename(columns={"PreOrderTotal": "BoxTotal"})
                 )
@@ -593,7 +604,7 @@ def run():
                 # Merge the box totals with the consolidated payment data
                 df_box_merged = df_box_totals.merge(df_consolidated, how="left", on=["Location", "Event"])
 
-                # Apply payment status
+                # Apply payment status logic
                 df_box_merged["PaymentStatus"] = df_box_merged.apply(assign_payment_status, axis=1)
 
                 # Filter and merge back with completed orders
@@ -630,6 +641,10 @@ def run():
                 # Sidebar Layout for Executive Box Totals
                 st.sidebar.markdown("### 📊 Executive Box Total Prepaid")
                 st.sidebar.write(df_exec_summary)
+
+                # Display the updated DataFrame
+                st.dataframe(df_completed[final_cols], use_container_width=True)
+
 
             # 📋 Final Data Table Section
             st.markdown("### 📋 Event Consolidated Payment Table")
