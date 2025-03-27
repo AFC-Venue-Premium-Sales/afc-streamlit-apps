@@ -522,12 +522,16 @@ def run():
         ######################################################################
         if consolidated_file and selected_event and selected_event_date:
             with st.spinner("Merging Payment Status data..."):
-                # Preprocess the consolidated payment report
+                # Preprocess the consolidated payment report (raw file -> preprocessed)
                 df_consolidated = preprocess_consolidated_payment_report(consolidated_file)
 
-                # Require that the consolidated file has both "Event" and "EventDate" columns.
-                if not ("Event" in df_consolidated.columns and "EventDate" in df_consolidated.columns):
-                    st.error("The consolidated payment file must contain 'Event' and 'EventDate' columns for matching.")
+                # If the consolidated file does not have an "EventDate" column, add it using the selected event date
+                if "EventDate" not in df_consolidated.columns:
+                    df_consolidated["EventDate"] = selected_event_date
+
+                # Require that the consolidated file has an "Event" column
+                if "Event" not in df_consolidated.columns:
+                    st.error("The consolidated payment file must contain an 'Event' column for matching.")
                     st.stop()
 
                 # Standardize the Event column and convert EventDate to a proper date
@@ -562,8 +566,7 @@ def run():
                 df_completed["Event"] = df_completed["Event"].astype(str).str.strip().str.lower()
                 df_completed = df_completed[df_completed["PreOrderStatus"] == "Completed"]
 
-                # Filter completed orders by selected event and date
-                selected_event_lower = selected_event.strip().lower()
+                # Filter completed orders by selected event and date (manual file uses "Event_Date")
                 df_completed = df_completed[
                     (df_completed["Event"] == selected_event_lower) &
                     (df_completed["Event_Date"].dt.date == selected_event_date)
@@ -573,7 +576,7 @@ def run():
                     st.warning("No Completed orders found for the selected event and date. Please select the right event/date combination.")
                     st.stop()
 
-                # Calculate Box Totals
+                # Calculate Box Totals from completed orders
                 df_box_totals = (
                     df_completed
                     .groupby(["Location", "Event"], as_index=False)["PreOrderTotal"]
@@ -583,15 +586,13 @@ def run():
 
                 # Merge box totals with consolidated payment data
                 df_box_merged = df_box_totals.merge(df_consolidated, how="left", on=["Location", "Event"])
-
-                # Apply payment status
                 df_box_merged["PaymentStatus"] = df_box_merged.apply(assign_payment_status, axis=1)
 
                 # Merge back with completed orders
                 df_box_merged = df_box_merged[["Location", "Event", "PaymentStatus"]]
                 df_completed = df_completed.merge(df_box_merged, on=["Location", "Event"], how="left")
 
-                # Rename PaymentStatus to ConsolidatedPaymentType and derive status
+                # Rename PaymentStatus to ConsolidatedPaymentType and derive ConsolidatedPaymentStatus
                 df_completed = df_completed.rename(columns={"PaymentStatus": "ConsolidatedPaymentType"})
                 df_completed["ConsolidatedPaymentStatus"] = df_completed["ConsolidatedPaymentType"].apply(
                     lambda x: "Completed" if x in ["Credit Card", "Purchase Orders", "EFT"] else ("Pending" if x == "Drawdown" else "")
@@ -615,69 +616,65 @@ def run():
                 # Extract Executive Box Total summary     
                 df_exec_summary = df_box_totals[["Location", "BoxTotal"]]
                 df_exec_summary["BoxTotal"] = df_exec_summary["BoxTotal"].apply(lambda x: f"£{x:,.2f}")
-
-                # Sidebar layout for Executive Box Totals
                 st.sidebar.markdown("### 📊 Executive Box Total Prepaid")
                 st.sidebar.write(df_exec_summary)
                 
-            # 📋 Final Data Table Section
-            st.markdown("### 📋 Event Consolidated Payment Table")
-            with st.expander("Click to view Final Data Table with Consolidated Payment Filters", expanded=False):
-                st.markdown("""
-                    This will help the user identify which transactions are paid by **Drawdown Credit** or by **Credit Card** payment.  
-                    1. Drawdown Credit payments will have a **Pending** ConsolidatedPaymentStatus as these transactions still require invoicing.  
-                    2. Credit Card payments will have **Completed** ConsolidatedPaymentStatus as these transactions have already been settled.
-                """)
-                # Prepare and rename columns for export
-                df_export = df_completed.copy()
-                if "ApiPrice" in df_export.columns:
-                    df_export.rename(columns={"ApiPrice": "TotalPrice"}, inplace=True)
-                if "PreOrderTotal" in df_export.columns:
-                    df_export.drop(columns=["PreOrderTotal"], inplace=True)
-                export_cols = [
-                    "EventId", "Event", "Location", "Event_Date", "Guest_name", "Guest_email",
-                    "Ordered_on", "Licence_type", "Order_type", "Menu_Item", "PreOrderStatus",
-                    "OrderedAmount", "PricePerUnit", "TotalPrice",
-                    "ConsolidatedPaymentType", "ConsolidatedPaymentStatus"
-                ]
-                for col in export_cols:
-                    if col not in df_export.columns:
-                        df_export[col] = ""
-                st.dataframe(
-                    df_export[export_cols].style.format({
-                        "PreOrderTotal": "£{:,.2f}",
-                        "PricePerUnit": "£{:,.2f}",
-                        "TotalPrice": "£{:,.2f}",
-                        "ApiPrice": "£{:,.2f}"
-                    }),
-                    use_container_width=True
-                )
+                # 📋 Final Data Table Section
+                st.markdown("### 📋 Event Consolidated Payment Table")
+                with st.expander("Click to view Final Data Table with Consolidated Payment Filters", expanded=False):
+                    st.markdown("""
+                        This will help the user identify which transactions are paid by **Drawdown Credit** or by **Credit Card** payment.  
+                        1. Drawdown Credit payments will have a **Pending** ConsolidatedPaymentStatus as these transactions still require invoicing.  
+                        2. Credit Card payments will have **Completed** ConsolidatedPaymentStatus as these transactions have already been settled.
+                    """)
+                    # Prepare and rename columns for export
+                    df_export = df_completed.copy()
+                    if "ApiPrice" in df_export.columns:
+                        df_export.rename(columns={"ApiPrice": "TotalPrice"}, inplace=True)
+                    if "PreOrderTotal" in df_export.columns:
+                        df_export.drop(columns=["PreOrderTotal"], inplace=True)
+                    export_cols = [
+                        "EventId", "Event", "Location", "Event_Date", "Guest_name", "Guest_email",
+                        "Ordered_on", "Licence_type", "Order_type", "Menu_Item", "PreOrderStatus",
+                        "OrderedAmount", "PricePerUnit", "TotalPrice",
+                        "ConsolidatedPaymentType", "ConsolidatedPaymentStatus"
+                    ]
+                    for col in export_cols:
+                        if col not in df_export.columns:
+                            df_export[col] = ""
+                    st.dataframe(
+                        df_export[export_cols].style.format({
+                            "PricePerUnit": "£{:,.2f}",
+                            "TotalPrice": "£{:,.2f}"
+                        }),
+                        use_container_width=True
+                    )
 
-                # Create Executive Box Total summary for export
-                df_summary = (
-                    df_export.groupby("Location", as_index=False)["TotalPrice"]
-                    .sum()
-                    .rename(columns={"TotalPrice": "Total Prepaid"})
-                )
-                output_final = BytesIO()
-                with pd.ExcelWriter(output_final, engine="xlsxwriter") as writer:
-                    df_export[export_cols].to_excel(writer, index=False, sheet_name="Final Data")
-                    df_summary.to_excel(writer, index=False, sheet_name="Exec Box Total")
-                    workbook = writer.book
-                    currency_fmt = workbook.add_format({"num_format": "£#,##0.00"})
-                    if "TotalPrice" in df_export.columns:
-                        col_idx = df_export.columns.get_loc("TotalPrice")
-                        writer.sheets["Final Data"].set_column(col_idx, col_idx, 14, currency_fmt)
-                    if "Total Prepaid" in df_summary.columns:
-                        prepaid_idx = df_summary.columns.get_loc("Total Prepaid")
-                        writer.sheets["Exec Box Total"].set_column(prepaid_idx, prepaid_idx, 14, currency_fmt)
-                output_final.seek(0)
-                st.download_button(
-                    "⬇️ Download Final Data with Consolidated Payment Status",
-                    data=output_final,
-                    file_name="consolidated_processed_file.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
+                    # Create Executive Box Total summary for export
+                    df_summary = (
+                        df_export.groupby("Location", as_index=False)["TotalPrice"]
+                        .sum()
+                        .rename(columns={"TotalPrice": "Total Prepaid"})
+                    )
+                    output_final = BytesIO()
+                    with pd.ExcelWriter(output_final, engine="xlsxwriter") as writer:
+                        df_export[export_cols].to_excel(writer, index=False, sheet_name="Final Data")
+                        df_summary.to_excel(writer, index=False, sheet_name="Exec Box Total")
+                        workbook = writer.book
+                        currency_fmt = workbook.add_format({"num_format": "£#,##0.00"})
+                        if "TotalPrice" in df_export.columns:
+                            col_idx = df_export.columns.get_loc("TotalPrice")
+                            writer.sheets["Final Data"].set_column(col_idx, col_idx, 14, currency_fmt)
+                        if "Total Prepaid" in df_summary.columns:
+                            prepaid_idx = df_summary.columns.get_loc("Total Prepaid")
+                            writer.sheets["Exec Box Total"].set_column(prepaid_idx, prepaid_idx, 14, currency_fmt)
+                    output_final.seek(0)
+                    st.download_button(
+                        "⬇️ Download Final Data with Consolidated Payment Status",
+                        data=output_final,
+                        file_name="consolidated_processed_file.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
         else:
             st.info("Please upload an event consolidated payment file for further metrics **and** select an event on the sidebar dropdown to proceed.")
 
