@@ -110,21 +110,35 @@ def run():
     fixture_list = []
 
     try:
-        fixture_df = pd.read_excel("fixture_list.xlsx")  # make sure the file is in the same directory as your script
-        fixture_list = fixture_df["FixtureName"].dropna().unique().tolist()
+        fixture_df = pd.read_excel("fixture_list.xlsx")  # Make sure this file is updated and in the same directory as your script
+        fixture_list = fixture_df[["FixtureName", "EventDate"]].dropna().to_dict(orient="records")
     except Exception as e:
         st.sidebar.error(f"❌ Failed to load fixture list from file: {e}")
 
-    if consolidated_file and fixture_list:
-        selected_event = st.sidebar.selectbox("Select Event for Consolidated Report", fixture_list)
+    # --- Fixture and Event Date Selection ---
+    selected_fixture_name = None
+    if fixture_list:
+        fixture_names = [f["FixtureName"] for f in fixture_list]
+        selected_fixture_name = st.sidebar.selectbox("Select Fixture for Consolidated Report", fixture_names)
 
+    # Find all event dates for the selected fixture
+    selected_fixture_dates = [
+        f["EventDate"] for f in fixture_list if f["FixtureName"] == selected_fixture_name
+    ]
 
+    # If there are multiple event dates, show an extra dropdown to select the event date
+    if len(selected_fixture_dates) > 1:
+        selected_event_date = st.sidebar.selectbox(
+            "Select Event Date", selected_fixture_dates, format_func=lambda x: pd.to_datetime(x).strftime("%Y-%m-%d %H:%M:%S")
+        )
+    else:
+        selected_event_date = selected_fixture_dates[0]  # Automatically select if only one date
 
+    # --- Data Filters ---
     st.sidebar.header("Data Filters")
     start_date = st.sidebar.date_input("Start Date", datetime(2024, 6, 18))
     end_date = st.sidebar.date_input("End Date", datetime.now())
     price_type = st.sidebar.radio("Which price column to use:", ["Total"])
-    
 
     # --- API Config ---
     token_url = "https://www.tjhub3.com/export_arsenal/token"
@@ -132,6 +146,7 @@ def run():
     preorders_url_template = "https://www.tjhub3.com/export_arsenal/CateringPreorders/List?EventId={}"
     USERNAME = "hospitality"
     PASSWORD = "OkMessageSectionType000!"
+
 
     @st.cache_data
     def get_access_token():
