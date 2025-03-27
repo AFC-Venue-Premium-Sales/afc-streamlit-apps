@@ -521,41 +521,39 @@ def run():
         # Consolidated Payment Report Processing & Payment Status Assignment
         ######################################################################
         if consolidated_file and selected_event and selected_event_date:
-            with st.spinner("Merging Payment Status data..."):
-                # Preprocess the consolidated payment report
+            with st.spinner("Processing Consolidated Payment Report..."):
+                # Preprocess the consolidated payment report (raw file -> preprocessed)
                 df_consolidated = preprocess_consolidated_payment_report(consolidated_file)
-                st.write("Consolidated file columns:", df_consolidated.columns.tolist())
-
-                # If the consolidated file does not have an "EventDate" column, add it using the selected event date
+                
+                # Since the consolidated file lacks the "Event" and "EventDate" columns,
+                # we immediately append them using the fixture list selection.
+                if "Event" not in df_consolidated.columns:
+                    df_consolidated["Event"] = selected_event.strip().lower()
                 if "EventDate" not in df_consolidated.columns:
                     df_consolidated["EventDate"] = selected_event_date
-
-                # If the consolidated file does not have an "Event" column, append it using the selected event
-                if "Event" not in df_consolidated.columns:
-                    st.warning("The consolidated payment file does not contain an 'Event' column. Appending the selected event to every row.")
-                    df_consolidated["Event"] = selected_event.strip().lower()
-
-                # Standardize the Event column and convert EventDate to a proper date
+                
+                # Standardize the Event column and ensure EventDate is in date format
                 df_consolidated["Event"] = df_consolidated["Event"].astype(str).str.strip().str.lower()
                 df_consolidated["EventDate"] = pd.to_datetime(df_consolidated["EventDate"], errors="coerce").dt.date
                 selected_event_lower = selected_event.strip().lower()
-
-                # Build a mask to check that every row matches the selected event and date
+                
+                # Build a match mask to verify every row in the consolidated file matches the selected fixture info.
                 match_mask = (
                     (df_consolidated["Event"] == selected_event_lower) &
                     (df_consolidated["EventDate"] == selected_event_date)
                 )
                 match_count = match_mask.sum()
                 total_rows = len(df_consolidated)
-
+                
                 if match_count != total_rows:
                     st.error(
-                        f"❌ The uploaded consolidated payment file does not match the selected event and date: '{selected_event}' on '{selected_event_date}'.\n\n"
+                        f"❌ The consolidated payment file does not match the selected fixture: '{selected_event}' on '{selected_event_date}'.\n"
                         f"Only {match_count} out of {total_rows} rows matched."
                     )
                     st.stop()
-                # If they all match, keep the matching rows (which should be all rows)
+                # Otherwise, keep the matching rows (should be all rows)
                 df_consolidated = df_consolidated[match_mask].copy()
+
 
 
 
