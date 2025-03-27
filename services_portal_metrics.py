@@ -522,17 +522,17 @@ def run():
         ######################################################################
         if consolidated_file and selected_event and selected_event_date:
             with st.spinner("Merging Payment Status data..."):
-                # Preprocess the consolidated payment report (raw file -> preprocessed)
+                # Preprocess the consolidated payment report
                 df_consolidated = preprocess_consolidated_payment_report(consolidated_file)
 
                 # If the consolidated file does not have an "EventDate" column, add it using the selected event date
                 if "EventDate" not in df_consolidated.columns:
                     df_consolidated["EventDate"] = selected_event_date
 
-                # Require that the consolidated file has an "Event" column
+                # If the consolidated file does not have an "Event" column, append it using the selected event
                 if "Event" not in df_consolidated.columns:
-                    st.error("The consolidated payment file must contain an 'Event' column for matching.")
-                    st.stop()
+                    st.warning("The consolidated payment file does not contain an 'Event' column. Appending the selected event to every row.")
+                    df_consolidated["Event"] = selected_event.strip().lower()
 
                 # Standardize the Event column and convert EventDate to a proper date
                 df_consolidated["Event"] = df_consolidated["Event"].astype(str).str.strip().str.lower()
@@ -555,6 +555,9 @@ def run():
                     st.stop()
                 # If they all match, keep the matching rows (which should be all rows)
                 df_consolidated = df_consolidated[match_mask].copy()
+
+
+
 
                 # Standardize Location
                 df_consolidated = standardize_location(df_consolidated, "Location")
