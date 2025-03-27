@@ -392,7 +392,7 @@ def run():
             df_merged = df_merged[(df_merged["Ordered_on"] >= start_dt) & (df_merged["Ordered_on"] <= end_dt)]
             if "Location" in df_merged.columns:
                 locs = sorted(df_merged["Location"].dropna().unique())
-                selected_locs = st.sidebar.multiselect("Select Location(s):", locs, default=locs)
+                selected_locs = st.sidebar.multiselect("Select Location(s):", locs)
                 df_merged = df_merged[df_merged["Location"].isin(selected_locs)]
             if "Order_type" in df_merged.columns:
                 order_types = sorted(df_merged["Order_type"].dropna().unique())
