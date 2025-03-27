@@ -28,25 +28,33 @@ def standardize_location(df, loc_col="Location"):
 ############################################################################
 def assign_payment_status(row):
     """
-    Compares the box-level total (BoxTotal) with the consolidated Drawdown
-    and Credit Card amounts. Rounds both sides to two decimals, then does
-    an exact equality check (==). If they match exactly, returns "Drawdown"
-    or "Credit Card". Otherwise, returns "".
+    Compares the box-level total (BoxTotal) with the consolidated Drawdown,
+    Credit Card, Purchase Order, and EFT amounts. Rounds both sides to two decimals,
+    then does an exact equality check (==). If they match exactly, returns the appropriate payment status.
     """
     total_val = row.get("BoxTotal", 0)
     drawdown_val = row.get("Drawdown", 0)
     credit_val = row.get("Credit Card", 0)
+    purchase_order_val = row.get("Purchase orders", 0)
+    eft_val = row.get("EFT", 0)
 
     total_2dec = round(total_val, 2)
     drawdown_2dec = round(drawdown_val, 2)
     credit_2dec = round(credit_val, 2)
+    purchase_order_2dec = round(purchase_order_val, 2)
+    eft_2dec = round(eft_val, 2)
 
     if drawdown_2dec > 0 and total_2dec == drawdown_2dec:
         return "Drawdown"
     elif credit_2dec > 0 and total_2dec == credit_2dec:
         return "Credit Card"
+    elif purchase_order_2dec > 0 and total_2dec == purchase_order_2dec:
+        return "Purchase Order"
+    elif eft_2dec > 0 and total_2dec == eft_2dec:
+        return "EFT"
     else:
         return ""
+
 
 ############################################################################
 # Main Streamlit App
