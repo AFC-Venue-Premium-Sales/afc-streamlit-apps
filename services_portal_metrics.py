@@ -554,10 +554,6 @@ def run():
                 # Otherwise, keep the matching rows (should be all rows)
                 df_consolidated = df_consolidated[match_mask].copy()
 
-
-
-
-
                 # Standardize Location
                 df_consolidated = standardize_location(df_consolidated, "Location")
                 df_consolidated["Event"] = df_consolidated["Event"].astype(str).str.strip().str.lower()
@@ -575,7 +571,7 @@ def run():
                 ]
 
                 if df_completed.empty:
-                    st.warning("No Completed orders found for the selected event and date. Please select the right event/date combination.")
+                    st.warning("No Completed Pre-orders found for the selected event and date.")
                     st.stop()
 
                 # Calculate Box Totals from completed orders
@@ -676,7 +672,10 @@ def run():
                     st.dataframe(
                         df_export[export_cols].style.format({
                             "PricePerUnit": "£{:,.2f}",
-                            "TotalPrice": "£{:,.2f}"
+                            "PreOrderTotal": "£{:,.2f}",
+                            "APiPrice": "£{:,.2f}",
+                            "TotalPrice": "£{:,.2f}",
+                            "OrderedAmount": "{:.0f}"
                         }),
                         use_container_width=True
                     )
