@@ -115,7 +115,8 @@ def run():
         # Standardize columns
         fixture_df["FixtureName"] = fixture_df["FixtureName"].astype(str).str.strip()
         # Convert the fixture date column to an actual date
-        fixture_df["FixtureDate"] = pd.to_datetime(fixture_df["FixtureDate"], errors="coerce").dt.date
+        fixture_df["EventDate"] = pd.to_datetime(fixture_df["EventDate"], errors="coerce").dt.date
+
     except Exception as e:
         st.sidebar.error(f"❌ Failed to load fixture list from file: {e}")
         st.stop()
@@ -656,10 +657,7 @@ def run():
                 # Sidebar Layout for Executive Box Totals
                 st.sidebar.markdown("### 📊 Executive Box Total Prepaid")
                 st.sidebar.write(df_exec_summary)
-
-
-
-
+                
 
             # 📋 Final Data Table Section
             st.markdown("### 📋 Event Consolidated Payment Table")
