@@ -118,17 +118,6 @@ def run():
     end_date = st.sidebar.date_input("End Date", datetime.now())
     price_type = st.sidebar.radio("Which price column to use:", ["Total", "ApiPrice"])
     
-    # Extract the summary of total prepaid for each Executive Box dynamically
-    df_exec_summary = df_box_totals[["Location", "BoxTotal"]]
-    df_exec_summary["BoxTotal"] = df_exec_summary["BoxTotal"].apply(lambda x: f"£{x:,.2f}")
-
-    # Sidebar Layout for Executive Box Totals
-    st.sidebar.markdown("### 📊 Executive Box Total Prepaid")
-    st.sidebar.write(df_exec_summary)
-
-    # Add the logout button at the bottom
-    st.sidebar.button("Logout")
-
 
     # --- API Config ---
     token_url = "https://www.tjhub3.com/export_arsenal/token"
@@ -602,6 +591,17 @@ def run():
                 for col in final_cols:
                     if col not in df_completed.columns:
                         df_completed[col] = ""
+                
+                # Extract the summary of total prepaid for each Executive Box dynamically     
+                df_exec_summary = df_box_totals[["Location", "BoxTotal"]]
+                df_exec_summary["BoxTotal"] = df_exec_summary["BoxTotal"].apply(lambda x: f"£{x:,.2f}")
+
+                # Sidebar Layout for Executive Box Totals
+                st.sidebar.markdown("### 📊 Executive Box Total Prepaid")
+                st.sidebar.write(df_exec_summary)
+
+                # Add the logout button at the bottom
+                st.sidebar.button("Logout")
 
             # 📋 Final Data Table Section
             # 📋 Final Data Table Section
