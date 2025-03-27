@@ -524,6 +524,7 @@ def run():
             with st.spinner("Merging Payment Status data..."):
                 # Preprocess the consolidated payment report
                 df_consolidated = preprocess_consolidated_payment_report(consolidated_file)
+                st.write("Consolidated file columns:", df_consolidated.columns.tolist())
 
                 # If the consolidated file does not have an "EventDate" column, add it using the selected event date
                 if "EventDate" not in df_consolidated.columns:
