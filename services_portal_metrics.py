@@ -549,11 +549,19 @@ def run():
                 # Preprocess the consolidated payment report
                 df_consolidated = preprocess_consolidated_payment_report(consolidated_file)
 
-                # Standardize and compare Event
+                # Check if 'Event' column exists, if not, add it manually or use a different approach
+                if 'Event' not in df_consolidated.columns:
+                    st.error("❌ 'Event' column is missing from the Consolidated Payment Report.")
+                    st.stop()  # Stop execution if the column is not found
+                
+                # Standardize Event and Event Date matching
                 df_consolidated["Event"] = df_consolidated["Event"].astype(str).str.strip().str.lower()
+                df_consolidated["Event_Date"] = pd.to_datetime(df_consolidated["Event_Date"], errors="coerce")
+
+                # Get the selected event
                 selected_event_lower = selected_event.strip().lower()
 
-                # Count matches
+                # Count matches for the selected event
                 match_count = df_consolidated["Event"].eq(selected_event_lower).sum()
                 total_rows = len(df_consolidated)
 
@@ -561,34 +569,26 @@ def run():
                     st.error(f"❌ The uploaded consolidated payment file does not match the selected event: '{selected_event}'.\n\n"
                             f"Only {match_count} out of {total_rows} rows matched.")
                     st.stop()
-                
-                # If no Event column, assume it's the correct one and assign selected_event
-                if "Event" not in df_consolidated.columns:
-                    df_consolidated["Event"] = selected_event
 
                 # Standardize Location
                 df_consolidated = standardize_location(df_consolidated, "Location")
-                df_consolidated["Event"] = df_consolidated["Event"].astype(str).str.strip().str.lower()
-
-                # Ensure Event_Date is in datetime format
-                df_consolidated["Event_Date"] = pd.to_datetime(df_consolidated["Event_Date"], errors="coerce")
 
                 # Process completed orders from merged data
                 df_completed = df_merged.copy()
                 df_completed = standardize_location(df_completed, "Location")
                 df_completed["Event"] = df_completed["Event"].astype(str).str.strip().str.lower()
                 df_completed = df_completed[df_completed["PreOrderStatus"] == "Completed"]
-                selected_event_lower = selected_event.strip().lower()
+
+                # Filter completed data for the selected event and event date
                 df_completed = df_completed[df_completed["Event"] == selected_event_lower]
 
-                # Handle case where no completed orders exist
+                # Handle if no completed orders exist
                 if df_completed.empty:
-                    st.warning("No Completed orders found for the selected event. Please select the right event")
+                    st.warning("No Completed orders found for the selected event. Please select the right event.")
                     st.stop()
 
-                # Check and filter by event date if selected
-                if selected_event_date:
-                    df_consolidated = df_consolidated[df_consolidated["Event_Date"] == selected_event_date]
+                # Now, filter df_consolidated by the selected event date
+                df_consolidated = df_consolidated[df_consolidated["Event_Date"] == selected_event_date]
 
                 if df_consolidated.empty:
                     st.warning(f"No data found for {selected_event} on {selected_event_date}. Please check the fixture and event date.")
