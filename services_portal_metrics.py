@@ -589,6 +589,35 @@ def run():
                 # Merge box totals with consolidated payment data
                 df_box_merged = df_box_totals.merge(df_consolidated, how="left", on=["Location", "Event"])
                 df_box_merged["PaymentStatus"] = df_box_merged.apply(assign_payment_status, axis=1)
+                # ----------------------------------------------------------------------------
+                # ADD THIS SUM CHECK SNIPPET
+                # ----------------------------------------------------------------------------
+                # 1) Sum of PreOrders (BoxTotal) from df_box_totals
+                sum_preorders = df_box_totals["BoxTotal"].fillna(0).sum()
+
+                # 2) Sum of consolidated payment columns from df_box_merged
+                sum_drawdown = df_box_merged["Drawdown"].fillna(0).sum()
+                sum_credit   = df_box_merged["Credit Card"].fillna(0).sum()
+                sum_po       = df_box_merged["Purchase orders"].fillna(0).sum()
+                sum_eft      = df_box_merged["EFT"].fillna(0).sum()
+                sum_consolidated = sum_drawdown + sum_credit + sum_po + sum_eft
+
+                # 3) Compare the two sums (allowing a small tolerance for rounding)
+                tolerance = 0.01
+                if abs(sum_preorders - sum_consolidated) > tolerance:
+                    st.error(
+                        f"❌ The sum of all preorders (BoxTotal) does not match the sum of consolidated payments.\n\n"
+                        f"• PreOrderTotal: £{sum_preorders:,.2f}\n"
+                        f"• ConsolidatedTotal: £{sum_consolidated:,.2f}\n\n"
+                        "Please verify you've selected the correct consolidated payment file."
+                    )
+                    st.stop()
+                else:
+                    st.success(
+                        f"✅ The sum of all preorders (£{sum_preorders:,.2f}) matches "
+                        f"the sum of consolidated payments (£{sum_consolidated:,.2f})."
+                    )
+                # ----------------------------------------------------------------------------
 
                 # Merge back with completed orders
                 df_box_merged = df_box_merged[["Location", "Event", "PaymentStatus"]]
