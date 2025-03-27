@@ -138,7 +138,6 @@ def run():
     st.sidebar.header("Data Filters")
     start_date = st.sidebar.date_input("Start Date", datetime(2024, 6, 18))
     end_date = st.sidebar.date_input("End Date", datetime.now())
-    price_type = st.sidebar.radio("Which price column to use:", ["Total"])
 
     # --- API Config ---
     token_url = "https://www.tjhub3.com/export_arsenal/token"
@@ -320,6 +319,7 @@ def run():
             df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
         
         return df
+
 
 
     if manual_file:
