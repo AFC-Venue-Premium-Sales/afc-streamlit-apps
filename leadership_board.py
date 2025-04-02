@@ -299,6 +299,9 @@ def get_next_fixture(data, budget_df):
     
     # Filter future fixtures
     future_data = data[data["KickOffEventStart"] > today].copy()
+    
+    # Exclude specific fixture
+    future_data = future_data[future_data["Fixture Name"] != "Arsenal Women v Leicester Women"]
 
     # Sort fixtures by the soonest kickoff time
     future_data = future_data.sort_values(by="KickOffEventStart", ascending=True)
