@@ -297,15 +297,15 @@ def get_next_fixture(data, budget_df):
     data["KickOffEventStart"] = pd.to_datetime(data["KickOffEventStart"], errors="coerce")
     today = datetime.now()
     
-    # Normalize fixture names
-    data["Fixture Name"] = data["Fixture Name"].str.strip().str.lower()
-    budget_df["Fixture Name"] = budget_df["Fixture Name"].str.strip().str.lower()
+    # # Normalize fixture names
+    # data["Fixture Name"] = data["Fixture Name"].str.strip().str.lower()
+    # budget_df["Fixture Name"] = budget_df["Fixture Name"].str.strip().str.lower()
 
     # Filter future fixtures
     future_data = data[data["KickOffEventStart"] > today].copy()
     
-    # Exclude specific fixture
-    future_data = future_data[future_data["Fixture Name"] != "Arsenal Women v Leicester Women"]
+    # # Exclude specific fixture
+    # future_data = future_data[future_data["Fixture Name"] != "Arsenal Women v Leicester Women"]
 
     # Sort fixtures by the soonest kickoff time
     future_data = future_data.sort_values(by="KickOffEventStart", ascending=True)
@@ -457,9 +457,16 @@ def get_upcoming_fixtures(inventory_df, n=3):
     sorted by KickOffEventStart ascending.
     Ensures duplicate fixtures don't repeat and the soonest matches are displayed.
     """
+    
+    # Normalize fixture names
+    inventory_df["Fixture Name"] = inventory_df["Fixture Name"].str.strip().str.lower()
+    budget_df["Fixture Name"] = budget_df["Fixture Name"].str.strip().str.lower()
 
     # Ensure KickOffEventStart is in datetime format
     inventory_df["KickOffDT"] = pd.to_datetime(inventory_df["KickOffEventStart"], errors="coerce")
+    
+    # Exclude specific fixture
+    future_df = future_df[future_df["Fixture Name"] != "Arsenal Women v Leicester Women"]
 
     # Get today's date
     now = datetime.now()
@@ -1150,7 +1157,7 @@ def run_dashboard():
                 margin: 0 auto;
                 background-color: #fff0f0;
                 color: #E41B17;
-                padding: 5px 10px;
+                padding: 10px 5px;
                 border-radius: 10px;
                 font-family: 'Northbank-N5';
                 font-size: 25px;
