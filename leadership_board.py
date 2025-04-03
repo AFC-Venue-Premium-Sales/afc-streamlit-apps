@@ -68,7 +68,7 @@ targets_data = pd.DataFrame({
     "bgardiner": [155000, 155000, 135000, 110000, 90000, 65000],
     "dcoppin":   [155000, 155000, 135000, 110000, 90000, 65000],
     "jedwards":  [155000, 155000, 135000, 110000, 90000, 65000],
-    "millies":   [155000, 155000, 135000, 110000, 90000, 65000],
+    "millies":   [0, 0, 0, 0, 0, 0],
     "dmontague": [155000, 155000, 135000, 110000, 90000, 65000],
     # "MeganS":    [42500, 42500, 36500, 30500, 24500, 18500],
     # "BethNW":    [42500, 42500, 36500, 30500, 24500, 18500],
@@ -297,6 +297,10 @@ def get_next_fixture(data, budget_df):
     data["KickOffEventStart"] = pd.to_datetime(data["KickOffEventStart"], errors="coerce")
     today = datetime.now()
     
+    # Normalize fixture names
+    data["Fixture Name"] = data["Fixture Name"].str.strip().str.lower()
+    budget_df["Fixture Name"] = budget_df["Fixture Name"].str.strip().str.lower()
+
     # Filter future fixtures
     future_data = data[data["KickOffEventStart"] > today].copy()
     
@@ -1146,7 +1150,7 @@ def run_dashboard():
                 margin: 0 auto;
                 background-color: #fff0f0;
                 color: #E41B17;
-                padding: 10px 10px;
+                padding: 5px 10px;
                 border-radius: 10px;
                 font-family: 'Northbank-N5';
                 font-size: 25px;
