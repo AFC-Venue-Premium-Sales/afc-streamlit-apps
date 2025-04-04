@@ -48,8 +48,8 @@ try:
     import leadership_board
     importlib.reload(leadership_board)
 except ImportError as e:
-    logging.error(f"Failed to import 'leaderboard_carousel': {e}")
-    leaderboard_carousel = None
+    logging.error(f"Failed to import 'leadership_board': {e}")
+    leadership_board = None
 
 # Load environment variables
 load_dotenv()
@@ -197,7 +197,7 @@ else:
     app_registry = {
         "📊 Sales Performance": sales_performance.run_app,
         # "📈 User Performance": user_performance_api.run_app,
-        "📄 Leaderboard Carousel Dashboard": leaderboard_carousel.run_dashboard,
+        "📄 Leaderboard Carousel Dashboard": leadership_board,
         # "📊 Live Sales Dashboard": sales_dashboard.run_dashboard,  
     }
 
