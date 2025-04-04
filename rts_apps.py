@@ -197,7 +197,7 @@ else:
     app_registry = {
         "📊 Hosp Sales": sales_performance.run_app,
         # "📈 User Performance": user_performance_api.run_app,
-        "📄 Leaderboard Carousel Dashboard": leadership_board,
+        "📄 Leaderboard Carousel Dashboard": leadership_board.run_dashboard,
         # "📊 Live Sales Dashboard": sales_dashboard.run_dashboard,  
     }
 
