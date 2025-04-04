@@ -329,7 +329,7 @@ def run_app():
 
         # Other Sales Per Fixture Section
         st.write("### ⚽ Total Sales Summary")
-        st.write(f"Accumulated sales with 'Other pending' payments included: **£{other_sales_total:,.2f}** ")
+        st.write(f"Table showing total sales generated including pending payments. **RTS sales** are confirmed and **OtherSales** are pending payments: **£{other_sales_total:,.2f}** ")
 
         # Group the data and calculate required metrics
         total_sold_per_match = (
@@ -418,7 +418,7 @@ def run_app():
         st.dataframe(total_sold_per_match)
 
         # Other Summary Table
-        st.write("### Other Payments")
+        st.write("### Table with Pending Payments")
         # Apply discount filter to total_discount_value table
         total_discount_value = filtered_data_without_excluded_keywords.groupby(
             ['Order Id', 'Country Code', 'First Name', 'Surname', 'Fixture Name', 'GLCode', 'CreatedOn']
