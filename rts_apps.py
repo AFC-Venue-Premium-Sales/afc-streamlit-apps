@@ -5,6 +5,7 @@ import os
 import logging
 import importlib
 
+st.set_page_config(page_title="Hospitality Sales", layout="wide")
 
 # Configure logging
 logging.basicConfig(
