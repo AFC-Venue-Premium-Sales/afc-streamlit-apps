@@ -26,28 +26,61 @@ def run_app():
     specified_users = ['dcoppin', 'Jedwards', 'jedwards', 'bgardiner', 'BenT', 'jmurphy', 'ayildirim',
                        'MeganS', 'BethNW', 'HayleyA', 'LucyB', 'Conor', 'SavR', 'MillieS', 'dmontague']
 
-    # Budget data for fixtures
     budget_data = {
-        "Fixture": [
-            "Arsenal v Bayer 04 Leverkusen", "Arsenal v Olympique Lyonnais", "Arsenal Women v Manchester City Women",
-            "Arsenal Women v Everton Women", "Arsenal Women v Chelsea Women", "Arsenal Women v Vålerenga Women",
-            "Arsenal Women v Brighton Women", "Arsenal Women v Juventus Women", "Arsenal Women v Aston Villa Women",
-            "Arsenal Women v FC Bayern Munich Women", "Arsenal Women v Tottenham Hotspur Women", "Arsenal v Wolves",
-            "Arsenal v Brighton", "Arsenal v Bolton Wanderers", "Arsenal v Leicester City", "Arsenal v Paris Saint-Germain",
-            "Arsenal v Southampton", "Arsenal v Shakhtar Donetsk", "Arsenal v Liverpool", "Arsenal v Nottingham Forest",
-            "Arsenal v Manchester United", "Arsenal v AS Monaco", "Arsenal v Everton", "Arsenal v Crystal Palace",
-            "Arsenal v Ipswich Town", "Arsenal v Tottenham Hotspur", "Arsenal v Aston Villa", "Arsenal v Dinamo Zagreb",
-            "Arsenal v Manchester City", "Arsenal v West Ham United", "Arsenal v Chelsea", "Robbie Williams Live 2025 - Friday",
-            "Robbie Williams Live 2025 - Saturday"
-        ],
-        "Budget": [
-            113800, 113800, 43860, 28636, 52632, 10000, 38182, 10000, 38182, 10000, 52632, 469797, 319462, 0, 469797,
-            490113, 390059, 394122, 588136, 492653, 588136, 490113, 492653, 0, 390059, 807500, 617500, 285000, 807500,
-            617500, 712500, 97412, 97412
-        ]
-    }
-
+    "Fixture": [
+        "Arsenal Women v Vålerenga Women", "Arsenal Women v Olympique Lyonnais Féminin",
+        "Arsenal Women v Real Madrid Women", "Arsenal Women v Juventus Women",
+        "Arsenal Women v FC Bayern Munich Women",
+        
+        "Arsenal v PSV", "Arsenal v Paris Saint-Germain", "Arsenal v Shakhtar Donetsk",
+        "Arsenal v AS Monaco", "Arsenal v Real Madrid",
+        
+        "Arsenal v Dinamo Zagreb", "Arsenal v A.F.C. Bournemouth", "Arsenal v Crystal Palace",
+        "Arsenal v Wolves", "Arsenal v Brentford",
+        
+        "Arsenal v Newcastle United", "Arsenal v Brighton", "Arsenal v Fulham",
+        "Arsenal v Leicester City", "Arsenal v Southampton",
+        
+        "Arsenal v Liverpool", "Arsenal v Nottingham Forest", "Arsenal v Manchester United",
+        "Arsenal v Everton", "Arsenal v Ipswich Town",
+        
+        "Arsenal v Tottenham Hotspur", "Arsenal v Aston Villa", "Arsenal v Manchester City",
+        "Arsenal v West Ham United", "Arsenal v Chelsea",
+        
+        "Arsenal v Bayer 04 Leverkusen", "Arsenal v Manchester United", 
+        "Arsenal v Olympique Lyonnais", "Robbie Williams Live 2025 - Friday",
+        "Robbie Williams Live 2025 - Saturday",
+        
+        "Arsenal v Newcastle United", "Arsenal v Crystal Palace", "Arsenal v Bolton Wanderers",
+        "Arsenal Women v Manchester United Women", "Arsenal Women v Manchester City Women",
+        
+        "Arsenal Women v Everton Women", "Arsenal Women v Chelsea Women",
+        "Arsenal Women v Brighton Women", "Arsenal Women v Liverpool Women",
+        "Arsenal Women v Aston Villa Women", "Arsenal Women v Tottenham Hotspur Women"
+    ],
+    
+    "Budget": [
+        10000, 20000, 30000, 10000, 10000,
+        
+        712500, 490113, 394122, 490113, 760000,
+        
+        285000, 617500, 570000, 469797, 570000,
+        
+        807500, 319462, 617500, 469797, 390059,
+        
+        588136, 492653, 588136, 492653, 390059,
+        
+        807500, 617500, 807500, 617500, 712500,
+        
+        113800, 380000, 113800, 97412, 97412,
+        
+        199265, 199265, 199265, 52632, 43860,
+        
+        28636, 52632, 38182, 48256, 38182, 52632
+    ]
+}
     budget_df = pd.DataFrame(budget_data)
+
 
     st.title('💷 MBM Sales 💷')
     
@@ -285,10 +318,10 @@ def run_app():
         payment_channel_metric = f"{top_channel_row['SaleLocation']} (Sales: £{top_channel_row['TotalWithOtherPayments']:,.2f})"
 
         col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Total Accumulated Sales", f"£{static_total:,.2f}")
-        col2.metric("Filtered Accumulated Sales", f"£{dynamic_total:,.2f}")
-        col3.metric("Total Sales Summary", f"£{other_sales_total:,.2f}")
-        col4.metric("Payment Channel", payment_channel_metric)
+        col1.metric("Total Confirmed Sales", f"£{static_total:,.2f}")
+        col2.metric("Filtered Confirmed Sales", f"£{dynamic_total:,.2f}")
+        col3.metric("Total Sales (Including Pending payments)", f"£{other_sales_total:,.2f}")
+        # col4.metric("Payment Channel", payment_channel_metric)
 
         # --- The rest of the dashboard remains unchanged ---
 
