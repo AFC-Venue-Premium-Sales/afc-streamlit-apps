@@ -3,6 +3,8 @@ import pandas as pd
 from datetime import datetime
 from io import BytesIO
 import importlib
+import sys
+sys.path.append("/Users/cmunthali/Documents/PYTHON/APPS")
 import re
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
