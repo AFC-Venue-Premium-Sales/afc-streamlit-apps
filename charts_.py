@@ -376,7 +376,7 @@ def generate_event_level_concert_cumulative_sales_chart(filtered_data):
         allowed_categories = ["Concert"]
         filtered_data = filtered_data[
             (filtered_data['IsPaid'].str.upper() == 'TRUE') &
-            (filtered_data['EventCompetition'].isin(allowed_categories))
+            (filtered_data['EventCategory'].isin(allowed_categories))
         ].copy()
 
         # Debug: Check if filtered data is empty
