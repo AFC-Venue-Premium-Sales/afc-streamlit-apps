@@ -23,12 +23,12 @@ except ImportError as e:
     logging.error(f"Failed to import 'sales_performance': {e}")
     sales_performance = None
 
-try:
-    import user_performance_api
-    importlib.reload(user_performance_api)
-except ImportError as e:
-    logging.error(f"Failed to import 'user_performance_api': {e}")
-    user_performance_api = None
+# try:
+#     import user_performance_api
+#     importlib.reload(user_performance_api)
+# except ImportError as e:
+#     logging.error(f"Failed to import 'user_performance_api': {e}")
+#     user_performance_api = None
 
 # try:
 #     import ticket_exchange_report
@@ -37,12 +37,12 @@ except ImportError as e:
 #     logging.error(f"Failed to import 'ticket_exchange_report': {e}")
 #     ticket_exchange_report = None
     
-try:
-    import sales_dashboard 
-    importlib.reload(sales_dashboard)
-except ImportError as e:
-    logging.error(f"Failed to import 'sales_dashboard': {e}")
-    sales_dashboard = None
+# try:
+#     import sales_dashboard 
+#     importlib.reload(sales_dashboard)
+# except ImportError as e:
+#     logging.error(f"Failed to import 'sales_dashboard': {e}")
+#     sales_dashboard = None
     
 try:
     import leaderboard_carousel
@@ -101,7 +101,7 @@ def reload_data():
 
         # Reload dependent modules dynamically
         importlib.reload(sales_performance)
-        importlib.reload(user_performance_api)
+        # importlib.reload(user_performance_api)
 
         # Trigger a rerun to refresh the app state
         st.rerun()
@@ -183,7 +183,7 @@ else:
     st.sidebar.title("🧭 Navigation")
     app_choice = st.sidebar.radio(
         "Choose Module",
-        ["📊 Sales Performance", "📈 User Performance", "📄 Leaderboard Carousel Dashboard", "📊 Live Sales Dashboard"],
+        ["📊 Sales Performance", "📄 Leaderboard Carousel Dashboard",],
         format_func=lambda x: x.split(" ")[1],
     )
 
@@ -196,9 +196,9 @@ else:
     # Update app_registry with the new dashboard
     app_registry = {
         "📊 Sales Performance": sales_performance.run_app,
-        "📈 User Performance": user_performance_api.run_app,
+        # "📈 User Performance": user_performance_api.run_app,
         "📄 Leaderboard Carousel Dashboard": leaderboard_carousel.run_dashboard,
-        "📊 Live Sales Dashboard": sales_dashboard.run_dashboard,  
+        # "📊 Live Sales Dashboard": sales_dashboard.run_dashboard,  
     }
 
     app_function = app_registry.get(app_choice)
