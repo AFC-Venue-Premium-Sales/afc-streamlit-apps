@@ -50,7 +50,7 @@ def run_app():
         "Arsenal v West Ham United", "Arsenal v Chelsea",
         
         "Arsenal v Bayer 04 Leverkusen", "Arsenal v Manchester United", 
-        "Arsenal v Olympique Lyonnais", "Robbie Williams Live 2025 - Friday",
+        "Arsenal v Olympique Lyonnais", "Robbie Williams Live 2025 (Friday)",
         "Robbie Williams Live 2025 - Saturday",
         
         "Arsenal v Newcastle United", "Arsenal v Crystal Palace", "Arsenal v Bolton Wanderers",
