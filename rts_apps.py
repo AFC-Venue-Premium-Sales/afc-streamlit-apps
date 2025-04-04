@@ -184,7 +184,7 @@ else:
     app_choice = st.sidebar.radio(
         "Choose Module",
         ["📊 Hosp Sales", "📄 Leaderboard Carousel Dashboard",],
-        format_func=lambda x: x.split(" ")[1],
+        format_func=lambda x: " ".join(x.split(" ")[1:]),
     )
 
     # Refresh Button
