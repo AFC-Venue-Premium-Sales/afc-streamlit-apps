@@ -192,7 +192,15 @@ def run_app():
 
         valid_usernames = [user for user in specified_users if user in pd.unique(filtered_data['CreatedBy'])]
         event_names = pd.unique(filtered_data['Fixture Name'])
-        event_categories = pd.unique(filtered_data['EventCompetition'])
+
+        # Combine event categories from both 'EventCompetition' and 'EventCategory'
+        competition_vals = pd.unique(filtered_data['EventCompetition'])
+        if 'EventCategory' in filtered_data.columns:
+            category_vals = pd.unique(filtered_data['EventCategory'])
+            # Create a union of both arrays and convert to a sorted list
+            event_categories = sorted(list(set(competition_vals.tolist() + category_vals.tolist())))
+        else:
+            event_categories = competition_vals.tolist()
 
         # Add filters
         selected_categories = st.sidebar.multiselect(
@@ -201,6 +209,7 @@ def run_app():
             default=None,
             key="unique_selected_categories_key"
         )
+
 
         sale_location = pd.unique(filtered_data['SaleLocation'])
         selected_events = st.sidebar.multiselect(
@@ -329,7 +338,7 @@ def run_app():
 
         # Other Sales Per Fixture Section
         st.write("### ⚽ Total Sales Summary")
-        st.write(f"Table showing total sales generated including pending payments. **RTS sales** are confirmed and **OtherSales** are pending payments: **£{other_sales_total:,.2f}** ")
+        st.write(f"Table showing total sales generated including pending payments. **RTS sales** are confirmed payments and **OtherSales** are pending payments: **£{other_sales_total:,.2f}** ")
 
         # Group the data and calculate required metrics
         total_sold_per_match = (
