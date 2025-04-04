@@ -460,12 +460,18 @@ def get_upcoming_fixtures(inventory_df, n=3):
 
     # Ensure KickOffEventStart is in datetime format
     inventory_df["KickOffDT"] = pd.to_datetime(inventory_df["KickOffEventStart"], errors="coerce")
+    
+    # Strip extra whitespace from EventName
+    inventory_df["EventName"] = inventory_df["EventName"].str.strip()
 
     # Get today's date
     now = datetime.now()
 
     # Filter out only future fixtures
     future_df = inventory_df[inventory_df["KickOffDT"] > now].copy()
+    
+    # Exclude specific fixture
+    future_df = future_df[future_df["EventName"] != "Arsenal Women v Leicester Women"]
 
     # Sort by KickOffDT to ensure closest fixtures appear first
     future_df = future_df.sort_values(by="KickOffDT", ascending=True)
