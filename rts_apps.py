@@ -195,7 +195,7 @@ else:
 
     # Update app_registry with the new dashboard
     app_registry = {
-        "📊 Sales Performance": sales_performance.run_app,
+        "📊 Hosp Sales": sales_performance.run_app,
         # "📈 User Performance": user_performance_api.run_app,
         "📄 Leaderboard Carousel Dashboard": leadership_board,
         # "📊 Live Sales Dashboard": sales_dashboard.run_dashboard,  
