@@ -52,9 +52,6 @@ def preprocess_file(uploaded_file):
     return df_raw
 
 def run():
-    # Set page configuration to wide mode.
-    st.set_page_config(page_title="Guest Invitations Dashboard", layout="wide")
-    
     # Sidebar: File uploader.
     st.sidebar.header("Upload Data")
     uploaded_file = st.sidebar.file_uploader("Upload Guest Invitation Excel File", type=["xls", "xlsx"])
