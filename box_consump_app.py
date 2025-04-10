@@ -99,7 +99,7 @@ if st.session_state.get("authenticated", False):  # Ensure authentication exists
     # Provide a radio button for version selection in the sidebar
     version_choice = st.sidebar.radio(
         "Select Processing Logic", 
-        ["Formatting - First Version", "Formatting - Second Version", "Guest Portal Insights", "Premium Service Ops - PreOrders"]
+        ["Formatting - First Version", "Formatting - Second Version", "Guest Portal PreOrders","Guest Portal Invites", "Premium Service Ops - PreOrders"]
     )
     try:
         # Import the selected module based on user choice
@@ -107,8 +107,10 @@ if st.session_state.get("authenticated", False):  # Ensure authentication exists
             import box_consumption_app_login_v2 as app_module
         elif version_choice == "Formatting - First Version":
             import box_consumption_app_login as app_module
-        elif version_choice == "Guest Portal Insights":
+        elif version_choice == "Guest Portal PreOrders":
             import guest_portal_metrics as app_module
+        elif version_choice == "Guest Portal Invites":
+            import guest_portal_invitations_metrics as app_module
         elif version_choice == "Premium Service Ops - PreOrders":
             import services_portal_metrics as app_module
         else:

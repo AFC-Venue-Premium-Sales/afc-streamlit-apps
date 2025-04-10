@@ -250,6 +250,7 @@ filtered_df_without_seats = final_df[filtered_columns_without_seats].drop_duplic
 print(type(filtered_df_without_seats))  # This will print <class 'pandas.core.frame.DataFrame'>
 
 # If you want to print the first 5 rows of the DataFrame, use:
+
 print(filtered_df_without_seats.head(5))
 
 # # Save the filtered DataFrames into separate tabs of an Excel file

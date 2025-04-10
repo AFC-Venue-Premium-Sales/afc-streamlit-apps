@@ -728,156 +728,210 @@
 
 
 
+# import pandas as pd
+
+# # Define file paths
+# file_path = '/Users/cmunthali/Documents/PYTHON/APPS/sql_tx_tt.xlsx'
+# file_path_1 = '/Users/cmunthali/Documents/PYTHON/APPS/HOSPITALITY TICKET RELEASES SEASON 24-25.xlsx'
+# file_path_2 = '/Users/cmunthali/Documents/PYTHON/APPS/seat_list_game_cat.xlsx'
+# output_file = '/Users/cmunthali/Documents/PYTHON/APPS/tx_tt_processed.xlsx'
+
+# # Load data
+# tx_sales_data = pd.read_excel(file_path, sheet_name="TX Sales Data")
+# seat_list = pd.read_excel(file_path_2, sheet_name="Seat List")
+# game_category = pd.read_excel(file_path_2, sheet_name="Game Category")
+
+# # Load all tabs from file_path_1
+# try:
+#     ticket_releases_sheets = pd.read_excel(file_path_1, sheet_name=None)
+#     ticket_releases = pd.concat(ticket_releases_sheets.values(), ignore_index=True)
+#     if ticket_releases.empty:
+#         print("File_Path_1 (HOSPITALITY TICKET RELEASES SEASON 24-25.xlsx) is empty.")
+# except Exception as e:
+#     print(f"Error loading file_path_1: {e}")
+#     ticket_releases = None
+
+# # Normalize column names
+# tx_sales_data.columns = tx_sales_data.columns.str.strip().str.replace(" ", "_").str.lower()
+# seat_list.columns = seat_list.columns.str.strip().str.replace(" ", "_").str.lower()
+# game_category.columns = game_category.columns.str.strip().str.replace(" ", "_").str.lower()
+# if ticket_releases is not None:
+#     ticket_releases.columns = ticket_releases.columns.str.strip().str.replace(" ", "_").str.lower()
+
+# # Validate price combinations: 3 Categories x 4 Price Bands
+# expected_categories = {"A", "B", "C"}
+# expected_price_bands = 4
+
+# # Check for missing categories
+# actual_categories = set(game_category["category"].dropna().unique())
+# missing_categories = expected_categories - actual_categories
+
+# if missing_categories:
+#     print(f"Warning: Missing categories in Game Category: {missing_categories}")
+# else:
+#     print("All expected categories are present in Game Category.")
+
+# # Check for the correct number of price bands
+# if len(game_category["price_band"].unique()) != expected_price_bands:
+#     print(
+#         f"Warning: Expected {expected_price_bands} unique price bands, "
+#         f"but found {len(game_category['price_band'].unique())} in Game Category."
+#     )
+
+# # Adjust block formatting for ticket releases and seat list
+# def adjust_block(block):
+#     if isinstance(block, str) and block.startswith("0") and block[1:].isdigit():
+#         block_number = int(block.lstrip("0"))  # Remove leading zeros
+#         return f"{block_number} Club level"
+#     elif isinstance(block, str) and block.startswith("C") and block[1:].isdigit():
+#         block_number = int(block[1:])
+#         return f"{block_number} Club level"
+#     elif isinstance(block, str) and block.isdigit():
+#         return f"{int(block)} Club level"
+#     return block
+
+# if ticket_releases is not None:
+#     ticket_releases["block"] = ticket_releases["block"].apply(adjust_block)
+# seat_list["block"] = seat_list["block"].apply(adjust_block)
+
+# # Strip whitespace in all string columns
+# tx_sales_data = tx_sales_data.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+# seat_list = seat_list.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+# game_category = game_category.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+# if ticket_releases is not None:
+#     ticket_releases = ticket_releases.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+
+# # Ensure numeric columns are properly typed
+# game_category["seat_value"] = pd.to_numeric(game_category["seat_value"], errors="coerce")
+# tx_sales_data["ticket_sold_price"] = pd.to_numeric(tx_sales_data["ticket_sold_price"], errors="coerce")
+
+# # Initialize lists for processing
+# matched_data = []
+# metrics_data = []
+# missing_matches = []
+# release_analysis = []
+
+# # Match and update data for TX Sales Data
+# for index, row in tx_sales_data.iterrows():
+#     matched_yn = "N"
+#     matching_seat = seat_list[
+#         (seat_list["block"] == row["block"]) &
+#         (seat_list["row"] == row["row"]) &
+#         (seat_list["seat"] == row["seat"])
+#     ]
+#     if not matching_seat.empty:
+#         row["crc_desc"] = matching_seat["crc_desc"].values[0]
+#         row["price_band"] = matching_seat["price_band"].values[0]
+#         matching_game = game_category[
+#             (game_category["game_name"] == row["game_name"]) &
+#             (game_category["game_date"] == row["game_date"]) &
+#             (game_category["price_band"] == matching_seat["price_band"].values[0])
+#         ]
+#         if not matching_game.empty:
+#             matched_yn = "Y"
+#             row["category"] = matching_game["category"].values[0]
+#             row["seat_value"] = matching_game["seat_value"].values[0]
+#             row["value_generated"] = row["ticket_sold_price"] - matching_game["seat_value"].values[0]
+#             metrics_data.append({
+#                 "game_name": row["game_name"],
+#                 "category": matching_game["category"].values[0],
+#                 "price_band": row["price_band"],
+#                 "crc_desc": row["crc_desc"],
+#                 "transfer_type": row["transfer_type"],
+#                 "ticket_sold_price": row["ticket_sold_price"],
+#                 "seat_value": matching_game["seat_value"].values[0],
+#                 "value_generated": row["value_generated"]
+#             })
+#     else:
+#         missing_matches.append(row.to_dict())
+#     row["matched_yn"] = matched_yn
+#     matched_data.append(row)
+
+# # Process Ticket Releases with the same logic and generate analysis
+# if ticket_releases is not None:
+#     for index, row in ticket_releases.iterrows():
+#         matched_yn = "N"
+#         sales_match = tx_sales_data[
+#             (tx_sales_data["game_name"] == row["game_name"]) &
+#             (tx_sales_data["block"] == row["block"]) &
+#             (tx_sales_data["row"] == row["row"]) &
+#             (tx_sales_data["seat"] == row["seat"])
+#         ]
+#         if not sales_match.empty:
+#             matched_yn = "Y"
+#             row["ticket_sold_price"] = sales_match["ticket_sold_price"].values[0]
+#         else:
+#             row["ticket_sold_price"] = None
+#         row_dict = row.to_dict()
+#         row_dict["matched_yn"] = matched_yn
+#         release_analysis.append(row_dict)
+
+# # Convert matched data, metrics data, unmatched rows, and release analysis to DataFrames
+# matched_df = pd.DataFrame(matched_data)
+# metrics_df = pd.DataFrame(metrics_data)
+# missing_matches_df = pd.DataFrame(missing_matches)
+# release_analysis_df = pd.DataFrame(release_analysis)
+
+# # Save results to Excel
+# with pd.ExcelWriter(output_file, engine="openpyxl") as writer:
+#     tx_sales_data.to_excel(writer, sheet_name="All Data", index=False)
+#     matched_df.to_excel(writer, sheet_name="Matched Data", index=False)
+#     metrics_df.to_excel(writer, sheet_name="Detailed Metrics", index=False)
+#     release_analysis_df.to_excel(writer, sheet_name="Release Analysis", index=False)
+#     missing_matches_df.to_excel(writer, sheet_name="Missing Matches", index=False)
+
+# print(f"Updated data saved to {output_file}")
+
+
+
+
 import pandas as pd
 
-# Define file paths
-file_path = '/Users/cmunthali/Documents/PYTHON/APPS/sql_tx_tt.xlsx'
-file_path_1 = '/Users/cmunthali/Documents/PYTHON/APPS/HOSPITALITY TICKET RELEASES SEASON 24-25.xlsx'
-file_path_2 = '/Users/cmunthali/Documents/PYTHON/APPS/seat_list_game_cat.xlsx'
-output_file = '/Users/cmunthali/Documents/PYTHON/APPS/tx_tt_processed.xlsx'
+# Read the raw Excel file without header.
+df_raw = pd.read_excel("/Users/cmunthali/Documents/PYTHON/APPS/GuestsInvitations_10-04-2025_09-59.xls", header=None)
 
-# Load data
-tx_sales_data = pd.read_excel(file_path, sheet_name="TX Sales Data")
-seat_list = pd.read_excel(file_path_2, sheet_name="Seat List")
-game_category = pd.read_excel(file_path_2, sheet_name="Game Category")
+# Remove the first 3 rows containing extraneous information.
+df_raw = df_raw.iloc[3:, :]
 
-# Load all tabs from file_path_1
-try:
-    ticket_releases_sheets = pd.read_excel(file_path_1, sheet_name=None)
-    ticket_releases = pd.concat(ticket_releases_sheets.values(), ignore_index=True)
-    if ticket_releases.empty:
-        print("File_Path_1 (HOSPITALITY TICKET RELEASES SEASON 24-25.xlsx) is empty.")
-except Exception as e:
-    print(f"Error loading file_path_1: {e}")
-    ticket_releases = None
+# Set the next row as header and remove it from the data.
+df_raw.columns = df_raw.iloc[0]
+df_raw = df_raw.iloc[1:, :]
 
-# Normalize column names
-tx_sales_data.columns = tx_sales_data.columns.str.strip().str.replace(" ", "_").str.lower()
-seat_list.columns = seat_list.columns.str.strip().str.replace(" ", "_").str.lower()
-game_category.columns = game_category.columns.str.strip().str.replace(" ", "_").str.lower()
-if ticket_releases is not None:
-    ticket_releases.columns = ticket_releases.columns.str.strip().str.replace(" ", "_").str.lower()
+# Drop 'Unnamed: 1' if it's completely empty.
+if 'Unnamed: 1' in df_raw.columns and df_raw['Unnamed: 1'].isna().all():
+    df_raw.drop(columns=['Unnamed: 1'], inplace=True)
 
-# Validate price combinations: 3 Categories x 4 Price Bands
-expected_categories = {"A", "B", "C"}
-expected_price_bands = 4
+# Combine "Event name" and "Unnamed: 3" if applicable, then drop 'Unnamed: 3'.
+if 'Unnamed: 3' in df_raw.columns and 'Event name' in df_raw.columns:
+    df_raw['Event name'] = df_raw['Event name'].combine_first(df_raw['Unnamed: 3'])
+    df_raw.drop(columns=['Unnamed: 3'], inplace=True)
 
-# Check for missing categories
-actual_categories = set(game_category["category"].dropna().unique())
-missing_categories = expected_categories - actual_categories
+# Drop 'Unnamed: 10' if it's completely empty.
+if 'Unnamed: 10' in df_raw.columns and df_raw['Unnamed: 10'].isna().all():
+    df_raw.drop(columns=['Unnamed: 10'], inplace=True)
 
-if missing_categories:
-    print(f"Warning: Missing categories in Game Category: {missing_categories}")
-else:
-    print("All expected categories are present in Game Category.")
+# Drop rows that are entirely empty.
+df_raw.dropna(how='all', inplace=True)
 
-# Check for the correct number of price bands
-if len(game_category["price_band"].unique()) != expected_price_bands:
-    print(
-        f"Warning: Expected {expected_price_bands} unique price bands, "
-        f"but found {len(game_category['price_band'].unique())} in Game Category."
-    )
+# Forward-fill the 'Guest name' column to propagate non-empty values downward.
+if 'Guest name' in df_raw.columns:
+    df_raw['Guest name'] = df_raw['Guest name'].ffill()
 
-# Adjust block formatting for ticket releases and seat list
-def adjust_block(block):
-    if isinstance(block, str) and block.startswith("0") and block[1:].isdigit():
-        block_number = int(block.lstrip("0"))  # Remove leading zeros
-        return f"{block_number} Club level"
-    elif isinstance(block, str) and block.startswith("C") and block[1:].isdigit():
-        block_number = int(block[1:])
-        return f"{block_number} Club level"
-    elif isinstance(block, str) and block.isdigit():
-        return f"{int(block)} Club level"
-    return block
+# Remove duplicate rows.
+df_raw.drop_duplicates(inplace=True)
 
-if ticket_releases is not None:
-    ticket_releases["block"] = ticket_releases["block"].apply(adjust_block)
-seat_list["block"] = seat_list["block"].apply(adjust_block)
+# Drop rows where all key columns (except 'Guest name') are empty.
+required_cols = [
+    'Event name', 'Location', 'Invitation Name', 'Email', 
+    'Date of sending', 'Date of confirmation sending', 'Status'
+]
+df_raw = df_raw.dropna(subset=required_cols, how='all')
 
-# Strip whitespace in all string columns
-tx_sales_data = tx_sales_data.applymap(lambda x: x.strip() if isinstance(x, str) else x)
-seat_list = seat_list.applymap(lambda x: x.strip() if isinstance(x, str) else x)
-game_category = game_category.applymap(lambda x: x.strip() if isinstance(x, str) else x)
-if ticket_releases is not None:
-    ticket_releases = ticket_releases.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+# Rename columns.
+df_raw.rename(columns={"Guest name": "GuestName"}, inplace=True)
 
-# Ensure numeric columns are properly typed
-game_category["seat_value"] = pd.to_numeric(game_category["seat_value"], errors="coerce")
-tx_sales_data["ticket_sold_price"] = pd.to_numeric(tx_sales_data["ticket_sold_price"], errors="coerce")
+# Drop columns that are entirely empty (removes blank columns like B, D, and K).
+df_raw = df_raw.dropna(axis=1, how='all')
 
-# Initialize lists for processing
-matched_data = []
-metrics_data = []
-missing_matches = []
-release_analysis = []
-
-# Match and update data for TX Sales Data
-for index, row in tx_sales_data.iterrows():
-    matched_yn = "N"
-    matching_seat = seat_list[
-        (seat_list["block"] == row["block"]) &
-        (seat_list["row"] == row["row"]) &
-        (seat_list["seat"] == row["seat"])
-    ]
-    if not matching_seat.empty:
-        row["crc_desc"] = matching_seat["crc_desc"].values[0]
-        row["price_band"] = matching_seat["price_band"].values[0]
-        matching_game = game_category[
-            (game_category["game_name"] == row["game_name"]) &
-            (game_category["game_date"] == row["game_date"]) &
-            (game_category["price_band"] == matching_seat["price_band"].values[0])
-        ]
-        if not matching_game.empty:
-            matched_yn = "Y"
-            row["category"] = matching_game["category"].values[0]
-            row["seat_value"] = matching_game["seat_value"].values[0]
-            row["value_generated"] = row["ticket_sold_price"] - matching_game["seat_value"].values[0]
-            metrics_data.append({
-                "game_name": row["game_name"],
-                "category": matching_game["category"].values[0],
-                "price_band": row["price_band"],
-                "crc_desc": row["crc_desc"],
-                "transfer_type": row["transfer_type"],
-                "ticket_sold_price": row["ticket_sold_price"],
-                "seat_value": matching_game["seat_value"].values[0],
-                "value_generated": row["value_generated"]
-            })
-    else:
-        missing_matches.append(row.to_dict())
-    row["matched_yn"] = matched_yn
-    matched_data.append(row)
-
-# Process Ticket Releases with the same logic and generate analysis
-if ticket_releases is not None:
-    for index, row in ticket_releases.iterrows():
-        matched_yn = "N"
-        sales_match = tx_sales_data[
-            (tx_sales_data["game_name"] == row["game_name"]) &
-            (tx_sales_data["block"] == row["block"]) &
-            (tx_sales_data["row"] == row["row"]) &
-            (tx_sales_data["seat"] == row["seat"])
-        ]
-        if not sales_match.empty:
-            matched_yn = "Y"
-            row["ticket_sold_price"] = sales_match["ticket_sold_price"].values[0]
-        else:
-            row["ticket_sold_price"] = None
-        row_dict = row.to_dict()
-        row_dict["matched_yn"] = matched_yn
-        release_analysis.append(row_dict)
-
-# Convert matched data, metrics data, unmatched rows, and release analysis to DataFrames
-matched_df = pd.DataFrame(matched_data)
-metrics_df = pd.DataFrame(metrics_data)
-missing_matches_df = pd.DataFrame(missing_matches)
-release_analysis_df = pd.DataFrame(release_analysis)
-
-# Save results to Excel
-with pd.ExcelWriter(output_file, engine="openpyxl") as writer:
-    tx_sales_data.to_excel(writer, sheet_name="All Data", index=False)
-    matched_df.to_excel(writer, sheet_name="Matched Data", index=False)
-    metrics_df.to_excel(writer, sheet_name="Detailed Metrics", index=False)
-    release_analysis_df.to_excel(writer, sheet_name="Release Analysis", index=False)
-    missing_matches_df.to_excel(writer, sheet_name="Missing Matches", index=False)
-
-print(f"Updated data saved to {output_file}")
+# Save the cleaned-up data.
+df_raw.to_excel("your_file_cleaned.xlsx", index=False)
