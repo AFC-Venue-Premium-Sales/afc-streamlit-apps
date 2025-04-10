@@ -53,7 +53,7 @@ def preprocess_file(uploaded_file):
 
 def run():
     # Set page configuration to wide mode.
-    # st.set_page_config(page_title="Guest Invitations Dashboard", layout="wide")
+    st.set_page_config(page_title="Guest Invitations Dashboard", layout="wide")
     
     # Sidebar: File uploader.
     st.sidebar.header("Upload Data")
@@ -72,16 +72,16 @@ def run():
             st.dataframe(df)
     
         # ---------------------------
-        # Sidebar: Filters for Location, Event name, and Status.
-        st.sidebar.header("Filters")
-        available_locations = sorted(df["Location"].dropna().unique())
-        selected_locations = st.sidebar.multiselect("Select Location(s)", options=available_locations, default=available_locations)
+        # Sidebar: Filters in an expander for a cleaner look.
+        with st.sidebar.expander("Filters", expanded=True):
+            available_locations = sorted(df["Location"].dropna().unique())
+            selected_locations = st.multiselect("Select Location(s)", options=available_locations, default=available_locations)
     
-        available_events = sorted(df["Event name"].dropna().unique())
-        selected_events = st.sidebar.multiselect("Select Event Name(s)", options=available_events, default=available_events)
+            available_events = sorted(df["Event name"].dropna().unique())
+            selected_events = st.multiselect("Select Event Name(s)", options=available_events, default=available_events)
     
-        available_statuses = sorted(df["Status"].dropna().unique())
-        selected_statuses = st.sidebar.multiselect("Select Status(es)", options=available_statuses, default=available_statuses)
+            available_statuses = sorted(df["Status"].dropna().unique())
+            selected_statuses = st.multiselect("Select Status(es)", options=available_statuses, default=available_statuses)
     
         # Filter the dataframe based on selected filters.
         filtered_df = df[
@@ -131,17 +131,17 @@ def run():
         # ---------------------------
         # Bar Charts: Invitations by Event.
         st.write("### Invitations by Event")
-        st.write("This chart shows the total number of invitations sent for each event. Each bar represents an event and its height indicates the number of invitations sent for that event.")
+        st.write("This chart shows the total number of invitations sent for each event.")
         st.bar_chart(event_counts)
     
         # ---------------------------
         # Bar Charts: Invitations by Location.
         st.write("### Invitations by Location")
-        st.write("This chart displays the total number of invitations sent from each executive box (location). Each bar represents an executive box and its height shows the number of invitations sent from that box.")
+        st.write("This chart displays the total number of invitations sent from each executive box (location).")
         st.bar_chart(location_counts)
     
         # ---------------------------
-        # Time Series Analysis
+        # Time Series Analysis.
         if 'Date of sending' in filtered_df.columns:
             # Convert "Date of sending" to datetime.
             filtered_df['Date of sending'] = pd.to_datetime(filtered_df['Date of sending'], errors='coerce')
@@ -152,7 +152,7 @@ def run():
             breakdown_option = st.sidebar.selectbox("Time Series Breakdown", ["Overall", "By Location", "By Event"], index=0)
     
             st.write("### Time Series Analysis")
-            st.write("This chart shows how invitations were sent over time. You can change the time frequency (daily, weekly, monthly) and break down the data overall, by location, or by event to see patterns and trends in invitation activity.")
+            st.write("This chart shows how the invitations were sent over time. Adjust the time frequency and breakdown to view trends overall, by location, or by event.")
             if breakdown_option == "Overall":
                 # Overall: plot total invitations sent over time.
                 ts_inv = filtered_df.groupby(pd.Grouper(key='Date of sending', freq=freq_str)).size()
