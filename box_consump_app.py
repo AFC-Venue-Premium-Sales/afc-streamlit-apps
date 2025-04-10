@@ -99,7 +99,7 @@ if st.session_state.get("authenticated", False):  # Ensure authentication exists
     # Provide a radio button for version selection in the sidebar
     version_choice = st.sidebar.radio(
         "Select Processing Logic", 
-        ["Conditional Formatting", "Premium Service Ops - PreOrders" "Guest Portal PreOrders", "Guest Portal Invites",]
+        ["Conditional Formatting", "Premium Service Ops - PreOrders", "Guest Portal PreOrders", "Guest Portal Invites",]
     )
     try:
         # Import the selected module based on user choice
