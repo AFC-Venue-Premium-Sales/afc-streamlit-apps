@@ -130,17 +130,20 @@ def run():
         # -------------
         # Load the preset executive boxes from the box_numbers file.
         try:
-            box_df = pd.read_excel("box_numbers.xlsx")
-            # Ensure the columns are correctly named. Adjust if needed.
+            box_df = pd.read_excel("/Users/cmunthali/Documents/PYTHON/APPS/box_numbers.xlsx")
+            # Ensure the columns are correctly named.
+            # 'Box Number' should match the boxes in the "Location" column.
             preset_boxes = box_df["Box Number"].unique()
         except Exception as e:
             st.error(f"Error loading box numbers: {e}")
+            box_df = pd.DataFrame(columns=["Box Number", "Box Owner"])
             preset_boxes = []
     
         # Identify boxes (from the preset) that haven't sent any invites.
         used_boxes = filtered_df["Location"].dropna().unique()
-        not_used_boxes = list(set(preset_boxes) - set(used_boxes))
-        not_used_count = len(not_used_boxes)
+        # Filter the box dataframe for rows with Box Number not in used_boxes.
+        not_used_df = box_df[~box_df["Box Number"].isin(used_boxes)]
+        not_used_count = len(not_used_df)
     
         st.subheader("High Level Metrics")
         col1, col2, col3, col4, col5 = st.columns(5)
@@ -152,11 +155,10 @@ def run():
     
         st.write(f"**Event with most invites:** {most_popular_event} ({most_event_invites})")
         st.write(f"**Executive Box with most invites (for top event):** {most_popular_location} ({top_event_location_count})")
-        st.write(f"**Total invites for that Box:** {most_location_invites}")
+        st.write(f"**Total invites so far for that Box:** {most_location_invites}")
     
-        # Provide a download button for the unused boxes.
-        if not_used_boxes:
-            not_used_df = pd.DataFrame(not_used_boxes, columns=["Unused Box Numbers"])
+        # Provide a download button for the unused boxes that includes Box Owner.
+        if not_used_count > 0:
             excel_data = to_excel(not_used_df)
             st.download_button(label="Download Boxes Not Utilized",
                                data=excel_data,
