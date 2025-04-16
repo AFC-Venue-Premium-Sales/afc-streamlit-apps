@@ -57,7 +57,6 @@ def to_excel(df):
     Convert a DataFrame to an Excel file in memory.
     """
     output = BytesIO()
-    # Write the data in Excel format using ExcelWriter and the xlsx engine
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         df.to_excel(writer, index=False, sheet_name='Unused Boxes')
     processed_data = output.getvalue()
@@ -130,8 +129,9 @@ def run():
         # -------------
         # Load the preset executive boxes from the box_numbers file.
         try:
-            box_df = pd.read_excel("box_numbers.xlsx")
-            # Ensure the columns are correctly named.
+            box_df = pd.read_excel("/Users/cmunthali/Documents/PYTHON/APPS/box_numbers.xlsx")
+            # Drop duplicates to ensure unique boxes.
+            box_df = box_df.drop_duplicates(subset=["Box Number"])
             preset_boxes = box_df["Box Number"].unique()
         except Exception as e:
             st.error(f"Error loading box numbers: {e}")
@@ -148,7 +148,6 @@ def run():
         boxes_utilized = total_boxes - not_used_count
     
         st.subheader("High Level Metrics")
-        # Create 6 columns for the scorecards.
         col1, col2, col3, col4, col5, col6 = st.columns(6)
         col1.metric("Total Invitations", total_invitations)
         col2.metric("Confirmed", confirmed)
@@ -186,7 +185,6 @@ def run():
         # ---------------------------
         # Time Series Analysis.
         if 'Date of sending' in filtered_df.columns:
-            # Convert "Date of sending" to datetime.
             filtered_df['Date of sending'] = pd.to_datetime(filtered_df['Date of sending'], errors='coerce')
     
             frequency_option = st.sidebar.selectbox("Select Time Frequency", ["Daily", "Weekly", "Monthly"], index=1)
@@ -204,7 +202,7 @@ def run():
                 ts_inv = filtered_df.groupby([pd.Grouper(key='Date of sending', freq=freq_str), 'Location']).size().unstack(fill_value=0)
                 st.write("#### Invitations Sent by Location")
                 st.line_chart(ts_inv)
-            else:  # By Event
+            else:
                 ts_inv = filtered_df.groupby([pd.Grouper(key='Date of sending', freq=freq_str), 'Event name']).size().unstack(fill_value=0)
                 st.write("#### Invitations Sent by Event")
                 st.line_chart(ts_inv)
