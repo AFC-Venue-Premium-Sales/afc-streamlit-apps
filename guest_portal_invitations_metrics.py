@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import altair as alt
+from io import BytesIO
 
 def preprocess_file(uploaded_file):
     # Read the Excel file without header.
@@ -51,8 +52,18 @@ def preprocess_file(uploaded_file):
     
     return df_raw
 
+def to_excel(df):
+    """
+    Convert a DataFrame to an Excel file in memory.
+    """
+    output = BytesIO()
+    # Write the data in Excel format using ExcelWriter and the xlsx engine
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name='Unused Boxes')
+    processed_data = output.getvalue()
+    return processed_data
+
 def run():
-    # Sidebar: File uploader.
     st.sidebar.header("Upload Data")
     uploaded_file = st.sidebar.file_uploader("Upload Guest Invitation Excel File", type=["xls", "xlsx"])
     
@@ -69,14 +80,16 @@ def run():
             st.dataframe(df)
     
         # ---------------------------
-        # Sidebar: Filters in an expander for a cleaner look.
-        with st.sidebar.expander("Filters", expanded=True):
+        # Sidebar filters in separate expanders
+        with st.sidebar.expander("Select Location(s)", expanded=True):
             available_locations = sorted(df["Location"].dropna().unique())
             selected_locations = st.multiselect("Select Location(s)", options=available_locations, default=available_locations)
     
+        with st.sidebar.expander("Select Event Name(s)", expanded=True):
             available_events = sorted(df["Event name"].dropna().unique())
             selected_events = st.multiselect("Select Event Name(s)", options=available_events, default=available_events)
     
+        with st.sidebar.expander("Select Status(es)", expanded=True):
             available_statuses = sorted(df["Status"].dropna().unique())
             selected_statuses = st.multiselect("Select Status(es)", options=available_statuses, default=available_statuses)
     
@@ -114,16 +127,43 @@ def run():
             ]
         )
     
+        # -------------
+        # Load the preset executive boxes from the box_numbers file.
+        try:
+            box_df = pd.read_excel("/Users/cmunthali/Documents/PYTHON/APPS/box_numbers.xlsx")
+            # Ensure the columns are correctly named. Adjust if needed.
+            preset_boxes = box_df["Box Number"].unique()
+        except Exception as e:
+            st.error(f"Error loading box numbers: {e}")
+            preset_boxes = []
+    
+        # Identify boxes (from the preset) that haven't sent any invites.
+        used_boxes = filtered_df["Location"].dropna().unique()
+        not_used_boxes = list(set(preset_boxes) - set(used_boxes))
+        not_used_count = len(not_used_boxes)
+    
         st.subheader("High Level Metrics")
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3, col4, col5 = st.columns(5)
         col1.metric("Total Invitations", total_invitations)
         col2.metric("Confirmed", confirmed)
         col3.metric("Not Coming", not_coming)
         col4.metric("Pending", pending)
+        col5.metric("Boxes Not Utilized", not_used_count)
     
         st.write(f"**Event with most invites:** {most_popular_event} ({most_event_invites})")
         st.write(f"**Executive Box with most invites (for top event):** {most_popular_location} ({top_event_location_count})")
         st.write(f"**Total invites for that Box:** {most_location_invites}")
+    
+        # Provide a download button for the unused boxes.
+        if not_used_boxes:
+            not_used_df = pd.DataFrame(not_used_boxes, columns=["Unused Box Numbers"])
+            excel_data = to_excel(not_used_df)
+            st.download_button(label="Download Boxes Not Utilized",
+                               data=excel_data,
+                               file_name='not_utilized_boxes.xlsx',
+                               mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        else:
+            st.info("All boxes have been utilized.")
     
         # ---------------------------
         # Bar Charts: Invitations by Event.
