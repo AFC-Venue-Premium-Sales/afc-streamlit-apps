@@ -132,7 +132,6 @@ def run():
         try:
             box_df = pd.read_excel("box_numbers.xlsx")
             # Ensure the columns are correctly named.
-            # 'Box Number' should match the boxes in the "Location" column.
             preset_boxes = box_df["Box Number"].unique()
         except Exception as e:
             st.error(f"Error loading box numbers: {e}")
@@ -141,21 +140,26 @@ def run():
     
         # Identify boxes (from the preset) that haven't sent any invites.
         used_boxes = filtered_df["Location"].dropna().unique()
-        # Filter the box dataframe for rows with Box Number not in used_boxes.
         not_used_df = box_df[~box_df["Box Number"].isin(used_boxes)]
         not_used_count = len(not_used_df)
     
+        # Calculate Boxes Utilized from the preset.
+        total_boxes = len(box_df)
+        boxes_utilized = total_boxes - not_used_count
+    
         st.subheader("High Level Metrics")
-        col1, col2, col3, col4, col5 = st.columns(5)
+        # Create 6 columns for the scorecards.
+        col1, col2, col3, col4, col5, col6 = st.columns(6)
         col1.metric("Total Invitations", total_invitations)
         col2.metric("Confirmed", confirmed)
         col3.metric("Not Coming", not_coming)
         col4.metric("Pending", pending)
         col5.metric("Boxes Not Utilized", not_used_count)
+        col6.metric("Boxes Utilized", boxes_utilized)
     
         st.write(f"**Event with most invites:** {most_popular_event} ({most_event_invites})")
         st.write(f"**Executive Box with most invites (for top event):** {most_popular_location} ({top_event_location_count})")
-        st.write(f"**Total invites so far for that Box:** {most_location_invites}")
+        st.write(f"**Total invites for that Box:** {most_location_invites}")
     
         # Provide a download button for the unused boxes that includes Box Owner.
         if not_used_count > 0:
@@ -193,7 +197,6 @@ def run():
             st.write("### Time Series Analysis")
             st.write("This chart shows how the invitations were sent over time. Adjust the time frequency and breakdown to view trends overall, by location, or by event.")
             if breakdown_option == "Overall":
-                # Overall: plot total invitations sent over time.
                 ts_inv = filtered_df.groupby(pd.Grouper(key='Date of sending', freq=freq_str)).size()
                 ts_overall = pd.DataFrame({"Invitations Sent": ts_inv})
                 st.line_chart(ts_overall)
