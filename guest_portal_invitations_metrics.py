@@ -153,7 +153,7 @@ def run():
     
         st.subheader("High Level Metrics")
         # Create a grid of 8 columns for metrics.
-        col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
+        col1, col2, col7, col3, col4, col5, col6, col8 = st.columns(8)
         col1.metric("Total Invitations", total_invitations)
         col2.metric("Confirmed Invitations", confirmed)
         col7.metric("Confirmed %", f"{confirmed_pct:.0f}%")
