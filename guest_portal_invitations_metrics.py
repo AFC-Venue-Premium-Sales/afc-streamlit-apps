@@ -155,13 +155,14 @@ def run():
         # Create a grid of 8 columns for metrics.
         col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
         col1.metric("Total Invitations", total_invitations)
-        col2.metric("Confirmed", confirmed)
+        col2.metric("Confirmed Invitations", confirmed)
+        col7.metric("Confirmed %", f"{confirmed_pct:.0f}%")
         col3.metric("Not Coming", not_coming)
-        col4.metric("Pending", pending)
+        col4.metric("Pending Invitations", pending)
         col5.metric("Boxes Not Utilized", not_used_count)
         col6.metric("Boxes Utilized", boxes_utilized)
-        col7.metric("Confirmed %", f"{confirmed_pct:.1f}%")
-        col8.metric("Boxes Utilized %", f"{boxes_utilized_pct:.1f}%")
+        # col7.metric("Confirmed %", f"{confirmed_pct:.1f}%")
+        col8.metric("Boxes Utilized %", f"{boxes_utilized_pct:.0f}%")
     
         st.write(f"**Event with most invites:** {most_popular_event} ({most_event_invites})")
         st.write(f"**Executive Box with most invites (for top event):** {most_popular_location} ({top_event_location_count})")
