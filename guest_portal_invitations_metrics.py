@@ -130,7 +130,7 @@ def run():
         # -------------
         # Load the preset executive boxes from the box_numbers file.
         try:
-            box_df = pd.read_excel("/Users/cmunthali/Documents/PYTHON/APPS/box_numbers.xlsx")
+            box_df = pd.read_excel("box_numbers.xlsx")
             # Ensure the columns are correctly named.
             # 'Box Number' should match the boxes in the "Location" column.
             preset_boxes = box_df["Box Number"].unique()
