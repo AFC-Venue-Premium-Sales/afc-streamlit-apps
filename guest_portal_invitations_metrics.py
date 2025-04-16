@@ -108,7 +108,10 @@ def run():
         status_counts = filtered_df['Status'].value_counts().to_dict()
         confirmed = status_counts.get('Confirmed', 0)
         not_coming = status_counts.get('Not Coming', 0)
-        pending = total_invitations - confirmed - not_coming
+        pending = total_invitations - confirmed - not_coming  # Alternatively, pending might come from the data
+        
+        # Calculate additional percentage metrics.
+        confirmed_pct = (confirmed / total_invitations * 100) if total_invitations > 0 else 0
     
         event_counts = filtered_df['Event name'].value_counts()
         most_popular_event = event_counts.idxmax() if not event_counts.empty else "N/A"
@@ -129,8 +132,8 @@ def run():
         # -------------
         # Load the preset executive boxes from the box_numbers file.
         try:
-            box_df = pd.read_excel("box_numbers.xlsx")
-            # Drop duplicates to ensure unique boxes.
+            box_df = pd.read_excel("/Users/cmunthali/Documents/PYTHON/APPS/box_numbers.xlsx")
+            # Drop duplicate boxes to ensure unique preset boxes.
             box_df = box_df.drop_duplicates(subset=["Box Number"])
             preset_boxes = box_df["Box Number"].unique()
         except Exception as e:
@@ -146,15 +149,19 @@ def run():
         # Calculate Boxes Utilized from the preset.
         total_boxes = len(box_df)
         boxes_utilized = total_boxes - not_used_count
+        boxes_utilized_pct = (boxes_utilized / total_boxes * 100) if total_boxes > 0 else 0
     
         st.subheader("High Level Metrics")
-        col1, col2, col3, col4, col5, col6 = st.columns(6)
+        # Create a grid of 8 columns for metrics.
+        col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
         col1.metric("Total Invitations", total_invitations)
         col2.metric("Confirmed", confirmed)
         col3.metric("Not Coming", not_coming)
         col4.metric("Pending", pending)
         col5.metric("Boxes Not Utilized", not_used_count)
         col6.metric("Boxes Utilized", boxes_utilized)
+        col7.metric("Confirmed %", f"{confirmed_pct:.1f}%")
+        col8.metric("Boxes Utilized %", f"{boxes_utilized_pct:.1f}%")
     
         st.write(f"**Event with most invites:** {most_popular_event} ({most_event_invites})")
         st.write(f"**Executive Box with most invites (for top event):** {most_popular_location} ({top_event_location_count})")
