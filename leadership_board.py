@@ -469,34 +469,31 @@ crest_base64 = get_base64_image("assets/arsenal_crest_gold.png")
 
 def get_upcoming_fixtures(inventory_df, n=3):
     """
-    Identify the next N upcoming fixtures from the MERGED inventory DataFrame,
+    Identify the next N upcoming fixtures from the inventory data,
     sorted by KickOffEventStart ascending.
-    Ensures duplicate fixtures don't repeat and the soonest matches are displayed.
+    This version allows fixtures with the same name (e.g. PSG group vs knockout) to appear separately.
     """
 
-    # Ensure KickOffEventStart is in datetime format
+    # Ensure datetime is clean
     inventory_df["KickOffDT"] = pd.to_datetime(inventory_df["KickOffEventStart"], errors="coerce")
-    
-    # Strip extra whitespace from EventName
-    inventory_df["EventName"] = inventory_df["EventName"].str.strip()
+    inventory_df["EventName"] = inventory_df["EventName"].astype(str).str.strip()
+    inventory_df["EventCompetition"] = inventory_df["EventCompetition"].astype(str).str.strip()
 
-    # Get today's date
+    # Filter to future events
     now = datetime.now()
-
-    # Filter out only future fixtures
     future_df = inventory_df[inventory_df["KickOffDT"] > now].copy()
-    
-    # Exclude specific fixture
-    future_df = future_df[future_df["EventName"] != "Arsenal Women v Leicester Women"]
 
-    # Sort by KickOffDT to ensure closest fixtures appear first
+    # Exclude any specific unwanted fixture
+    future_df = future_df[~future_df["EventName"].str.lower().eq("arsenal women v leicester women")]
+
+    # Sort chronologically
     future_df = future_df.sort_values(by="KickOffDT", ascending=True)
 
-    # Drop duplicates based on EventName + Competition, keeping the soonest kickoff
-    unique_fixtures = future_df.drop_duplicates(subset=["EventName", "EventCompetition"], keep="first")
+    # Drop exact duplicates across all three
+    future_df = future_df.drop_duplicates(subset=["EventName", "EventCompetition", "KickOffDT"], keep="first")
 
-    # Return only the top N fixtures
-    return unique_fixtures.head(n)
+    # Return top N
+    return future_df.head(n)
 
 
 
