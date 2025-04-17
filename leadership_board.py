@@ -295,6 +295,7 @@ def get_next_fixture(data, budget_df):
     Returns (fixture_name, fixture_date, budget_target, event_competition).
     """
     data["KickOffEventStart"] = pd.to_datetime(data["KickOffEventStart"], errors="coerce")
+    budget_df["KickOffEventStart"] = pd.to_datetime(budget_df["KickOffEventStart"], errors="coerce")
     today = datetime.now()
     
     # Normalize fixture names
@@ -304,8 +305,8 @@ def get_next_fixture(data, budget_df):
     # Filter future fixtures
     future_data = data[data["KickOffEventStart"] > today].copy()
     
-    # Exclude specific fixture
-    future_data = future_data[future_data["Fixture Name"] != "Arsenal Women v Leicester Women"]
+    # Optional: Exclude a specific fixture if needed
+    future_data = future_data[future_data["Fixture Name"] != "arsenal women v leicester women"]
 
     # Sort fixtures by the soonest kickoff time
     future_data = future_data.sort_values(by="KickOffEventStart", ascending=True)
@@ -315,15 +316,20 @@ def get_next_fixture(data, budget_df):
 
     # Get the next fixture details
     next_fixture = future_data.iloc[0]
-    fixture_name = next_fixture["Fixture Name"]  # Should match filtered_df_without_seats column
+    fixture_name = next_fixture["Fixture Name"]
     fixture_date = next_fixture["KickOffEventStart"]
     event_competition = next_fixture["EventCompetition"]
 
-    # Retrieve the budget target from budget_df
-    budget_target_row = budget_df[budget_df["Fixture Name"] == fixture_name]
+    # Match on both fixture name AND kickoff date
+    budget_target_row = budget_df[
+        (budget_df["Fixture Name"] == fixture_name) &
+        (budget_df["KickOffEventStart"] == fixture_date)
+    ]
+
     budget_target = budget_target_row["Budget Target"].iloc[0] if not budget_target_row.empty else 0
 
     return fixture_name, fixture_date, budget_target, event_competition
+
 
 
 
