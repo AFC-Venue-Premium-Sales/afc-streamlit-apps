@@ -934,10 +934,6 @@ def run_dashboard():
     # filtered_services_data = filtered_data[mask_services]
     
     
-    import streamlit as st
-    import pandas as pd
-    from datetime import datetime
-
     def render_next_fixture_sidebar(fixture_row, filtered_data, budget_df):
         """
         Renders a quick summary widget in the sidebar for the given fixture.
@@ -947,11 +943,11 @@ def run_dashboard():
             st.sidebar.markdown(
                 """
                 <style>
-                    @font-face {
+                    @font-face {{
                         font-family: 'Chapman-Bold';
                         src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
-                    }
-                    .no-fixture-widget {
+                    }}
+                    .no-fixture-widget {{
                         background-color: #fff0f0;
                         border: 2px solid #E41B17;
                         border-radius: 15px;
@@ -961,7 +957,7 @@ def run_dashboard():
                         font-size: 28px;
                         font-weight: bold;
                         color: #E41B17;
-                    }
+                    }}
                 </style>
                 <div class="no-fixture-widget">
                     ⚠️ No upcoming fixtures found.
@@ -975,45 +971,48 @@ def run_dashboard():
         event_competition = fixture_row["EventCompetition"]
         fixture_date = pd.to_datetime(fixture_row["KickOffEventStart"], errors="coerce")
 
-        # 1) Days to fixture
+        # ✅ Calculate fixture details
         days_to_fixture = (fixture_date - datetime.now()).days if pd.notnull(fixture_date) else "TBC"
 
-        # 2) Budget target lookup
+        # ✅ Ensure correct lookup in budget_df
         if isinstance(budget_df, pd.DataFrame):
             matching_row = budget_df[
                 (budget_df["Fixture Name"].str.strip().str.lower() == fixture_name.strip().lower()) &
-                (budget_df["EventCompetition"].str.strip().str.lower() == event_competition.strip().lower())
+                (budget_df["EventCompetition"].str.strip().str.lower() == event_competition.strip().lower())&
+                (pd.to_datetime(budget_df["KickOffEventStart"], errors="coerce") == fixture_date)
             ]
             budget_target = matching_row["Budget Target"].values[0] if not matching_row.empty else 0
         else:
             budget_target = budget_df.get((fixture_name, event_competition), 0)
 
+        # ✅ Ensure budget_target is numeric
         budget_target = float(str(budget_target).replace("£", "").replace(",", "").strip()) if budget_target else 0
 
-        # 3) FIXED SALES FILTER: only include this fixture_name + competition + exact kickoff
-        sales = filtered_data.copy()
-        sales["KickOff_dt"] = pd.to_datetime(sales["KickOffEventStart"], errors="coerce")
-        fixture_sales = sales[
-            (sales["Fixture Name"].str.strip().str.lower()== fixture_name.strip().lower()) &
-            (sales["EventCompetition"].str.strip().str.lower()== event_competition.strip().lower()) &
-            (sales["KickOff_dt"]== fixture_date)
+        # ✅ FIX: Filter correct sales data
+        fixture_data = filtered_df_without_seats[
+            (filtered_df_without_seats["Fixture Name"].str.strip().str.lower() == fixture_name.strip().lower()) &
+            (filtered_df_without_seats["EventCompetition"].str.strip().str.lower() == event_competition.strip().lower())
         ]
 
-        if not fixture_sales.empty:
-            # sum up actual revenue: Seats * Price per sale
-            fixture_sales["Price"] = pd.to_numeric(fixture_sales["Price"], errors="coerce").fillna(0)
-            fixture_sales["Seats"] = pd.to_numeric(fixture_sales["Seats"], errors="coerce").fillna(0)
-            fixture_revenue = (fixture_sales["Seats"] * fixture_sales["Price"]).sum()
+        # ✅ Ensure numeric conversion
+        if not fixture_data.empty:
+            fixture_data["Price"] = pd.to_numeric(fixture_data["Price"], errors="coerce").fillna(0)
+            fixture_revenue = fixture_data["Price"].sum()  # ✅ CORRECT Calculation
         else:
             fixture_revenue = 0
 
-        # 4) Budget achieved %
+        # ✅ Compute budget percentage achieved
         budget_achieved = round((fixture_revenue / budget_target) * 100, 2) if budget_target > 0 else 0
 
-        # Optional: debug to console
-        print(f"🔍 DEBUG: {fixture_name}@{fixture_date} → revenue £{fixture_revenue:,.0f} / target £{budget_target:,.0f} = {budget_achieved}%")
+        # ✅ Debugging Output
+        print("\n🔍 DEBUG: Fixture Revenue Calculation")
+        print(f"Fixture: {fixture_name} | Competition: {event_competition}")
+        print(f"Total Rows Matched: {len(fixture_data)}")
+        print(f"🎯 Budget Target: £{budget_target:,.0f}")
+        print(f"💰 FIXED Fixture Revenue: £{fixture_revenue:,.0f}")
+        print(f"📊 Budget Target Achieved: {budget_achieved:.2f}%")
 
-        # 5) Minimal Next Fixture card
+        # 1️⃣ First widget: minimal “Next Fixture” card 
         st.sidebar.markdown(
             f"""
             <style>
@@ -1023,7 +1022,7 @@ def run_dashboard():
                 }}
                 .next-fixture-minimal {{
                     background-color: #fff0f0;
-                    border: 2px solid #E41B17;
+                    border: 2px solid #E41B17; /* Use Blue for the border if desired */
                     border-radius: 15px;
                     margin-top: 10px;
                     padding: 15px;
@@ -1033,12 +1032,12 @@ def run_dashboard():
                 }}
                 .next-fixture-minimal .header-text {{
                     font-size: 24px;
-                    color: #0047AB;
+                    color: #0047AB; /* Blue for "Next Fixture" */
                     margin-bottom: 10px;
                 }}
                 .next-fixture-minimal .fixture-title {{
                     font-size: 22px;
-                    color: #E41B17;
+                    color: #E41B17; /* Red for fixture name */
                     margin-bottom: 5px;
                 }}
             </style>
@@ -1050,7 +1049,7 @@ def run_dashboard():
             unsafe_allow_html=True
         )
 
-        # 6) Detailed Next Fixture Details card
+        # 2️⃣ Second widget: detailed “Next Fixture Details” card
         st.sidebar.markdown(
             f"""
             <style>
@@ -1084,16 +1083,15 @@ def run_dashboard():
             <div class="next-fixture-widget">
                 🏟️ Next Fixture Details <br>
                 <span class="fixture-info">⏳ Days to Fixture:</span>
-                <span class="fixture-days">{days_to_fixture} days</span><br>
+                <span class="fixture-days">{days_to_fixture} days</span>
                 <span class="fixture-info">🎯 Budget Target:</span>
-                <span class="fixture-days">£{budget_target:,.0f}</span><br>
+                <span class="fixture-days">£{budget_target:,.0f}</span>
                 <span class="fixture-info">✅ Budget Target Achieved:</span>
                 <span class="fixture-days">{budget_achieved:.2f}%</span>
             </div>
             """,
             unsafe_allow_html=True
         )
-
 
 
 
