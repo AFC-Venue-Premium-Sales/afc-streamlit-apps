@@ -504,11 +504,35 @@ def format_date_suffix(day):
     suffixes = {1: "st", 2: "nd", 3: "rd"}
     return f"{day}{suffixes.get(day % 10, 'th')}"
 
+import streamlit as st
+import pandas as pd
+
 def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
     """
     Displays the inventory details for upcoming fixtures including package stock, prices, and remaining seats.
     Ensures that stock is calculated properly by subtracting actual sales. It calculates Seats sold minus Available stock at the time of the pull.
     """
+    # --- PATCH: normalize kickoff and handle Arsenal v PSG special case ---
+    kickoff_dt = pd.to_datetime(fixture_row["KickOffEventStart"], errors="coerce")
+    merged = merged_inventory.copy()
+    merged["KickOff_dt"] = pd.to_datetime(merged["KickOffEventStart"], errors="coerce")
+
+    if (
+        fixture_row.get("EventName", "") == "Arsenal v Paris Saint‑Germain"
+        and kickoff_dt == pd.Timestamp("2025-04-29 19:00:00")
+    ):
+        df = merged[
+            (merged["EventName"] == "Arsenal v Paris Saint‑Germain") &
+            (merged["KickOff_dt"]   == pd.Timestamp("2025-04-29 19:00:00"))
+        ].copy()
+    else:
+        df = merged[
+            (merged["EventName"]        == fixture_row["EventName"]) &
+            (merged["EventCompetition"] == fixture_row.get("EventCompetition", "")) &
+            (merged["KickOff_dt"]       == kickoff_dt)
+        ].copy()
+
+    # --- CSS Styling ---
     st.markdown(
         """
         <style>
@@ -521,12 +545,12 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
                 src: url('fonts/Northbank-N7_2789728357.ttf') format('truetype');
             }
             
-            /* 1. Remove default Streamlit top padding (move table up) */
+            /* 1. Remove default Streamlit top padding */
             .main .block-container {
-            padding-top: 0rem !important; 
-            margin-top: 40px !important;
-            margin-left: -60px !important; /* Move content to the left */
-            max-width: 80% !important; /* Reduce width for better alignment */
+                padding-top: 0rem !important; 
+                margin-top: 40px !important;
+                margin-left: -60px !important;
+                max-width: 80% !important;
             }
             
             body, html {
@@ -536,16 +560,15 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
                 width: 100%;
             }
 
-            /* Optional Wrapper to allow horizontal scrolling if needed */
+            /* Horizontal scrolling wrapper */
             .table-wrapper {
                 width: 100%;
                 overflow-x: auto; 
                 margin: 0 auto;
-                margin-left: 0px;  /* Align table fully to the left */
+                margin-left: 0px;
             }
 
             .fixture-table {
-                /* Let columns auto-size based on content */
                 table-layout: auto;
                 width: 100%;
                 border-collapse: collapse;
@@ -562,7 +585,7 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
                 border-bottom: 2px solid black;
                 background-color: #EAEAEA;
                 color: black;
-                white-space: nowrap; /* Prevent wrapping in headers */
+                white-space: nowrap;
             }
 
             /* Table Cells */
@@ -574,7 +597,7 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
                 padding: 5px;
                 border-bottom: 1px solid #ddd;
                 background-color: white;
-                white-space: nowrap; /* Prevent wrapping in table cells */
+                white-space: nowrap;
             }
 
             .fixture-table tr:nth-child(even) {
@@ -586,141 +609,95 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
             }
         </style>
         """,
-    unsafe_allow_html=True
-)
+        unsafe_allow_html=True
+    )
 
-    # ✅ 1. Filter inventory data for the selected fixture and event competition
-    df_fixture = merged_inventory[
-        (merged_inventory["EventName"] == fixture_row["EventName"]) &
-        (merged_inventory["EventCompetition"] == fixture_row.get("EventCompetition", "")) &
-        (merged_inventory["KickOffEventStart"] == fixture_row["KickOffEventStart"])
-    ].copy()
-
-    # ✅ 2. Ensure 'MaxSaleQuantity' (Stock Available) is present
-    if "MaxSaleQuantity" not in df_fixture.columns:
+    # 1. Ensure 'MaxSaleQuantity' present
+    if "MaxSaleQuantity" not in df.columns:
         st.error("⚠️ 'MaxSaleQuantity' column is missing in API inventory data!")
         return
+    if "AvailableSeats" not in df.columns:
+        df["AvailableSeats"] = 0
 
-    # ✅ 3. Keep AvailableSeats column (if exists)
-    if "AvailableSeats" not in df_fixture.columns:
-        df_fixture["AvailableSeats"] = 0  # Placeholder to avoid errors
+    # 2. Convert numeric columns
+    df["MaxSaleQuantity"] = pd.to_numeric(df["MaxSaleQuantity"], errors="coerce").fillna(0).astype(int)
+    df["Capacity"]       = pd.to_numeric(df["Capacity"], errors="coerce").fillna(0).astype(int)
+    df["Price"]          = pd.to_numeric(df["Price"], errors="coerce").fillna(0)
 
-    # ✅ 4. Convert MaxSaleQuantity and Capacity to numeric
-    df_fixture["MaxSaleQuantity"] = pd.to_numeric(df_fixture["MaxSaleQuantity"], errors="coerce").fillna(0).astype(int)
-    df_fixture["Capacity"] = pd.to_numeric(df_fixture["Capacity"], errors="coerce").fillna(0).astype(int)
+    # 3. Compute Stock Available, fallback for Box packages
+    df["Stock Available"] = df["MaxSaleQuantity"]
+    box_mask = df["PackageName"].str.contains("Box", case=False, na=False)
+    for pkg in df.loc[box_mask, "PackageName"].unique():
+        sub = df[df["PackageName"] == pkg]
+        if sub["MaxSaleQuantity"].sum() == 0:
+            df.loc[df["PackageName"] == pkg, "Stock Available"] = sub["Capacity"].sum()
 
-    # ✅ 5. Adjust Stock Available for Boxes (N7, N5, any "Box" package)
-    df_fixture["Stock Available"] = df_fixture["MaxSaleQuantity"]  # Default: Use MaxSaleQuantity
-
-    # Identify packages with "Box" in their name where MaxSaleQuantity is 0
-    box_packages = df_fixture[df_fixture["PackageName"].str.contains("Box", case=False, na=False)]
-
-    for package in box_packages["PackageName"].unique():
-        package_rows = df_fixture[df_fixture["PackageName"] == package]
-        if package_rows["MaxSaleQuantity"].sum() == 0:  # If all MaxSaleQuantity are 0, use summed Capacity
-            total_capacity = package_rows["Capacity"].sum()
-            df_fixture.loc[df_fixture["PackageName"] == package, "Stock Available"] = total_capacity
-
-    # ✅ 6. Convert Price to numeric safely
-    df_fixture["Price"] = pd.to_numeric(df_fixture["Price"], errors="coerce").fillna(0)
-
-    # ✅ 7. Aggregate sales data for 'Seats Sold'
-    df_sales_for_fixture = full_sales_data[
-        (full_sales_data["Fixture Name"] == fixture_row["EventName"]) &
-        (full_sales_data["EventCompetition"] == fixture_row.get("EventCompetition", ""))
+    # 4. Aggregate 'Seats Sold'
+    sales = full_sales_data[
+        (full_sales_data["Fixture Name"]       == fixture_row["EventName"]) &
+        (full_sales_data["EventCompetition"]   == fixture_row.get("EventCompetition", ""))
     ]
-    
-    if df_sales_for_fixture.empty:
-        df_fixture["Seats Sold"] = 0
+    if sales.empty:
+        df["Seats Sold"] = 0
     else:
-        sales_agg = (
-            df_sales_for_fixture
-            .groupby(["Package Name", "EventCompetition"])["Seats"]
-            .sum()
-            .reset_index()
-            .rename(columns={"Seats": "Seats Sold"})
+        agg = (
+            sales.groupby(["Package Name", "EventCompetition"])["Seats"]
+                 .sum()
+                 .reset_index()
+                 .rename(columns={"Seats": "Seats Sold"})
         )
+        df = df.merge(agg, left_on="PackageName", right_on="Package Name", how="left")
+        df.drop(columns="Package Name", inplace=True, errors="ignore")
+        df["Seats Sold"] = pd.to_numeric(df["Seats Sold"], errors="coerce").fillna(0).astype(int)
 
-        # ✅ Merge sales with inventory
-        df_fixture = pd.merge(
-            df_fixture,
-            sales_agg,
-            left_on="PackageName",
-            right_on="Package Name",
-            how="left"
-        )
-        df_fixture.drop(columns="Package Name", inplace=True, errors="ignore")
+    # 5. Compute 'Seats Remaining'
+    df["Seats Remaining"] = (df["Stock Available"] - df["Seats Sold"]).clip(lower=0)
 
-        df_fixture["Seats Sold"] = pd.to_numeric(df_fixture["Seats Sold"], errors="coerce").fillna(0).astype(int)
-
-    # ✅ 8. Compute Stock Remaining (ensuring no negative values)
-    df_fixture["Stock Remaining"] = (df_fixture["Stock Available"] - df_fixture["Seats Sold"]).clip(lower=0)
-
-    # ✅ 9. Rename 'Price' to 'Current Price' and format it
-    df_fixture["Current Price"] = df_fixture["Price"].apply(lambda x: f"£{x:,.2f}")
-
-    # ✅ 10. Exclude specific packages
-    df_fixture["PackageName"] = df_fixture["PackageName"].str.strip()
-    df_fixture = df_fixture[~df_fixture["PackageName"].isin([
+    # 6. Format Price & clean package names
+    df["Current Price"] = df["Price"].apply(lambda x: f"£{x:,.2f}")
+    df["PackageName"]   = df["PackageName"].str.strip()
+    exclude_list = [
         "INTERNAL MBM BOX",
         "Woolwich Restaurant",
         "AWFC Executive Box - Ticket Only",
         "AWFC Executive Box - Ticket + F&B",
         "AWFC Box Arsenal"
-    ])]
-    
-   # 11️⃣ Convert price to numeric for sorting
-    df_fixture["Sort Price"] = df_fixture["Current Price"].replace("[£,]", "", regex=True).astype(float)
+    ]
+    df = df[~df["PackageName"].isin(exclude_list)]
 
-    # Rename 'PackageName' to 'Package Name' for display
-    df_fixture.rename(columns={
-        "PackageName": "Package Name", 
-        "Stock Available": "Seats Available", 
-        "Stock Remaining": "Seats Remaining"
+    # 7. Sort & dedupe
+    df["SortPrice"] = df["Current Price"].replace("[£,]", "", regex=True).astype(float)
+    df = df.sort_values(by="SortPrice", ascending=False)
+    df = df.drop_duplicates(subset=["PackageName"], keep="first")
+
+    # 8. Rename for display
+    df.rename(columns={
+        "PackageName": "Package Name",
+        "Stock Available": "Seats Available"
     }, inplace=True)
 
-    # ✅ Sort by Price so the row you keep is the one with largest Price (optional)
-    df_fixture = df_fixture.sort_values(by="Price", ascending=False)
-
-    # ✅ Drop duplicates by "Package Name", keeping the first occurrence
-    df_fixture.drop_duplicates(subset=["Package Name"], keep="first", inplace=True)
-
-    # 12. Apply "SOLD OUT" Styling for Package Name if Seats Remaining = 0
-    def style_seats_remaining(seats_remaining):
-        """
-        Returns a styled <div> for the "Seats Remaining" cell:
-        - If seats_remaining <= 0, shows "SOLD OUT" in red background & white text (font-size 10px)
-        - Otherwise, displays the numeric seats_remaining (font-size 18px)
-        """
-        if seats_remaining <= 0:
+    # 9. Apply SOLD OUT styling
+    def style_remaining(val):
+        if val <= 0:
             return (
-                "<div style='background-color: red; color: white; font-family: Chapman-Bold; "
-                "font-size: 18px; font-weight: bold; padding: 5px; text-align: center; white-space: nowrap;'>"
+                "<div style='background-color: red; color: white; "
+                "font-family: Chapman-Bold; font-size: 18px; font-weight: bold; "
+                "padding: 5px; text-align: center; white-space: nowrap;'>"
                 "SOLD OUT</div>"
             )
-        else:
-            return (
-                f"<div style='color: black; font-family: Chapman-Bold; font-size: 24px; font-weight: bold; "
-                f"padding: 5px; text-align: center; white-space: nowrap;'>{seats_remaining}</div>"
-            )
+        return (
+            f"<div style='color: black; font-family: Chapman-Bold; "
+            f"font-size: 24px; font-weight: bold; padding: 5px; "
+            f"text-align: center; white-space: nowrap;'>{val}</div>"
+        )
+    df["Seats Remaining"] = df["Seats Remaining"].apply(style_remaining)
 
+    # 10. Render HTML table
+    html = df[[
+        "Package Name", "Seats Available", "Seats Sold", "Seats Remaining", "Current Price"
+    ]].to_html(classes="fixture-table", index=False, escape=False)
+    st.markdown(html, unsafe_allow_html=True)
 
-
-    df_fixture["Seats Remaining"] = df_fixture["Seats Remaining"].apply(style_seats_remaining)
-
-
-    # 13. Generate HTML Table
-    html_table = df_fixture[["Package Name", "Seats Available", "Seats Sold", "Seats Remaining", "Current Price"]].to_html(
-        classes='fixture-table', index=False, escape=False
-    )
-
-    # Final display
-    st.markdown(
-        f"""
-        {html_table}
-        """,
-        unsafe_allow_html=True
-)
 
 
 ################################################################################
