@@ -294,52 +294,36 @@ def get_next_fixture(data, budget_df):
     Finds the earliest upcoming fixture based on 'KickOffEventStart'.
     Returns (fixture_name, fixture_date, budget_target, event_competition).
     """
-
-    # Coerce datetime
     data["KickOffEventStart"] = pd.to_datetime(data["KickOffEventStart"], errors="coerce")
-    budget_df["KickOffEventStart"] = pd.to_datetime(budget_df["KickOffEventStart"], errors="coerce")
-
-    # Round datetime to minute to avoid micro mismatches
-    data["KickOffEventStart"] = data["KickOffEventStart"].dt.round('min')
-    budget_df["KickOffEventStart"] = budget_df["KickOffEventStart"].dt.round('min')
-
-    # Normalize text columns
-    for col in ["Fixture Name", "EventCompetition"]:
-        data[col] = data[col].astype(str).str.strip().str.lower().str.replace(r'\s+', ' ', regex=True)
-        budget_df[col] = budget_df[col].astype(str).str.strip().str.lower().str.replace(r'\s+', ' ', regex=True)
-
     today = datetime.now()
+    
+    # Normalize fixture names
+    data["Fixture Name"] = data["Fixture Name"].str.strip().str.lower()
+    budget_df["Fixture Name"] = budget_df["Fixture Name"].str.strip().str.lower()
 
     # Filter future fixtures
     future_data = data[data["KickOffEventStart"] > today].copy()
+    
+    # Exclude specific fixture
+    future_data = future_data[future_data["Fixture Name"] != "Arsenal Women v Leicester Women"]
 
-    # Optional: exclude a specific fixture if needed
-    future_data = future_data[future_data["Fixture Name"] != "arsenal women v leicester women"]
-
-    # Sort by soonest KO
-    future_data = future_data.sort_values(by="KickOffEventStart")
+    # Sort fixtures by the soonest kickoff time
+    future_data = future_data.sort_values(by="KickOffEventStart", ascending=True)
 
     if future_data.empty:
         return None, None, None, None
 
-    # Get next fixture
+    # Get the next fixture details
     next_fixture = future_data.iloc[0]
-    fixture_name = next_fixture["Fixture Name"]
+    fixture_name = next_fixture["Fixture Name"]  # Should match filtered_df_without_seats column
     fixture_date = next_fixture["KickOffEventStart"]
     event_competition = next_fixture["EventCompetition"]
 
-    # Match on all 3 fields
-    budget_target_row = budget_df[
-        (budget_df["Fixture Name"] == fixture_name) &
-        (budget_df["EventCompetition"] == event_competition) &
-        (budget_df["KickOffEventStart"] == fixture_date)
-    ]
-
+    # Retrieve the budget target from budget_df
+    budget_target_row = budget_df[budget_df["Fixture Name"] == fixture_name]
     budget_target = budget_target_row["Budget Target"].iloc[0] if not budget_target_row.empty else 0
 
     return fixture_name, fixture_date, budget_target, event_competition
-
-
 
 
 
@@ -469,31 +453,34 @@ crest_base64 = get_base64_image("assets/arsenal_crest_gold.png")
 
 def get_upcoming_fixtures(inventory_df, n=3):
     """
-    Identify the next N upcoming fixtures from the inventory data,
+    Identify the next N upcoming fixtures from the MERGED inventory DataFrame,
     sorted by KickOffEventStart ascending.
-    This version allows fixtures with the same name (e.g. PSG group vs knockout) to appear separately.
+    Ensures duplicate fixtures don't repeat and the soonest matches are displayed.
     """
 
-    # Ensure datetime is clean
+    # Ensure KickOffEventStart is in datetime format
     inventory_df["KickOffDT"] = pd.to_datetime(inventory_df["KickOffEventStart"], errors="coerce")
-    inventory_df["EventName"] = inventory_df["EventName"].astype(str).str.strip()
-    inventory_df["EventCompetition"] = inventory_df["EventCompetition"].astype(str).str.strip()
+    
+    # Strip extra whitespace from EventName
+    inventory_df["EventName"] = inventory_df["EventName"].str.strip()
 
-    # Filter to future events
+    # Get today's date
     now = datetime.now()
+
+    # Filter out only future fixtures
     future_df = inventory_df[inventory_df["KickOffDT"] > now].copy()
+    
+    # Exclude specific fixture
+    future_df = future_df[future_df["EventName"] != "Arsenal Women v Leicester Women"]
 
-    # Exclude any specific unwanted fixture
-    future_df = future_df[~future_df["EventName"].str.lower().eq("arsenal women v leicester women")]
-
-    # Sort chronologically
+    # Sort by KickOffDT to ensure closest fixtures appear first
     future_df = future_df.sort_values(by="KickOffDT", ascending=True)
 
-    # Drop exact duplicates across all three
-    future_df = future_df.drop_duplicates(subset=["EventName", "EventCompetition", "KickOffDT"], keep="first")
+    # Drop duplicates based on EventName + Competition, keeping the soonest kickoff
+    unique_fixtures = future_df.drop_duplicates(subset=["EventName", "EventCompetition"], keep="first")
 
-    # Return top N
-    return future_df.head(n)
+    # Return only the top N fixtures
+    return unique_fixtures.head(n)
 
 
 
@@ -503,9 +490,6 @@ def format_date_suffix(day):
         return f"{day}th"
     suffixes = {1: "st", 2: "nd", 3: "rd"}
     return f"{day}{suffixes.get(day % 10, 'th')}"
-
-import streamlit as st
-import pandas as pd
 
 def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
     """
@@ -526,10 +510,10 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
             
             /* 1. Remove default Streamlit top padding (move table up) */
             .main .block-container {
-                padding-top: 0rem !important; 
-                margin-top: 40px !important;
-                margin-left: -60px !important; /* Move content to the left */
-                max-width: 80% !important; /* Reduce width for better alignment */
+            padding-top: 0rem !important; 
+            margin-top: 40px !important;
+            margin-left: -60px !important; /* Move content to the left */
+            max-width: 80% !important; /* Reduce width for better alignment */
             }
             
             body, html {
@@ -589,8 +573,8 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
             }
         </style>
         """,
-        unsafe_allow_html=True
-    )
+    unsafe_allow_html=True
+)
 
     # ✅ 1. Filter inventory data for the selected fixture and event competition
     df_fixture = merged_inventory[
@@ -609,39 +593,30 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
         df_fixture["AvailableSeats"] = 0  # Placeholder to avoid errors
 
     # ✅ 4. Convert MaxSaleQuantity and Capacity to numeric
-    df_fixture["MaxSaleQuantity"] = pd.to_numeric(
-        df_fixture["MaxSaleQuantity"], errors="coerce"
-    ).fillna(0).astype(int)
-    df_fixture["Capacity"] = pd.to_numeric(
-        df_fixture["Capacity"], errors="coerce"
-    ).fillna(0).astype(int)
+    df_fixture["MaxSaleQuantity"] = pd.to_numeric(df_fixture["MaxSaleQuantity"], errors="coerce").fillna(0).astype(int)
+    df_fixture["Capacity"] = pd.to_numeric(df_fixture["Capacity"], errors="coerce").fillna(0).astype(int)
 
     # ✅ 5. Adjust Stock Available for Boxes (N7, N5, any "Box" package)
     df_fixture["Stock Available"] = df_fixture["MaxSaleQuantity"]  # Default: Use MaxSaleQuantity
 
+    # Identify packages with "Box" in their name where MaxSaleQuantity is 0
     box_packages = df_fixture[df_fixture["PackageName"].str.contains("Box", case=False, na=False)]
+
     for package in box_packages["PackageName"].unique():
         package_rows = df_fixture[df_fixture["PackageName"] == package]
         if package_rows["MaxSaleQuantity"].sum() == 0:  # If all MaxSaleQuantity are 0, use summed Capacity
             total_capacity = package_rows["Capacity"].sum()
-            df_fixture.loc[
-                df_fixture["PackageName"] == package, "Stock Available"
-            ] = total_capacity
+            df_fixture.loc[df_fixture["PackageName"] == package, "Stock Available"] = total_capacity
 
     # ✅ 6. Convert Price to numeric safely
     df_fixture["Price"] = pd.to_numeric(df_fixture["Price"], errors="coerce").fillna(0)
 
-    # --- START PATCHED SALES AGGREGATION ---
-    # Convert kickoff to datetime
-    kickoff_dt = pd.to_datetime(fixture_row["KickOffEventStart"], errors="coerce")
-
-    # Filter sales for this exact fixture + kickoff
+    # ✅ 7. Aggregate sales data for 'Seats Sold'
     df_sales_for_fixture = full_sales_data[
         (full_sales_data["Fixture Name"] == fixture_row["EventName"]) &
-        (full_sales_data["EventCompetition"] == fixture_row.get("EventCompetition", "")) &
-        (pd.to_datetime(full_sales_data["KickOffEventStart"], errors="coerce") == kickoff_dt)
+        (full_sales_data["EventCompetition"] == fixture_row.get("EventCompetition", ""))
     ]
-
+    
     if df_sales_for_fixture.empty:
         df_fixture["Seats Sold"] = 0
     else:
@@ -653,6 +628,7 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
             .rename(columns={"Seats": "Seats Sold"})
         )
 
+        # ✅ Merge sales with inventory
         df_fixture = pd.merge(
             df_fixture,
             sales_agg,
@@ -661,15 +637,11 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
             how="left"
         )
         df_fixture.drop(columns="Package Name", inplace=True, errors="ignore")
-        df_fixture["Seats Sold"] = pd.to_numeric(
-            df_fixture["Seats Sold"], errors="coerce"
-        ).fillna(0).astype(int)
-    # --- END PATCHED SALES AGGREGATION ---
+
+        df_fixture["Seats Sold"] = pd.to_numeric(df_fixture["Seats Sold"], errors="coerce").fillna(0).astype(int)
 
     # ✅ 8. Compute Stock Remaining (ensuring no negative values)
-    df_fixture["Stock Remaining"] = (
-        df_fixture["Stock Available"] - df_fixture["Seats Sold"]
-    ).clip(lower=0)
+    df_fixture["Stock Remaining"] = (df_fixture["Stock Available"] - df_fixture["Seats Sold"]).clip(lower=0)
 
     # ✅ 9. Rename 'Price' to 'Current Price' and format it
     df_fixture["Current Price"] = df_fixture["Price"].apply(lambda x: f"£{x:,.2f}")
@@ -683,21 +655,16 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
         "AWFC Executive Box - Ticket + F&B",
         "AWFC Box Arsenal"
     ])]
-
-    # 11️⃣ Convert price to numeric for sorting
-    df_fixture["Sort Price"] = df_fixture["Current Price"].replace(
-        "[£,]", "", regex=True
-    ).astype(float)
+    
+   # 11️⃣ Convert price to numeric for sorting
+    df_fixture["Sort Price"] = df_fixture["Current Price"].replace("[£,]", "", regex=True).astype(float)
 
     # Rename 'PackageName' to 'Package Name' for display
-    df_fixture.rename(
-        columns={
-            "PackageName": "Package Name",
-            "Stock Available": "Seats Available",
-            "Stock Remaining": "Seats Remaining"
-        },
-        inplace=True
-    )
+    df_fixture.rename(columns={
+        "PackageName": "Package Name", 
+        "Stock Available": "Seats Available", 
+        "Stock Remaining": "Seats Remaining"
+    }, inplace=True)
 
     # ✅ Sort by Price so the row you keep is the one with largest Price (optional)
     df_fixture = df_fixture.sort_values(by="Price", ascending=False)
@@ -724,12 +691,15 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
                 f"padding: 5px; text-align: center; white-space: nowrap;'>{seats_remaining}</div>"
             )
 
+
+
     df_fixture["Seats Remaining"] = df_fixture["Seats Remaining"].apply(style_seats_remaining)
 
+
     # 13. Generate HTML Table
-    html_table = df_fixture[[
-        "Package Name", "Seats Available", "Seats Sold", "Seats Remaining", "Current Price"
-    ]].to_html(classes='fixture-table', index=False, escape=False)
+    html_table = df_fixture[["Package Name", "Seats Available", "Seats Sold", "Seats Remaining", "Current Price"]].to_html(
+        classes='fixture-table', index=False, escape=False
+    )
 
     # Final display
     st.markdown(
@@ -737,8 +707,7 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
         {html_table}
         """,
         unsafe_allow_html=True
-    )
-
+)
 
 
 ################################################################################
@@ -978,8 +947,7 @@ def run_dashboard():
         if isinstance(budget_df, pd.DataFrame):
             matching_row = budget_df[
                 (budget_df["Fixture Name"].str.strip().str.lower() == fixture_name.strip().lower()) &
-                (budget_df["EventCompetition"].str.strip().str.lower() == event_competition.strip().lower())&
-                (pd.to_datetime(budget_df["KickOffEventStart"], errors="coerce") == fixture_date)
+                (budget_df["EventCompetition"].str.strip().str.lower() == event_competition.strip().lower())
             ]
             budget_target = matching_row["Budget Target"].values[0] if not matching_row.empty else 0
         else:
