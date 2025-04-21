@@ -512,27 +512,6 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
     Displays the inventory details for upcoming fixtures including package stock, prices, and remaining seats.
     Ensures that stock is calculated properly by subtracting actual sales. It calculates Seats sold minus Available stock at the time of the pull.
     """
-    # --- PATCH: normalize kickoff and handle Arsenal v PSG special case ---
-    kickoff_dt = pd.to_datetime(fixture_row["KickOffEventStart"], errors="coerce")
-    merged = merged_inventory.copy()
-    merged["KickOff_dt"] = pd.to_datetime(merged["KickOffEventStart"], errors="coerce")
-
-    if (
-        fixture_row.get("EventName", "") == "Arsenal v Paris Saint‑Germain"
-        and kickoff_dt == pd.Timestamp("2025-04-29 19:00:00")
-    ):
-        df = merged[
-            (merged["EventName"] == "Arsenal v Paris Saint‑Germain") &
-            (merged["KickOff_dt"]   == pd.Timestamp("2025-04-29 19:00:00"))
-        ].copy()
-    else:
-        df = merged[
-            (merged["EventName"]        == fixture_row["EventName"]) &
-            (merged["EventCompetition"] == fixture_row.get("EventCompetition", "")) &
-            (merged["KickOff_dt"]       == kickoff_dt)
-        ].copy()
-
-    # --- CSS Styling ---
     st.markdown(
         """
         <style>
@@ -545,12 +524,12 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
                 src: url('fonts/Northbank-N7_2789728357.ttf') format('truetype');
             }
             
-            /* 1. Remove default Streamlit top padding */
+            /* 1. Remove default Streamlit top padding (move table up) */
             .main .block-container {
                 padding-top: 0rem !important; 
                 margin-top: 40px !important;
-                margin-left: -60px !important;
-                max-width: 80% !important;
+                margin-left: -60px !important; /* Move content to the left */
+                max-width: 80% !important; /* Reduce width for better alignment */
             }
             
             body, html {
@@ -560,15 +539,16 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
                 width: 100%;
             }
 
-            /* Horizontal scrolling wrapper */
+            /* Optional Wrapper to allow horizontal scrolling if needed */
             .table-wrapper {
                 width: 100%;
                 overflow-x: auto; 
                 margin: 0 auto;
-                margin-left: 0px;
+                margin-left: 0px;  /* Align table fully to the left */
             }
 
             .fixture-table {
+                /* Let columns auto-size based on content */
                 table-layout: auto;
                 width: 100%;
                 border-collapse: collapse;
@@ -585,7 +565,7 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
                 border-bottom: 2px solid black;
                 background-color: #EAEAEA;
                 color: black;
-                white-space: nowrap;
+                white-space: nowrap; /* Prevent wrapping in headers */
             }
 
             /* Table Cells */
@@ -597,7 +577,7 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
                 padding: 5px;
                 border-bottom: 1px solid #ddd;
                 background-color: white;
-                white-space: nowrap;
+                white-space: nowrap; /* Prevent wrapping in table cells */
             }
 
             .fixture-table tr:nth-child(even) {
@@ -612,91 +592,152 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
         unsafe_allow_html=True
     )
 
-    # 1. Ensure 'MaxSaleQuantity' present
-    if "MaxSaleQuantity" not in df.columns:
+    # ✅ 1. Filter inventory data for the selected fixture and event competition
+    df_fixture = merged_inventory[
+        (merged_inventory["EventName"] == fixture_row["EventName"]) &
+        (merged_inventory["EventCompetition"] == fixture_row.get("EventCompetition", "")) &
+        (merged_inventory["KickOffEventStart"] == fixture_row["KickOffEventStart"])
+    ].copy()
+
+    # ✅ 2. Ensure 'MaxSaleQuantity' (Stock Available) is present
+    if "MaxSaleQuantity" not in df_fixture.columns:
         st.error("⚠️ 'MaxSaleQuantity' column is missing in API inventory data!")
         return
-    if "AvailableSeats" not in df.columns:
-        df["AvailableSeats"] = 0
 
-    # 2. Convert numeric columns
-    df["MaxSaleQuantity"] = pd.to_numeric(df["MaxSaleQuantity"], errors="coerce").fillna(0).astype(int)
-    df["Capacity"]       = pd.to_numeric(df["Capacity"], errors="coerce").fillna(0).astype(int)
-    df["Price"]          = pd.to_numeric(df["Price"], errors="coerce").fillna(0)
+    # ✅ 3. Keep AvailableSeats column (if exists)
+    if "AvailableSeats" not in df_fixture.columns:
+        df_fixture["AvailableSeats"] = 0  # Placeholder to avoid errors
 
-    # 3. Compute Stock Available, fallback for Box packages
-    df["Stock Available"] = df["MaxSaleQuantity"]
-    box_mask = df["PackageName"].str.contains("Box", case=False, na=False)
-    for pkg in df.loc[box_mask, "PackageName"].unique():
-        sub = df[df["PackageName"] == pkg]
-        if sub["MaxSaleQuantity"].sum() == 0:
-            df.loc[df["PackageName"] == pkg, "Stock Available"] = sub["Capacity"].sum()
+    # ✅ 4. Convert MaxSaleQuantity and Capacity to numeric
+    df_fixture["MaxSaleQuantity"] = pd.to_numeric(
+        df_fixture["MaxSaleQuantity"], errors="coerce"
+    ).fillna(0).astype(int)
+    df_fixture["Capacity"] = pd.to_numeric(
+        df_fixture["Capacity"], errors="coerce"
+    ).fillna(0).astype(int)
 
-    # 4. Aggregate 'Seats Sold'
-    sales = full_sales_data[
-        (full_sales_data["Fixture Name"]       == fixture_row["EventName"]) &
-        (full_sales_data["EventCompetition"]   == fixture_row.get("EventCompetition", ""))
+    # ✅ 5. Adjust Stock Available for Boxes (N7, N5, any "Box" package)
+    df_fixture["Stock Available"] = df_fixture["MaxSaleQuantity"]  # Default: Use MaxSaleQuantity
+
+    box_packages = df_fixture[df_fixture["PackageName"].str.contains("Box", case=False, na=False)]
+    for package in box_packages["PackageName"].unique():
+        package_rows = df_fixture[df_fixture["PackageName"] == package]
+        if package_rows["MaxSaleQuantity"].sum() == 0:  # If all MaxSaleQuantity are 0, use summed Capacity
+            total_capacity = package_rows["Capacity"].sum()
+            df_fixture.loc[
+                df_fixture["PackageName"] == package, "Stock Available"
+            ] = total_capacity
+
+    # ✅ 6. Convert Price to numeric safely
+    df_fixture["Price"] = pd.to_numeric(df_fixture["Price"], errors="coerce").fillna(0)
+
+    # --- START PATCHED SALES AGGREGATION ---
+    # Convert kickoff to datetime
+    kickoff_dt = pd.to_datetime(fixture_row["KickOffEventStart"], errors="coerce")
+
+    # Filter sales for this exact fixture + kickoff
+    df_sales_for_fixture = full_sales_data[
+        (full_sales_data["Fixture Name"] == fixture_row["EventName"]) &
+        (full_sales_data["EventCompetition"] == fixture_row.get("EventCompetition", "")) &
+        (pd.to_datetime(full_sales_data["KickOffEventStart"], errors="coerce") == kickoff_dt)
     ]
-    if sales.empty:
-        df["Seats Sold"] = 0
+
+    if df_sales_for_fixture.empty:
+        df_fixture["Seats Sold"] = 0
     else:
-        agg = (
-            sales.groupby(["Package Name", "EventCompetition"])["Seats"]
-                 .sum()
-                 .reset_index()
-                 .rename(columns={"Seats": "Seats Sold"})
+        sales_agg = (
+            df_sales_for_fixture
+            .groupby(["Package Name", "EventCompetition"])["Seats"]
+            .sum()
+            .reset_index()
+            .rename(columns={"Seats": "Seats Sold"})
         )
-        df = df.merge(agg, left_on="PackageName", right_on="Package Name", how="left")
-        df.drop(columns="Package Name", inplace=True, errors="ignore")
-        df["Seats Sold"] = pd.to_numeric(df["Seats Sold"], errors="coerce").fillna(0).astype(int)
 
-    # 5. Compute 'Seats Remaining'
-    df["Seats Remaining"] = (df["Stock Available"] - df["Seats Sold"]).clip(lower=0)
+        df_fixture = pd.merge(
+            df_fixture,
+            sales_agg,
+            left_on="PackageName",
+            right_on="Package Name",
+            how="left"
+        )
+        df_fixture.drop(columns="Package Name", inplace=True, errors="ignore")
+        df_fixture["Seats Sold"] = pd.to_numeric(
+            df_fixture["Seats Sold"], errors="coerce"
+        ).fillna(0).astype(int)
+    # --- END PATCHED SALES AGGREGATION ---
 
-    # 6. Format Price & clean package names
-    df["Current Price"] = df["Price"].apply(lambda x: f"£{x:,.2f}")
-    df["PackageName"]   = df["PackageName"].str.strip()
-    exclude_list = [
+    # ✅ 8. Compute Stock Remaining (ensuring no negative values)
+    df_fixture["Stock Remaining"] = (
+        df_fixture["Stock Available"] - df_fixture["Seats Sold"]
+    ).clip(lower=0)
+
+    # ✅ 9. Rename 'Price' to 'Current Price' and format it
+    df_fixture["Current Price"] = df_fixture["Price"].apply(lambda x: f"£{x:,.2f}")
+
+    # ✅ 10. Exclude specific packages
+    df_fixture["PackageName"] = df_fixture["PackageName"].str.strip()
+    df_fixture = df_fixture[~df_fixture["PackageName"].isin([
         "INTERNAL MBM BOX",
         "Woolwich Restaurant",
         "AWFC Executive Box - Ticket Only",
         "AWFC Executive Box - Ticket + F&B",
         "AWFC Box Arsenal"
-    ]
-    df = df[~df["PackageName"].isin(exclude_list)]
+    ])]
 
-    # 7. Sort & dedupe
-    df["SortPrice"] = df["Current Price"].replace("[£,]", "", regex=True).astype(float)
-    df = df.sort_values(by="SortPrice", ascending=False)
-    df = df.drop_duplicates(subset=["PackageName"], keep="first")
+    # 11️⃣ Convert price to numeric for sorting
+    df_fixture["Sort Price"] = df_fixture["Current Price"].replace(
+        "[£,]", "", regex=True
+    ).astype(float)
 
-    # 8. Rename for display
-    df.rename(columns={
-        "PackageName": "Package Name",
-        "Stock Available": "Seats Available"
-    }, inplace=True)
+    # Rename 'PackageName' to 'Package Name' for display
+    df_fixture.rename(
+        columns={
+            "PackageName": "Package Name",
+            "Stock Available": "Seats Available",
+            "Stock Remaining": "Seats Remaining"
+        },
+        inplace=True
+    )
 
-    # 9. Apply SOLD OUT styling
-    def style_remaining(val):
-        if val <= 0:
+    # ✅ Sort by Price so the row you keep is the one with largest Price (optional)
+    df_fixture = df_fixture.sort_values(by="Price", ascending=False)
+
+    # ✅ Drop duplicates by "Package Name", keeping the first occurrence
+    df_fixture.drop_duplicates(subset=["Package Name"], keep="first", inplace=True)
+
+    # 12. Apply "SOLD OUT" Styling for Package Name if Seats Remaining = 0
+    def style_seats_remaining(seats_remaining):
+        """
+        Returns a styled <div> for the "Seats Remaining" cell:
+        - If seats_remaining <= 0, shows "SOLD OUT" in red background & white text (font-size 10px)
+        - Otherwise, displays the numeric seats_remaining (font-size 18px)
+        """
+        if seats_remaining <= 0:
             return (
-                "<div style='background-color: red; color: white; "
-                "font-family: Chapman-Bold; font-size: 18px; font-weight: bold; "
-                "padding: 5px; text-align: center; white-space: nowrap;'>"
+                "<div style='background-color: red; color: white; font-family: Chapman-Bold; "
+                "font-size: 18px; font-weight: bold; padding: 5px; text-align: center; white-space: nowrap;'>"
                 "SOLD OUT</div>"
             )
-        return (
-            f"<div style='color: black; font-family: Chapman-Bold; "
-            f"font-size: 24px; font-weight: bold; padding: 5px; "
-            f"text-align: center; white-space: nowrap;'>{val}</div>"
-        )
-    df["Seats Remaining"] = df["Seats Remaining"].apply(style_remaining)
+        else:
+            return (
+                f"<div style='color: black; font-family: Chapman-Bold; font-size: 24px; font-weight: bold; "
+                f"padding: 5px; text-align: center; white-space: nowrap;'>{seats_remaining}</div>"
+            )
 
-    # 10. Render HTML table
-    html = df[[
+    df_fixture["Seats Remaining"] = df_fixture["Seats Remaining"].apply(style_seats_remaining)
+
+    # 13. Generate HTML Table
+    html_table = df_fixture[[
         "Package Name", "Seats Available", "Seats Sold", "Seats Remaining", "Current Price"
-    ]].to_html(classes="fixture-table", index=False, escape=False)
-    st.markdown(html, unsafe_allow_html=True)
+    ]].to_html(classes='fixture-table', index=False, escape=False)
+
+    # Final display
+    st.markdown(
+        f"""
+        {html_table}
+        """,
+        unsafe_allow_html=True
+    )
 
 
 
@@ -893,163 +934,166 @@ def run_dashboard():
     # filtered_services_data = filtered_data[mask_services]
     
     
-    def render_next_fixture_sidebar(fixture_row, filtered_data, budget_df):
-        """
-        Renders a quick summary widget in the sidebar for the given fixture.
-        THIS IS ONLY FOR THE REMAINING INVENTORY PAGES
-        """
-        if fixture_row.empty:
-            st.sidebar.markdown(
-                """
-                <style>
-                    @font-face {{
-                        font-family: 'Chapman-Bold';
-                        src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
-                    }}
-                    .no-fixture-widget {{
-                        background-color: #fff0f0;
-                        border: 2px solid #E41B17;
-                        border-radius: 15px;
-                        padding: 20px 15px;
-                        text-align: center;
-                        font-family: 'Chapman-Bold';
-                        font-size: 28px;
-                        font-weight: bold;
-                        color: #E41B17;
-                    }}
-                </style>
-                <div class="no-fixture-widget">
-                    ⚠️ No upcoming fixtures found.
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-            return
+import streamlit as st
+import pandas as pd
+from datetime import datetime
 
-        fixture_name = fixture_row["EventName"]
-        event_competition = fixture_row["EventCompetition"]
-        fixture_date = pd.to_datetime(fixture_row["KickOffEventStart"], errors="coerce")
-
-        # ✅ Calculate fixture details
-        days_to_fixture = (fixture_date - datetime.now()).days if pd.notnull(fixture_date) else "TBC"
-
-        # ✅ Ensure correct lookup in budget_df
-        if isinstance(budget_df, pd.DataFrame):
-            matching_row = budget_df[
-                (budget_df["Fixture Name"].str.strip().str.lower() == fixture_name.strip().lower()) &
-                (budget_df["EventCompetition"].str.strip().str.lower() == event_competition.strip().lower())
-            ]
-            budget_target = matching_row["Budget Target"].values[0] if not matching_row.empty else 0
-        else:
-            budget_target = budget_df.get((fixture_name, event_competition), 0)
-
-        # ✅ Ensure budget_target is numeric
-        budget_target = float(str(budget_target).replace("£", "").replace(",", "").strip()) if budget_target else 0
-
-        # ✅ FIX: Filter correct sales data
-        fixture_data = filtered_df_without_seats[
-            (filtered_df_without_seats["Fixture Name"].str.strip().str.lower() == fixture_name.strip().lower()) &
-            (filtered_df_without_seats["EventCompetition"].str.strip().str.lower() == event_competition.strip().lower())
-        ]
-
-        # ✅ Ensure numeric conversion
-        if not fixture_data.empty:
-            fixture_data["Price"] = pd.to_numeric(fixture_data["Price"], errors="coerce").fillna(0)
-            fixture_revenue = fixture_data["Price"].sum()  # ✅ CORRECT Calculation
-        else:
-            fixture_revenue = 0
-
-        # ✅ Compute budget percentage achieved
-        budget_achieved = round((fixture_revenue / budget_target) * 100, 2) if budget_target > 0 else 0
-
-        # ✅ Debugging Output
-        print("\n🔍 DEBUG: Fixture Revenue Calculation")
-        print(f"Fixture: {fixture_name} | Competition: {event_competition}")
-        print(f"Total Rows Matched: {len(fixture_data)}")
-        print(f"🎯 Budget Target: £{budget_target:,.0f}")
-        print(f"💰 FIXED Fixture Revenue: £{fixture_revenue:,.0f}")
-        print(f"📊 Budget Target Achieved: {budget_achieved:.2f}%")
-
-        # 1️⃣ First widget: minimal “Next Fixture” card 
+def render_next_fixture_sidebar(fixture_row, filtered_data, budget_df):
+    """
+    Renders a quick summary widget in the sidebar for the given fixture.
+    THIS IS ONLY FOR THE REMAINING INVENTORY PAGES
+    """
+    if fixture_row.empty:
         st.sidebar.markdown(
-            f"""
+            """
             <style>
-                @font-face {{
+                @font-face {
                     font-family: 'Chapman-Bold';
                     src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
-                }}
-                .next-fixture-minimal {{
-                    background-color: #fff0f0;
-                    border: 2px solid #E41B17; /* Use Blue for the border if desired */
-                    border-radius: 15px;
-                    margin-top: 10px;
-                    padding: 15px;
-                    text-align: center;
-                    font-family: 'Chapman-Bold';
-                    font-weight: bold;
-                }}
-                .next-fixture-minimal .header-text {{
-                    font-size: 24px;
-                    color: #0047AB; /* Blue for "Next Fixture" */
-                    margin-bottom: 10px;
-                }}
-                .next-fixture-minimal .fixture-title {{
-                    font-size: 22px;
-                    color: #E41B17; /* Red for fixture name */
-                    margin-bottom: 5px;
-                }}
-            </style>
-            <div class="next-fixture-minimal">
-                <div class="header-text">🏟️ Next Fixture</div>
-                <div class="fixture-title">{fixture_name} ({event_competition})</div>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-        # 2️⃣ Second widget: detailed “Next Fixture Details” card
-        st.sidebar.markdown(
-            f"""
-            <style>
-                @font-face {{
-                    font-family: 'Chapman-Bold';
-                    src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
-                }}
-                .next-fixture-widget {{
+                }
+                .no-fixture-widget {
                     background-color: #fff0f0;
                     border: 2px solid #E41B17;
                     border-radius: 15px;
-                    margin-top: 10px;
-                    padding: 15px;
+                    padding: 20px 15px;
                     text-align: center;
                     font-family: 'Chapman-Bold';
-                    font-size: 24px;
+                    font-size: 28px;
                     font-weight: bold;
                     color: #E41B17;
-                }}
-                .next-fixture-widget .fixture-info {{
-                    font-size: 20px;
-                    color: #0047AB;
-                    margin-bottom: 5px;
-                }}
-                .next-fixture-widget .fixture-days {{
-                    font-size: 20px;
-                    color: #E41B17;
-                    margin-bottom: 5px;
-                }}
+                }
             </style>
-            <div class="next-fixture-widget">
-                🏟️ Next Fixture Details <br>
-                <span class="fixture-info">⏳ Days to Fixture:</span>
-                <span class="fixture-days">{days_to_fixture} days</span>
-                <span class="fixture-info">🎯 Budget Target:</span>
-                <span class="fixture-days">£{budget_target:,.0f}</span>
-                <span class="fixture-info">✅ Budget Target Achieved:</span>
-                <span class="fixture-days">{budget_achieved:.2f}%</span>
+            <div class="no-fixture-widget">
+                ⚠️ No upcoming fixtures found.
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
+        return
+
+    fixture_name      = fixture_row["EventName"]
+    event_competition = fixture_row["EventCompetition"]
+    fixture_date      = pd.to_datetime(fixture_row["KickOffEventStart"], errors="coerce")
+
+    # 1) Days to fixture
+    days_to_fixture = (fixture_date - datetime.now()).days if pd.notnull(fixture_date) else "TBC"
+
+    # 2) Budget target lookup
+    if isinstance(budget_df, pd.DataFrame):
+        matching_row = budget_df[
+            (budget_df["Fixture Name"].str.strip().str.lower() == fixture_name.strip().lower()) &
+            (budget_df["EventCompetition"].str.strip().str.lower() == event_competition.strip().lower())
+        ]
+        budget_target = matching_row["Budget Target"].values[0] if not matching_row.empty else 0
+    else:
+        budget_target = budget_df.get((fixture_name, event_competition), 0)
+
+    budget_target = float(str(budget_target).replace("£", "").replace(",", "").strip()) if budget_target else 0
+
+    # 3) FIXED SALES FILTER: only include this fixture_name + competition + exact kickoff
+    sales = filtered_data.copy()
+    sales["KickOff_dt"] = pd.to_datetime(sales["KickOffEventStart"], errors="coerce")
+    fixture_sales = sales[
+        (sales["Fixture Name"].str.strip().str.lower()     == fixture_name.strip().lower()) &
+        (sales["EventCompetition"].str.strip().str.lower() == event_competition.strip().lower()) &
+        (sales["KickOff_dt"]                               == fixture_date)
+    ]
+
+    if not fixture_sales.empty:
+        # sum up actual revenue: Seats * Price per sale
+        fixture_sales["Price"] = pd.to_numeric(fixture_sales["Price"], errors="coerce").fillna(0)
+        fixture_sales["Seats"] = pd.to_numeric(fixture_sales["Seats"], errors="coerce").fillna(0)
+        fixture_revenue = (fixture_sales["Seats"] * fixture_sales["Price"]).sum()
+    else:
+        fixture_revenue = 0
+
+    # 4) Budget achieved %
+    budget_achieved = round((fixture_revenue / budget_target) * 100, 2) if budget_target > 0 else 0
+
+    # Optional: debug to console
+    print(f"🔍 DEBUG: {fixture_name}@{fixture_date} → revenue £{fixture_revenue:,.0f} / target £{budget_target:,.0f} = {budget_achieved}%")
+
+    # 5) Minimal Next Fixture card
+    st.sidebar.markdown(
+        f"""
+        <style>
+            @font-face {{
+                font-family: 'Chapman-Bold';
+                src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
+            }}
+            .next-fixture-minimal {{
+                background-color: #fff0f0;
+                border: 2px solid #E41B17;
+                border-radius: 15px;
+                margin-top: 10px;
+                padding: 15px;
+                text-align: center;
+                font-family: 'Chapman-Bold';
+                font-weight: bold;
+            }}
+            .next-fixture-minimal .header-text {{
+                font-size: 24px;
+                color: #0047AB;
+                margin-bottom: 10px;
+            }}
+            .next-fixture-minimal .fixture-title {{
+                font-size: 22px;
+                color: #E41B17;
+                margin-bottom: 5px;
+            }}
+        </style>
+        <div class="next-fixture-minimal">
+            <div class="header-text">🏟️ Next Fixture</div>
+            <div class="fixture-title">{fixture_name} ({event_competition})</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # 6) Detailed Next Fixture Details card
+    st.sidebar.markdown(
+        f"""
+        <style>
+            @font-face {{
+                font-family: 'Chapman-Bold';
+                src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
+            }}
+            .next-fixture-widget {{
+                background-color: #fff0f0;
+                border: 2px solid #E41B17;
+                border-radius: 15px;
+                margin-top: 10px;
+                padding: 15px;
+                text-align: center;
+                font-family: 'Chapman-Bold';
+                font-size: 24px;
+                font-weight: bold;
+                color: #E41B17;
+            }}
+            .next-fixture-widget .fixture-info {{
+                font-size: 20px;
+                color: #0047AB;
+                margin-bottom: 5px;
+            }}
+            .next-fixture-widget .fixture-days {{
+                font-size: 20px;
+                color: #E41B17;
+                margin-bottom: 5px;
+            }}
+        </style>
+        <div class="next-fixture-widget">
+            🏟️ Next Fixture Details <br>
+            <span class="fixture-info">⏳ Days to Fixture:</span>
+            <span class="fixture-days">{days_to_fixture} days</span><br>
+            <span class="fixture-info">🎯 Budget Target:</span>
+            <span class="fixture-days">£{budget_target:,.0f}</span><br>
+            <span class="fixture-info">✅ Budget Target Achieved:</span>
+            <span class="fixture-days">{budget_achieved:.2f}%</span>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
 
 
 
