@@ -905,175 +905,175 @@ def run_dashboard():
     
     
     import streamlit as st
-import pandas as pd
-from datetime import datetime
+    import pandas as pd
+    from datetime import datetime
 
-def render_next_fixture_sidebar(fixture_row, filtered_data, budget_df):
-    """
-    Renders a quick summary widget in the sidebar for the given fixture.
-    THIS IS ONLY FOR THE REMAINING INVENTORY PAGES
-    """
+    def render_next_fixture_sidebar(fixture_row, filtered_data, budget_df):
+        """
+        Renders a quick summary widget in the sidebar for the given fixture.
+        THIS IS ONLY FOR THE REMAINING INVENTORY PAGES
+        """
 
-    # — Normalize budget_df kickoff column once at minute precision —
-    budget_df = budget_df.copy()
-    budget_df["KickOffEventStart"] = (
-        pd.to_datetime(budget_df["KickOffEventStart"], errors="coerce")
-          .dt.round("min")
-    )
+        # — Normalize budget_df kickoff column once at minute precision —
+        budget_df = budget_df.copy()
+        budget_df["KickOffEventStart"] = (
+            pd.to_datetime(budget_df["KickOffEventStart"], errors="coerce")
+            .dt.round("min")
+        )
 
-    if fixture_row.empty:
+        if fixture_row.empty:
+            st.sidebar.markdown(
+                """
+                <style>
+                    @font-face {
+                        font-family: 'Chapman-Bold';
+                        src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
+                    }
+                    .no-fixture-widget {
+                        background-color: #fff0f0;
+                        border: 2px solid #E41B17;
+                        border-radius: 15px;
+                        padding: 20px 15px;
+                        text-align: center;
+                        font-family: 'Chapman-Bold';
+                        font-size: 28px;
+                        font-weight: bold;
+                        color: #E41B17;
+                    }
+                </style>
+                <div class="no-fixture-widget">
+                    ⚠️ No upcoming fixtures found.
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            return
+
+        # Extract fixture details
+        fixture_name      = fixture_row["EventName"]
+        event_competition = fixture_row["EventCompetition"]
+        # Round the fixture’s own kickoff to minute precision
+        fixture_date = (
+            pd.to_datetime(fixture_row["KickOffEventStart"], errors="coerce")
+            .round("min")
+        )
+
+        # Calculate days until the fixture
+        days_to_fixture = (fixture_date - datetime.now()).days if pd.notnull(fixture_date) else "TBC"
+
+        # — Correct budget lookup with rounded times —
+        matching_row = budget_df[
+            (budget_df["Fixture Name"].str.strip().str.lower()     == fixture_name.strip().lower()) &
+            (budget_df["EventCompetition"].str.strip().str.lower() == event_competition.strip().lower()) &
+            (budget_df["KickOffEventStart"]                        == fixture_date)
+        ]
+        budget_target = matching_row["Budget Target"].iloc[0] if not matching_row.empty else 0
+        # Ensure numeric
+        budget_target = float(str(budget_target).replace("£", "").replace(",", "").strip()) if budget_target else 0
+
+        # — Filter sales for *exact* fixture by name, competition, and kickoff —
+        df = filtered_data.copy()
+        df["KickOff_dt"] = pd.to_datetime(df["KickOffEventStart"], errors="coerce").dt.round("min")
+        fixture_data = df[
+            (df["Fixture Name"].str.strip().str.lower()     == fixture_name.strip().lower()) &
+            (df["EventCompetition"].str.strip().str.lower() == event_competition.strip().lower()) &
+            (df["KickOff_dt"]                               == fixture_date)
+        ]
+
+        # Sum revenue
+        if not fixture_data.empty:
+            fixture_data["Seats"] = pd.to_numeric(fixture_data["Seats"], errors="coerce").fillna(0)
+            fixture_data["Price"] = pd.to_numeric(fixture_data["Price"], errors="coerce").fillna(0)
+            fixture_revenue = (fixture_data["Seats"] * fixture_data["Price"]).sum()
+        else:
+            fixture_revenue = 0
+
+        # Compute % of budget achieved
+        budget_achieved = round((fixture_revenue / budget_target) * 100, 2) if budget_target > 0 else 0
+
+        # Debugging output
+        print(f"🔍 DEBUG: {fixture_name}@{fixture_date} → revenue £{fixture_revenue:,.0f} / target £{budget_target:,.0f} = {budget_achieved}%")
+
+        # 1️⃣ Minimal Next Fixture card
         st.sidebar.markdown(
-            """
+            f"""
             <style>
-                @font-face {
+                @font-face {{
                     font-family: 'Chapman-Bold';
                     src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
-                }
-                .no-fixture-widget {
+                }}
+                .next-fixture-minimal {{
                     background-color: #fff0f0;
                     border: 2px solid #E41B17;
                     border-radius: 15px;
-                    padding: 20px 15px;
+                    margin-top: 10px;
+                    padding: 15px;
                     text-align: center;
                     font-family: 'Chapman-Bold';
-                    font-size: 28px;
                     font-weight: bold;
+                }}
+                .next-fixture-minimal .header-text {{
+                    font-size: 24px;
+                    color: #0047AB;
+                    margin-bottom: 10px;
+                }}
+                .next-fixture-minimal .fixture-title {{
+                    font-size: 22px;
                     color: #E41B17;
-                }
+                    margin-bottom: 5px;
+                }}
             </style>
-            <div class="no-fixture-widget">
-                ⚠️ No upcoming fixtures found.
+            <div class="next-fixture-minimal">
+                <div class="header-text">🏟️ Next Fixture</div>
+                <div class="fixture-title">{fixture_name} ({event_competition})</div>
             </div>
             """,
-            unsafe_allow_html=True,
+            unsafe_allow_html=True
         )
-        return
 
-    # Extract fixture details
-    fixture_name      = fixture_row["EventName"]
-    event_competition = fixture_row["EventCompetition"]
-    # Round the fixture’s own kickoff to minute precision
-    fixture_date = (
-        pd.to_datetime(fixture_row["KickOffEventStart"], errors="coerce")
-          .round("min")
-    )
-
-    # Calculate days until the fixture
-    days_to_fixture = (fixture_date - datetime.now()).days if pd.notnull(fixture_date) else "TBC"
-
-    # — Correct budget lookup with rounded times —
-    matching_row = budget_df[
-        (budget_df["Fixture Name"].str.strip().str.lower()     == fixture_name.strip().lower()) &
-        (budget_df["EventCompetition"].str.strip().str.lower() == event_competition.strip().lower()) &
-        (budget_df["KickOffEventStart"]                        == fixture_date)
-    ]
-    budget_target = matching_row["Budget Target"].iloc[0] if not matching_row.empty else 0
-    # Ensure numeric
-    budget_target = float(str(budget_target).replace("£", "").replace(",", "").strip()) if budget_target else 0
-
-    # — Filter sales for *exact* fixture by name, competition, and kickoff —
-    df = filtered_data.copy()
-    df["KickOff_dt"] = pd.to_datetime(df["KickOffEventStart"], errors="coerce").dt.round("min")
-    fixture_data = df[
-        (df["Fixture Name"].str.strip().str.lower()     == fixture_name.strip().lower()) &
-        (df["EventCompetition"].str.strip().str.lower() == event_competition.strip().lower()) &
-        (df["KickOff_dt"]                               == fixture_date)
-    ]
-
-    # Sum revenue
-    if not fixture_data.empty:
-        fixture_data["Seats"] = pd.to_numeric(fixture_data["Seats"], errors="coerce").fillna(0)
-        fixture_data["Price"] = pd.to_numeric(fixture_data["Price"], errors="coerce").fillna(0)
-        fixture_revenue = (fixture_data["Seats"] * fixture_data["Price"]).sum()
-    else:
-        fixture_revenue = 0
-
-    # Compute % of budget achieved
-    budget_achieved = round((fixture_revenue / budget_target) * 100, 2) if budget_target > 0 else 0
-
-    # Debugging output
-    print(f"🔍 DEBUG: {fixture_name}@{fixture_date} → revenue £{fixture_revenue:,.0f} / target £{budget_target:,.0f} = {budget_achieved}%")
-
-    # 1️⃣ Minimal Next Fixture card
-    st.sidebar.markdown(
-        f"""
-        <style>
-            @font-face {{
-                font-family: 'Chapman-Bold';
-                src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
-            }}
-            .next-fixture-minimal {{
-                background-color: #fff0f0;
-                border: 2px solid #E41B17;
-                border-radius: 15px;
-                margin-top: 10px;
-                padding: 15px;
-                text-align: center;
-                font-family: 'Chapman-Bold';
-                font-weight: bold;
-            }}
-            .next-fixture-minimal .header-text {{
-                font-size: 24px;
-                color: #0047AB;
-                margin-bottom: 10px;
-            }}
-            .next-fixture-minimal .fixture-title {{
-                font-size: 22px;
-                color: #E41B17;
-                margin-bottom: 5px;
-            }}
-        </style>
-        <div class="next-fixture-minimal">
-            <div class="header-text">🏟️ Next Fixture</div>
-            <div class="fixture-title">{fixture_name} ({event_competition})</div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    # 2️⃣ Detailed Next Fixture Details card
-    st.sidebar.markdown(
-        f"""
-        <style>
-            @font-face {{
-                font-family: 'Chapman-Bold';
-                src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
-            }}
-            .next-fixture-widget {{
-                background-color: #fff0f0;
-                border: 2px solid #E41B17;
-                border-radius: 15px;
-                margin-top: 10px;
-                padding: 15px;
-                text-align: center;
-                font-family: 'Chapman-Bold';
-                font-size: 24px;
-                font-weight: bold;
-                color: #E41B17;
-            }}
-            .next-fixture-widget .fixture-info {{
-                font-size: 20px;
-                color: #0047AB;
-                margin-bottom: 5px;
-            }}
-            .next-fixture-widget .fixture-days {{
-                font-size: 20px;
-                color: #E41B17;
-                margin-bottom: 5px;
-            }}
-        </style>
-        <div class="next-fixture-widget">
-            🏟️ Next Fixture Details<br>
-            <span class="fixture-info">⏳ Days to Fixture:</span>
-            <span class="fixture-days">{days_to_fixture} days</span><br>
-            <span class="fixture-info">🎯 Budget Target:</span>
-            <span class="fixture-days">£{budget_target:,.0f}</span><br>
-            <span class="fixture-info">✅ Budget Target Achieved:</span>
-            <span class="fixture-days">{budget_achieved:.2f}%</span>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+        # 2️⃣ Detailed Next Fixture Details card
+        st.sidebar.markdown(
+            f"""
+            <style>
+                @font-face {{
+                    font-family: 'Chapman-Bold';
+                    src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
+                }}
+                .next-fixture-widget {{
+                    background-color: #fff0f0;
+                    border: 2px solid #E41B17;
+                    border-radius: 15px;
+                    margin-top: 10px;
+                    padding: 15px;
+                    text-align: center;
+                    font-family: 'Chapman-Bold';
+                    font-size: 24px;
+                    font-weight: bold;
+                    color: #E41B17;
+                }}
+                .next-fixture-widget .fixture-info {{
+                    font-size: 20px;
+                    color: #0047AB;
+                    margin-bottom: 5px;
+                }}
+                .next-fixture-widget .fixture-days {{
+                    font-size: 20px;
+                    color: #E41B17;
+                    margin-bottom: 5px;
+                }}
+            </style>
+            <div class="next-fixture-widget">
+                🏟️ Next Fixture Details<br>
+                <span class="fixture-info">⏳ Days to Fixture:</span>
+                <span class="fixture-days">{days_to_fixture} days</span><br>
+                <span class="fixture-info">🎯 Budget Target:</span>
+                <span class="fixture-days">£{budget_target:,.0f}</span><br>
+                <span class="fixture-info">✅ Budget Target Achieved:</span>
+                <span class="fixture-days">{budget_achieved:.2f}%</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
 
 
