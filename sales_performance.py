@@ -239,6 +239,36 @@ def run_app():
             options=paid_options,
             key="unique_selected_paid_key"
         )
+        
+
+        # ─── NEW: Kickoff‑time filter ───────────────────────────────────────────────
+        # grab all unique kickoff times from your filtered_data
+        kickoff_times = sorted(
+            filtered_data["KickOffEventStart"]
+            .dropna()
+            .unique()
+        )
+        # present them in a human‐friendly format
+        display_kickoffs = [
+            pd.to_datetime(ts).strftime("%Y-%m-%d %H:%M") for ts in kickoff_times
+        ]
+        selected_kickoffs = st.sidebar.multiselect(
+            "⏰ Select Kickoff time",
+            options=display_kickoffs,
+            default=None,
+            key="unique_selected_kickoff_key"
+        )
+        # if the user picked any, then only keep those rows
+        if selected_kickoffs:
+            # map the display back to actual timestamps
+            selected_ts = [
+                kickoff_times[display_kickoffs.index(label)]
+                for label in selected_kickoffs
+            ]
+            filtered_data = filtered_data[
+                filtered_data["KickOffEventStart"].isin(selected_ts)
+            ]
+        # ─────────────────────────────────────────────────────────────────────────────
 
         # Apply date range filter with time
         if min_date and max_date:
