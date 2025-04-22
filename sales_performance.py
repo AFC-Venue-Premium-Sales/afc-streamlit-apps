@@ -1,5 +1,3 @@
-sys.path.append("/Users/cmunthali/Documents/PYTHON/APPS")
-
 import streamlit as st
 import pandas as pd
 from datetime import datetime
