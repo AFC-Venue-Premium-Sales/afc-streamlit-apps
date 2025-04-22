@@ -23,24 +23,29 @@ try:
 except ImportError as e:
     st.error(f"❌ Error importing tjt_hosp_api: {e}")
     filtered_df_without_seats = None
+    
+
+def load_budget_targets():
+    """
+    Reads the external Excel file for fixture-based budgets,
+    parses KickOffEventStart as datetime, strips whitespace.
+    """
+    import pandas as pd
+    # adjust this path if necessary
+    path = "/Users/cmunthali/Documents/PYTHON/APPS/budget_target_2425.xlsx"
+    df = pd.read_excel(path, parse_dates=["KickOffEventStart"], dayfirst=True)
+    df.columns = df.columns.str.strip()
+    df["Fixture Name"]     = df["Fixture Name"].str.strip()
+    df["EventCompetition"] = df["EventCompetition"].str.strip()
+    return df
+
 
 def run_app():
     specified_users = ['dcoppin', 'Jedwards', 'jedwards', 'bgardiner', 'BenT', 'jmurphy', 'ayildirim',
                        'MeganS', 'BethNW', 'HayleyA', 'LucyB', 'Conor', 'SavR', 'MillieS', 'dmontague']
     
-        # ─── Load fixture budget targets from Excel ───────────────────────────────────
-    budget_file = "budget_target_2425.xlsx"
-    budget_df = pd.read_excel(budget_file)
-    budget_df.columns = budget_df.columns.str.strip()
-
-    # Ensure our three merge‐keys are normalized
-    budget_df["Fixture Name"]      = budget_df["Fixture Name"].str.strip()
-    budget_df["EventCompetition"]  = budget_df["EventCompetition"].str.strip()
-    budget_df["KickOffEventStart"] = pd.to_datetime(
-        budget_df["KickOffEventStart"], dayfirst=True, errors="coerce"
-    )
-    # ───────────────────────────────────────────────────────────────────────────────
-
+    # ─── Load fixture budget targets from Excel ───────────────────────────────────
+    budget_df = load_budget_targets()
 
 
 
