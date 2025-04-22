@@ -947,7 +947,8 @@ def run_dashboard():
         if isinstance(budget_df, pd.DataFrame):
             matching_row = budget_df[
                 (budget_df["Fixture Name"].str.strip().str.lower() == fixture_name.strip().lower()) &
-                (budget_df["EventCompetition"].str.strip().str.lower() == event_competition.strip().lower())
+                (budget_df["EventCompetition"].str.strip().str.lower() == event_competition.strip().lower())&
+                (pd.to_datetime(budget_df["KickOffEventStart"], errors="coerce") == fixture_date)
             ]
             budget_target = matching_row["Budget Target"].values[0] if not matching_row.empty else 0
         else:
@@ -957,10 +958,23 @@ def run_dashboard():
         budget_target = float(str(budget_target).replace("£", "").replace(",", "").strip()) if budget_target else 0
 
         # ✅ FIX: Filter correct sales data
-        fixture_data = filtered_df_without_seats[
-            (filtered_df_without_seats["Fixture Name"].str.strip().str.lower() == fixture_name.strip().lower()) &
-            (filtered_df_without_seats["EventCompetition"].str.strip().str.lower() == event_competition.strip().lower())
+        # … (above remains the same) …
+
+        # ✅ FIX: Filter correct sales data
+        df = filtered_df_without_seats.copy()
+        df["KickOff_dt"] = pd.to_datetime(df["KickOffEventStart"], errors="coerce")
+
+        fixture_data = df[
+            (df["Fixture Name"].str.strip().str.lower()     == fixture_name.strip().lower()) &
+            (df["EventCompetition"].str.strip().str.lower() == event_competition.strip().lower()) &
+            (df["KickOff_dt"]                               == fixture_date)
         ]
+
+        # fixture_data = filtered_df_without_seats[
+        #     (filtered_df_without_seats["Fixture Name"].str.strip().str.lower() == fixture_name.strip().lower()) &
+        #     (filtered_df_without_seats["EventCompetition"].str.strip().str.lower() == event_competition.strip().lower())&
+        #     (filtered_df_without_seats["KickOffEventStart"].str.strip().str.lower() == event_competition.strip().lower())
+        # ]
 
         # ✅ Ensure numeric conversion
         if not fixture_data.empty:
