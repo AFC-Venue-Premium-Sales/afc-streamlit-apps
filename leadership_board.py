@@ -962,7 +962,8 @@ def run_dashboard():
         # ✅ FIX: Filter correct sales data
         fixture_data = filtered_df_without_seats[
             (filtered_df_without_seats["Fixture Name"].str.strip().str.lower() == fixture_name.strip().lower()) &
-            (filtered_df_without_seats["EventCompetition"].str.strip().str.lower() == event_competition.strip().lower())
+            (filtered_df_without_seats["EventCompetition"].str.strip().str.lower() == event_competition.strip().lower())&
+            (filtered_df_without_seats["EventId"] == fixture_row["EventId"])
         ]
 
         # ✅ Ensure numeric conversion
