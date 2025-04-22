@@ -618,7 +618,9 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
     # ✅ 7. Aggregate sales data for 'Seats Sold'
     df_sales_for_fixture = full_sales_data[
         (full_sales_data["Fixture Name"] == fixture_row["EventName"]) &
-        (full_sales_data["EventCompetition"] == fixture_row.get("EventCompetition", ""))
+        (full_sales_data["EventCompetition"] == fixture_row.get("EventCompetition", ""))&
+        (full_sales_data["EventId"] == fixture_row["EventId"])
+
     ]
     
     if df_sales_for_fixture.empty:
