@@ -31,318 +31,328 @@ def load_budget_targets():
 
 
 
+import re
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import streamlit as st
+
 def generate_event_level_men_cumulative_sales_chart(filtered_data):
     """
     Generate a cumulative percentage-to-target sales chart for various competitions.
+    Uses KickOffEventStart (rounded to the minute) to align each curve exactly to its fixture,
+    and drops duplicates so that a match only appears once (e.g. PSG group vs. PSG semi).
     """
-    # Load budget targets data
+    # 1️⃣ Load and normalize budget targets
     budget_df = load_budget_targets()
+    budget_df['KickOffEventStart'] = (
+        pd.to_datetime(budget_df['KickOffEventStart'], errors='coerce')
+          .dt.round('min')
+    )
+    budget_df.columns = budget_df.columns.str.strip()
 
-    # Clean columns to remove any whitespace
+    # 2️⃣ Clean and merge sales data
+    filtered_data = filtered_data.copy()
     filtered_data.columns = filtered_data.columns.str.strip()
     filtered_data['EventCompetition'] = filtered_data['EventCompetition'].str.strip()
     filtered_data['Fixture Name'] = filtered_data['Fixture Name'].str.strip()
+    # round sale KO to the minute
+    filtered_data['KickOffEventStart'] = (
+        pd.to_datetime(filtered_data['KickOffEventStart'], errors='coerce')
+          .dt.round('min')
+    )
+    # now drop any duplicate fixtures (same name, competition & KO) so each only charts once
+    filtered_data = filtered_data.drop_duplicates(
+        subset=['Fixture Name','EventCompetition','KickOffEventStart'],
+        keep='first'
+    )
 
-    # Merge filtered_data with budget targets
-    filtered_data = filtered_data.merge(budget_df, on=['Fixture Name', 'EventCompetition'], how='left')
+    # merge in Budget Target keyed on all three fields
+    filtered_data = filtered_data.merge(
+        budget_df,
+        on=['Fixture Name','EventCompetition','KickOffEventStart'],
+        how='left'
+    )
 
-    # Ensure 'PaymentTime' and 'KickOffEventStart' are datetime
+    # 3️⃣ Ensure datetimes and paid status
     filtered_data['PaymentTime'] = pd.to_datetime(filtered_data['PaymentTime'], errors='coerce')
-    filtered_data['KickOffEventStart'] = pd.to_datetime(filtered_data['KickOffEventStart'], errors='coerce')
-
-    # Validate 'Budget Target' column
     if 'Budget Target' not in filtered_data.columns:
-        raise ValueError("The 'Budget Target' column is missing. Ensure the data is correctly prepared.")
+        raise ValueError("The 'Budget Target' column is missing after merge.")
+    filtered_data['IsPaid'] = filtered_data['IsPaid'].astype(str).fillna('FALSE').str.upper()
 
-    # Ensure 'IsPaid' column is consistent
-    filtered_data['IsPaid'] = filtered_data['IsPaid'].astype(str).fillna('FALSE')
-
-    # Filter for allowed competitions
-    allowed_competitions = ['Premier League', 'UEFA Champions League', 'Carabao Cup', 'Emirates Cup', 'FA Cup']
+    # 4️⃣ Filter only paid sales and allowed competitions
+    allowed = ['Premier League','UEFA Champions League','Carabao Cup','Emirates Cup','FA Cup']
     filtered_data = filtered_data[
-        (filtered_data['IsPaid'].str.upper() == 'TRUE') &
-        (filtered_data['EventCompetition'].isin(allowed_competitions))
+        (filtered_data['IsPaid'] == 'TRUE') &
+        (filtered_data['EventCompetition'].isin(allowed))
     ].copy()
 
-    # Normalize 'Discount' column
+    # 5️⃣ Exclude discount types
     filtered_data['Discount'] = filtered_data['Discount'].astype(str).str.lower().str.strip()
-
-    # Exclude rows with specific keywords in 'Discount' column
-    exclude_keywords = ["credit", "voucher", "gift voucher", "discount", "pldl"]
-    mask = ~filtered_data['Discount'].str.contains('|'.join([re.escape(keyword) for keyword in exclude_keywords]), case=False, na=False)
+    bad = ["credit","voucher","gift voucher","discount","pldl"]
+    mask = ~filtered_data['Discount'].str.contains('|'.join(map(re.escape,bad)), na=False)
     filtered_data = filtered_data[mask]
 
-    # Calculate 'TotalEffectivePrice'
+    # 6️⃣ Compute effective price
     filtered_data['TotalEffectivePrice'] = np.where(
         filtered_data['TotalPrice'] > 0,
         filtered_data['TotalPrice'],
         np.where(filtered_data['DiscountValue'].notna(), filtered_data['DiscountValue'], 0)
     )
 
-    # Group by Fixture Name, EventCompetition, and PaymentTime
-    grouped_data = (
-        filtered_data.groupby(['Fixture Name', 'EventCompetition', 'PaymentTime'])
+    # 7️⃣ Aggregate by fixture + payment time
+    grouped = (
+        filtered_data
+        .groupby(['Fixture Name','EventCompetition','PaymentTime'])
         .agg(
-            DailySales=('TotalEffectivePrice', 'sum'),
-            KickOffDate=('KickOffEventStart', 'first'),
-            BudgetTarget=('Budget Target', 'first')
+            DailySales=('TotalEffectivePrice','sum'),
+            KickOffDate=('KickOffEventStart','first'),
+            BudgetTarget=('Budget Target','first')
         )
         .reset_index()
+        .sort_values(['Fixture Name','EventCompetition','PaymentTime'])
     )
 
-    # Sort by Fixture Name, EventCompetition, and PaymentTime
-    grouped_data = grouped_data.sort_values(by=['Fixture Name', 'EventCompetition', 'PaymentTime'])
+    # 8️⃣ Compute cumulative and % of budget
+    grouped['CumulativeSales'] = grouped.groupby(
+        ['Fixture Name','EventCompetition']
+    )['DailySales'].cumsum()
+    grouped['RevenuePercentage'] = (
+        grouped['CumulativeSales'] / grouped['BudgetTarget'] * 100
+    )
 
-    # Calculate cumulative sales and revenue percentage
-    grouped_data['CumulativeSales'] = grouped_data.groupby(['Fixture Name', 'EventCompetition'])['DailySales'].cumsum()
-    grouped_data['RevenuePercentage'] = (grouped_data['CumulativeSales'] / grouped_data['BudgetTarget']) * 100
-
-    # Map competition to colors
+    # 9️⃣ Setup plot
     competition_colors = {
-        'Premier League': 'green',
-        'UEFA Champions League': 'gold',
-        'Carabao Cup': 'blue',
-        'Emirates Cup': 'purple',
-        'FA Cup': 'pink'
+        'Premier League':'green','UEFA Champions League':'gold',
+        'Carabao Cup':'blue','Emirates Cup':'purple','FA Cup':'pink'
     }
     abbreviations = {
-        "Chelsea": "CHE", "Tottenham": "TOT", "Manchester United": "MANU",
-        "West Ham": "WES", "Paris Saint-Germain": "PSG", "Liverpool": "LIV",
-        "Brighton": "BRI", "Leicester": "LEI", "Wolves": "WOL", "Everton": "EVE",
-        "Nottingham Forest": "NFO", "Aston Villa": "AST", "Shakhtar Donetsk": "SHA",
-        "Dinamo Zagreb": "DIN", "Monaco": "MON", "Manchester City": "MCI"
+        "Chelsea":"CHE","Tottenham":"TOT","Manchester United":"MANU",
+        "West Ham":"WES","Paris Saint-Germain":"PSG","Liverpool":"LIV",
+        "Brighton":"BRI","Leicester":"LEI","Wolves":"WOL","Everton":"EVE",
+        "Nottingham Forest":"NFO","Aston Villa":"AST",
+        "Shakhtar Donetsk":"SHA","Dinamo Zagreb":"DIN","Monaco":"MON","Manchester City":"MCI"
     }
 
-    # Create the plot with a black background
-    fig, ax = plt.subplots(figsize=(18, 12))
-    fig.patch.set_facecolor('#121212')
-    ax.set_facecolor('#121212')
-    ax.tick_params(axis='x', colors='white')
-    ax.tick_params(axis='y', colors='white')
-    ax.spines['bottom'].set_color('white')
-    ax.spines['left'].set_color('white')
+    fig, ax = plt.subplots(figsize=(18,12))
+    fig.patch.set_facecolor('#121212'); ax.set_facecolor('#121212')
+    ax.tick_params(colors='white'); ax.spines['bottom'].set_color('white'); ax.spines['left'].set_color('white')
 
-    # Plot each fixture and competition
-    for (fixture_name, event_competition), fixture_data in grouped_data.groupby(['Fixture Name', 'EventCompetition']):
-        opponent = fixture_name.split(' v ')[-1]
-        abbrev = abbreviations.get(opponent, opponent[:3].upper())
-        color = competition_colors.get(event_competition, 'blue')
+    #  🔟 Plot each fixture
+    now = pd.Timestamp.now()
+    for (fx, comp), d in grouped.groupby(['Fixture Name','EventCompetition']):
+        opp = fx.split(' v ')[-1]
+        abbr = abbreviations.get(opp, opp[:3].upper())
+        color = competition_colors.get(comp,'blue')
+        d = d.sort_values('PaymentTime')
 
-        # Sort data by PaymentTime for proper plotting
-        fixture_data = fixture_data.sort_values('PaymentTime')
-
-        # Determine if the fixture has been played
-        kick_off_date = fixture_data['KickOffDate'].iloc[0]
-        cumulative_percentage = fixture_data['RevenuePercentage'].iloc[-1]
-        if kick_off_date < pd.Timestamp.now():
-            abbrev += f" ({event_competition[:3].upper()}, {cumulative_percentage:.0f}%)"
-            annotation_color = 'red'
+        kick = d['KickOffDate'].iloc[0]
+        pct = d['RevenuePercentage'].iloc[-1]
+        if kick < now:
+            label = f"{abbr} ({comp[:3].upper()}, {pct:.0f}%)"
+            txt_col = 'red'
         else:
-            days_left = (kick_off_date - pd.Timestamp.now()).days
-            abbrev += f" ({event_competition[:3].upper()}, {days_left} days, {cumulative_percentage:.0f}%)"
-            annotation_color = 'white'
+            days = (kick - now).days
+            label = f"{abbr} ({comp[:3].upper()}, {days}d, {pct:.0f}%)"
+            txt_col = 'white'
 
-        # Plot the data
-        ax.plot(
-            fixture_data['PaymentTime'].dt.date,
-            fixture_data['RevenuePercentage'],
-            label=abbrev,
-            color=color,
-            linewidth=1
-        )
+        ax.plot(d['PaymentTime'].dt.date, d['RevenuePercentage'], label=label, color=color, linewidth=1)
+        ax.text(d['PaymentTime'].dt.date.iloc[-1], pct, label, color=txt_col, fontsize=12)
 
-        # Annotate with labels
-        ax.text(
-            fixture_data['PaymentTime'].dt.date.iloc[-1],
-            fixture_data['RevenuePercentage'].iloc[-1],
-            abbrev,
-            fontsize=12,
-            color=annotation_color,
-        )
-
-    # Adjust x-axis tick frequency dynamically
-    unique_dates = grouped_data['PaymentTime'].dt.date.nunique()
-
-    if unique_dates <= 5:
-        ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))  # Show every date
-    elif unique_dates <= 10:
-        ax.xaxis.set_major_locator(mdates.DayLocator(interval=2))  # Show every 2nd date
+    # 1️⃣1️⃣ Dynamic x–ticks
+    unique = grouped['PaymentTime'].dt.date.nunique()
+    if unique <= 5:
+        ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+    elif unique <= 10:
+        ax.xaxis.set_major_locator(mdates.DayLocator(interval=2))
     else:
-        ax.xaxis.set_major_locator(mdates.DayLocator(interval=3))  # Show every 3rd date or more
-
-    # Format x-axis labels with shorter date format
+        ax.xaxis.set_major_locator(mdates.DayLocator(interval=3))
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%b'))
+    fig.autofmt_xdate(rotation=45, ha='right')
 
-    # Rotate labels for readability
-    fig.autofmt_xdate(rotation=45, ha='right')  # Rotate labels and align to the right
-
-    # Set y-axis to show values as percentages
+    # 1️⃣2️⃣ Y–axis, legend & styling
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{int(x)}%'))
-
-    # Add legend
     handles = [
-        plt.Line2D([0], [0], color='green', lw=2, label='Premier League'),
-        plt.Line2D([0], [0], color='gold', lw=2, label='Champions League'),
-        plt.Line2D([0], [0], color='blue', lw=2, label='Carabao Cup'),
-        plt.Line2D([0], [0], color='purple', lw=2, label='Emirates Cup'),
-        plt.Line2D([0], [0], color='pink', lw=2, label='FA Cup'),
-        plt.Line2D([], [], color='red', linestyle='--', linewidth=2, label='Budget Target (100%)')
+        plt.Line2D([0],[0],color='green',lw=2,label='Premier League'),
+        plt.Line2D([0],[0],color='gold',lw=2,label='Champions League'),
+        plt.Line2D([0],[0],color='blue',lw=2,label='Carabao Cup'),
+        plt.Line2D([0],[0],color='purple',lw=2,label='Emirates Cup'),
+        plt.Line2D([0],[0],color='pink',lw=2,label='FA Cup'),
+        plt.Line2D([],[],color='red',linestyle='--',linewidth=2,label='Budget Target (100%)')
     ]
-    ax.legend(handles=handles, loc='lower center', bbox_to_anchor=(0.5, -0.25), fontsize=10, frameon=False, facecolor='black', labelcolor='white', ncol=3)
-
-    # Format the plot
-    ax.set_title("Cumulative Sales as Percentage of Budget", fontsize=16, color='white')
-    ax.set_xlabel("Date", fontsize=14, color='white')
-    ax.set_ylabel("Revenue (% of Budget Target)", fontsize=14, color='white')
-    ax.axhline(y=100, color='red', linestyle='--', linewidth=1, label='Budget Target (100%)')
+    ax.legend(handles=handles, loc='lower center', bbox_to_anchor=(0.5,-0.25),
+              fontsize=10, frameon=False, facecolor='black', labelcolor='white', ncol=3)
+    ax.set_title("Cumulative Sales as % of Budget", color='white', fontsize=16)
+    ax.set_xlabel("Date", color='white', fontsize=14)
+    ax.set_ylabel("Revenue (% of Budget Target)", color='white', fontsize=14)
+    ax.axhline(100, color='red', linestyle='--', linewidth=1)
     plt.tight_layout()
 
-    # Display the plot in Streamlit
+    # 1️⃣3️⃣ Render in Streamlit
     st.pyplot(fig)
 
 
 
 
+import re
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import streamlit as st
+
 def generate_event_level_women_cumulative_sales_chart(filtered_data):
     """
     Generate a cumulative percentage-to-target sales chart for Women's competitions.
+    Ensures each fixture (name + competition + exact KO minute) only appears once,
+    merges on all three keys to pick up the correct budget, and plots cumulative % of target.
     """
-    # Load budget targets data
+    # 1️⃣ Load and prepare budget targets, rounding KO to the minute
     budget_df = load_budget_targets()
+    budget_df['KickOffEventStart'] = (
+        pd.to_datetime(budget_df['KickOffEventStart'], errors='coerce')
+          .dt.round('min')
+    )
+    budget_df.columns = budget_df.columns.str.strip()
+    budget_df['Fixture Name'] = budget_df['Fixture Name'].str.strip()
+    budget_df['EventCompetition'] = budget_df['EventCompetition'].str.strip()
 
-    # Clean and prepare data
-    filtered_data.columns = filtered_data.columns.str.strip()
-    filtered_data['EventCompetition'] = filtered_data['EventCompetition'].str.strip()
-    filtered_data['Fixture Name'] = filtered_data['Fixture Name'].str.strip()
-    filtered_data = filtered_data.merge(budget_df, on=['Fixture Name', 'EventCompetition'], how='left')
+    # 2️⃣ Clean incoming sales data
+    df = filtered_data.copy()
+    df.columns = df.columns.str.strip()
+    df['Fixture Name'] = df['Fixture Name'].str.strip()
+    df['EventCompetition'] = df['EventCompetition'].str.strip()
+    # round KO in the sales feed as well
+    df['KickOffEventStart'] = (
+        pd.to_datetime(df['KickOffEventStart'], errors='coerce')
+          .dt.round('min')
+    )
+    # drop duplicate rows so each fixture only once
+    df = df.drop_duplicates(
+        subset=['Fixture Name','EventCompetition','KickOffEventStart'],
+        keep='first'
+    )
 
-    # Ensure datetime formats
-    filtered_data['PaymentTime'] = pd.to_datetime(filtered_data['PaymentTime'], errors='coerce')
-    filtered_data['KickOffEventStart'] = pd.to_datetime(filtered_data['KickOffEventStart'], errors='coerce')
+    # 3️⃣ Merge budget into the sales frame on all three keys
+    df = df.merge(
+        budget_df,
+        on=['Fixture Name','EventCompetition','KickOffEventStart'],
+        how='left'
+    )
 
-    if 'Budget Target' not in filtered_data.columns:
-        raise ValueError("The 'Budget Target' column is missing. Ensure the data is correctly prepared.")
+    # sanity check
+    if 'Budget Target' not in df.columns:
+        raise ValueError("Missing 'Budget Target' after merge. Check your keys.")
 
-    filtered_data['IsPaid'] = filtered_data['IsPaid'].astype(str).fillna('FALSE')
+    # 4️⃣ Convert timestamps and paid flag
+    df['PaymentTime'] = pd.to_datetime(df['PaymentTime'], errors='coerce')
+    df['IsPaid'] = df['IsPaid'].astype(str).fillna('FALSE').str.upper()
 
-    # Filter competitions
-    allowed_competitions = ["Barclays Women's Super League", "UEFA Women's Champions League"]
-    filtered_data = filtered_data[
-        (filtered_data['IsPaid'].str.upper() == 'TRUE') &
-        (filtered_data['EventCompetition'].isin(allowed_competitions))
+    # 5️⃣ Filter only TRUE payments and women's comps
+    allowed = ["Barclays Women's Super League","UEFA Women's Champions League"]
+    df = df[
+        (df['IsPaid']=='TRUE') &
+        (df['EventCompetition'].isin(allowed))
     ].copy()
 
-    # Exclude certain discounts
-    exclude_keywords = ["credit", "voucher", "gift voucher", "discount", "pldl"]
-    mask = ~filtered_data['Discount'].str.contains('|'.join([re.escape(keyword) for keyword in exclude_keywords]), case=False, na=False)
-    filtered_data = filtered_data[mask]
+    # 6️⃣ Exclude unwanted discounts
+    df['Discount'] = df['Discount'].astype(str).str.lower().str.strip()
+    bad = ["credit","voucher","gift voucher","discount","pldl"]
+    mask = ~df['Discount'].str.contains('|'.join(map(re.escape,bad)), na=False)
+    df = df[mask]
 
-    # Calculate TotalEffectivePrice
-    filtered_data['TotalEffectivePrice'] = np.where(
-        filtered_data['TotalPrice'] > 0,
-        filtered_data['TotalPrice'],
-        np.where(filtered_data['DiscountValue'].notna(), filtered_data['DiscountValue'], 0)
+    # 7️⃣ Compute effective price
+    df['TotalEffectivePrice'] = np.where(
+        df['TotalPrice']>0,
+        df['TotalPrice'],
+        np.where(df['DiscountValue'].notna(), df['DiscountValue'], 0)
     )
 
-    # Group and calculate cumulative sales
-    grouped_data = (
-        filtered_data.groupby(['Fixture Name', 'EventCompetition', 'PaymentTime'])
-        .agg(
-            DailySales=('TotalEffectivePrice', 'sum'),
-            KickOffDate=('KickOffEventStart', 'first'),
-            BudgetTarget=('Budget Target', 'first')
-        )
-        .reset_index()
+    # 8️⃣ Group by fixture + payment time
+    grouped = (
+        df.groupby(['Fixture Name','EventCompetition','PaymentTime'])
+          .agg(
+              DailySales=('TotalEffectivePrice','sum'),
+              KickOffDate=('KickOffEventStart','first'),
+              BudgetTarget=('Budget Target','first')
+          )
+          .reset_index()
+          .sort_values(['Fixture Name','PaymentTime'])
     )
-    grouped_data['CumulativeSales'] = grouped_data.groupby(['Fixture Name', 'EventCompetition'])['DailySales'].cumsum()
-    grouped_data['RevenuePercentage'] = (grouped_data['CumulativeSales'] / grouped_data['BudgetTarget']) * 100
 
-    # Map competition to colors
+    # 9️⃣ Cumulative sums and percentages
+    grouped['CumulativeSales'] = grouped.groupby(
+        ['Fixture Name','EventCompetition']
+    )['DailySales'].cumsum()
+    grouped['RevenuePercentage'] = (
+        grouped['CumulativeSales']/grouped['BudgetTarget']*100
+    )
+
+    # 🔟 Plot setup
     competition_colors = {
         "Barclays Women's Super League": 'green',
         "UEFA Women's Champions League": 'gold'
     }
     abbreviations = {
-        "Manchester City Women": "MCW", "Everton Women": "EVT", "Chelsea Women": "CHE",
-        "Vålerenga Women": "VAL", "Brighton Women": "BRI", "Juventus Women": "JUV",
-        "Aston Villa Women": "AST", "FC Bayern Munich Women": "BAY", "Tottenham Hotspur Women": "TOT",
-        "Liverpool Women": "LIVW"
+        "Manchester City Women":"MCW","Everton Women":"EVT","Chelsea Women":"CHE",
+        "Vålerenga Women":"VAL","Brighton Women":"BRI","Juventus Women":"JUV",
+        "Aston Villa Women":"AST","FC Bayern Munich Women":"BAY",
+        "Tottenham Hotspur Women":"TOT","Liverpool Women":"LIVW"
     }
 
-    # Create the plot
-    fig, ax = plt.subplots(figsize=(16, 10))
-    fig.patch.set_facecolor('#121212')
-    ax.set_facecolor('#121212')
-    ax.tick_params(axis='x', colors='white')
-    ax.tick_params(axis='y', colors='white')
-    ax.spines['bottom'].set_color('white')
-    ax.spines['left'].set_color('white')
+    fig, ax = plt.subplots(figsize=(16,10))
+    fig.patch.set_facecolor('#121212'); ax.set_facecolor('#121212')
+    ax.tick_params(colors='white'); ax.spines['bottom'].set_color('white'); ax.spines['left'].set_color('white')
 
-    for fixture_name, fixture_data in grouped_data.groupby('Fixture Name'):
-        opponent = fixture_name.split(' v ')[-1]
-        abbrev = abbreviations.get(opponent, opponent[:3].upper())
-        color = competition_colors.get(fixture_data['EventCompetition'].iloc[0], 'blue')
+    now = pd.Timestamp.now()
+    for (fx, comp), d in grouped.groupby(['Fixture Name','EventCompetition']):
+        opp = fx.split(' v ')[-1]
+        abbr = abbreviations.get(opp, opp[:3].upper())
+        color = competition_colors.get(comp,'blue')
+        d = d.sort_values('PaymentTime')
 
-        fixture_data = fixture_data.sort_values('PaymentTime')
-        kick_off_date = fixture_data['KickOffDate'].iloc[0]
-        cumulative_percentage = fixture_data['RevenuePercentage'].iloc[-1]
-        if kick_off_date < pd.Timestamp.now():
-            abbrev += f"(p, {cumulative_percentage:.0f}%)"
-            annotation_color = 'red'
+        kick = d['KickOffDate'].iloc[0]
+        pct = d['RevenuePercentage'].iloc[-1]
+        if kick < now:
+            label = f"{abbr} (p, {pct:.0f}%)"
+            txt_col = 'red'
         else:
-            days_left = (kick_off_date - pd.Timestamp.now()).days
-            abbrev += f"({days_left} days, {cumulative_percentage:.0f}%)"
-            annotation_color = 'white'
+            days = (kick-now).days
+            label = f"{abbr} ({days}d, {pct:.0f}%)"
+            txt_col = 'white'
 
-        ax.plot(
-            fixture_data['PaymentTime'].dt.date,
-            fixture_data['RevenuePercentage'],
-            label=abbrev,
-            color=color,
-            linewidth=1.5
-        )
+        ax.plot(d['PaymentTime'].dt.date, d['RevenuePercentage'], color=color, linewidth=1.5, label=label)
+        ax.text(d['PaymentTime'].dt.date.iloc[-1], pct, label, color=txt_col, fontsize=10)
 
-        ax.text(
-            fixture_data['PaymentTime'].dt.date.iloc[-1],
-            fixture_data['RevenuePercentage'].iloc[-1],
-            abbrev,
-            fontsize=10,
-            color=annotation_color
-        )
-
-    # Adjust x-axis tick frequency dynamically
-    unique_dates = grouped_data['PaymentTime'].dt.date.nunique()
-
-    if unique_dates <= 5:
-        ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))  # Show every date
-    elif unique_dates <= 10:
-        ax.xaxis.set_major_locator(mdates.DayLocator(interval=2))  # Show every 2nd date
+    # 1️⃣1️⃣ Dynamic x‑axis ticks
+    unique = grouped['PaymentTime'].dt.date.nunique()
+    if unique<=5:
+        ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+    elif unique<=10:
+        ax.xaxis.set_major_locator(mdates.DayLocator(interval=2))
     else:
-        ax.xaxis.set_major_locator(mdates.DayLocator(interval=3))  # Show every 3rd date or more
-
-    # Format x-axis labels with shorter date format
+        ax.xaxis.set_major_locator(mdates.DayLocator(interval=3))
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%b'))
+    fig.autofmt_xdate(rotation=45, ha='right')
 
-    # Rotate labels for readability
-    fig.autofmt_xdate(rotation=45, ha='right')  # Rotate labels and align to the right
-
-    ax.set_title("AFC Women's Cumulative Revenue 24/25", fontsize=14, color='white')
-    ax.set_xlabel("Date", fontsize=12, color='white')
-    ax.set_ylabel("Revenue (% of Budget Target)", fontsize=12, color='white')
-    ax.axhline(y=100, color='red', linestyle='--', linewidth=1)
-
-    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{int(x)}%'))
-
-    # Dynamically place the legend
+    # 1️⃣2️⃣ Final styling
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x,_: f'{int(x)}%'))
+    ax.axhline(100, color='red', linestyle='--', linewidth=1)
     handles = [
-        plt.Line2D([0], [0], color='green', lw=2, label="Barclays Women's Super League"),
-        plt.Line2D([0], [0], color='gold', lw=2, label="UEFA Women's Champions League"),
-        plt.Line2D([], [], color='red', linestyle='--', linewidth=2, label='Budget Target (100%)')
+        plt.Line2D([0],[0],color='green',lw=2,label="WSL"),
+        plt.Line2D([0],[0],color='gold',lw=2,label="UWCL"),
+        plt.Line2D([],[],color='red',linestyle='--',linewidth=2,label='Budget Target (100%)')
     ]
-    ax.legend(handles=handles, loc='lower center', bbox_to_anchor=(0.5, -0.2), fontsize=10, frameon=False)
+    ax.legend(handles=handles, loc='lower center', bbox_to_anchor=(0.5,-0.2), frameon=False, fontsize=10)
+    ax.set_title("AFC Women's Cumulative Revenue 24/25", color='white', fontsize=14)
+    ax.set_xlabel("Date", color='white', fontsize=12)
+    ax.set_ylabel("Revenue (% of Budget Target)", color='white', fontsize=12)
+    plt.tight_layout()
 
-    # Display the plot in Streamlit
+    # 1️⃣3️⃣ Render in Streamlit
     st.pyplot(fig)
+
 
     
     
