@@ -32,8 +32,8 @@ def load_budget_targets():
     """
     import pandas as pd
     # adjust this path if necessary
-    path = "/Users/cmunthali/Documents/PYTHON/APPS/budget_target_2425.xlsx"
-    df = pd.read_excel(path, parse_dates=["KickOffEventStart"], dayfirst=True)
+    path = "budget_target_2425.xlsx"
+    df = pd.read_excel(path, parse_dates=["KickOffEventStart"])
     df.columns = df.columns.str.strip()
     df["Fixture Name"]     = df["Fixture Name"].str.strip()
     df["EventCompetition"] = df["EventCompetition"].str.strip()
