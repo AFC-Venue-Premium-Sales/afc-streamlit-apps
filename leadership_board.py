@@ -577,11 +577,17 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
 )
 
     # ✅ 1. Filter inventory data for the selected fixture and event competition
+    # NEW — this pulls *only* the exact EventId you passed in
+    event_id = fixture_row["EventId"]
     df_fixture = merged_inventory[
-        (merged_inventory["EventName"] == fixture_row["EventName"]) &
-        (merged_inventory["EventCompetition"] == fixture_row.get("EventCompetition", "")) &
-        (merged_inventory["KickOffEventStart"] == fixture_row["KickOffEventStart"])
+        merged_inventory["EventId"] == event_id
     ].copy()
+
+    # df_fixture = merged_inventory[
+    #     (merged_inventory["EventName"] == fixture_row["EventName"]) &
+    #     (merged_inventory["EventCompetition"] == fixture_row.get("EventCompetition", "")) &
+    #     (merged_inventory["KickOffEventStart"] == fixture_row["KickOffEventStart"])
+    # ].copy()
 
     # ✅ 2. Ensure 'MaxSaleQuantity' (Stock Available) is present
     if "MaxSaleQuantity" not in df_fixture.columns:
@@ -690,17 +696,12 @@ def display_inventory_details(fixture_row, merged_inventory, full_sales_data):
                 f"<div style='color: black; font-family: Chapman-Bold; font-size: 24px; font-weight: bold; "
                 f"padding: 5px; text-align: center; white-space: nowrap;'>{seats_remaining}</div>"
             )
-
-
-
     df_fixture["Seats Remaining"] = df_fixture["Seats Remaining"].apply(style_seats_remaining)
-
 
     # 13. Generate HTML Table
     html_table = df_fixture[["Package Name", "Seats Available", "Seats Sold", "Seats Remaining", "Current Price"]].to_html(
         classes='fixture-table', index=False, escape=False
     )
-
     # Final display
     st.markdown(
         f"""
