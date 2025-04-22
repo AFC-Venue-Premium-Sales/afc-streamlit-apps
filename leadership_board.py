@@ -454,33 +454,36 @@ crest_base64 = get_base64_image("assets/arsenal_crest_gold.png")
 def get_upcoming_fixtures(inventory_df, n=3):
     """
     Identify the next N upcoming fixtures from the MERGED inventory DataFrame,
-    sorted by KickOffEventStart ascending.
-    Ensures duplicate fixtures don't repeat and the soonest matches are displayed.
+    sorted by KickOffEventStart ascending, deduped by EventId and kickoff.
     """
 
-    # Ensure KickOffEventStart is in datetime format
-    inventory_df["KickOffDT"] = pd.to_datetime(inventory_df["KickOffEventStart"], errors="coerce")
-    
-    # Strip extra whitespace from EventName
-    inventory_df["EventName"] = inventory_df["EventName"].str.strip()
+    df = inventory_df.copy()
 
-    # Get today's date
+    # 1) Parse & round kickoff to minute
+    df["KickOffDT"] = (
+        pd.to_datetime(df["KickOffEventStart"], dayfirst=True, errors="coerce")
+          .dt.round("min")
+    )
+
+    # 2) Normalize text fields
+    df["EventName"]         = df["EventName"].astype(str).str.strip().str.lower()
+    df["EventCompetition"]  = df["EventCompetition"].astype(str).str.strip().str.lower()
+
+    # 3) Filter to future only
     now = datetime.now()
+    df = df[df["KickOffDT"] > now]
 
-    # Filter out only future fixtures
-    future_df = inventory_df[inventory_df["KickOffDT"] > now].copy()
-    
-    # Exclude specific fixture
-    future_df = future_df[future_df["EventName"] != "Arsenal Women v Leicester Women"]
+    # 4) Optional: drop any unwanted fixtures
+    df = df[df["EventName"] != "arsenal women v leicester women"]
 
-    # Sort by KickOffDT to ensure closest fixtures appear first
-    future_df = future_df.sort_values(by="KickOffDT", ascending=True)
+    # 5) Sort so the earliest kickoffs come first
+    df = df.sort_values(by="KickOffDT", ascending=True)
 
-    # Drop duplicates based on EventName + Competition, keeping the soonest kickoff
-    unique_fixtures = future_df.drop_duplicates(subset=["EventName", "EventCompetition"], keep="first")
+    # 6) Dedupe by the unique EventId (guarantees you only get that one match)
+    df = df.drop_duplicates(subset=["EventId"], keep="first")
 
-    # Return only the top N fixtures
-    return unique_fixtures.head(n)
+    # 7) Finally, take the top N
+    return df.head(n)
 
 
 
