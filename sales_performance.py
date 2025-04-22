@@ -113,18 +113,22 @@ def run_app():
             loaded_api_df['CreatedOn'], format='%d-%m-%Y %H:%M', errors='coerce'
         )
 
-        # Merge with budget data
-        filtered_data = pd.merge(
-        filtered_data,
-        budget_df,
-        how="left",
-        on=["Fixture Name", "EventCompetition", "KickOffEventStart"]
-    )
-
-        # Parse 'KickOffEventStart' with the correct format
+        # ─── First, coerce KickOffEventStart in your sales DataFrame to datetime ──────
         filtered_data['KickOffEventStart'] = pd.to_datetime(
-            filtered_data['KickOffEventStart'], format='%d-%m-%Y %H:%M', errors='coerce'
+            filtered_data['KickOffEventStart'],
+            format='%d-%m-%Y %H:%M', 
+            dayfirst=True,
+            errors='coerce'
         )
+
+        # ─── Then merge against the budget file (which already has it as datetime) ──────
+        filtered_data = pd.merge(
+            filtered_data,
+            budget_df,
+            how="left",
+            on=["Fixture Name", "EventCompetition", "KickOffEventStart"]
+        )
+
 
         # Add 'Days to Fixture' column
         today = pd.Timestamp.now()
