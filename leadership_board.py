@@ -902,22 +902,29 @@ def run_dashboard():
     #     (pd.to_datetime(filtered_data["CreatedOn"], errors="coerce", dayfirst=True) <= end_date)
     # )
     # filtered_services_data = filtered_data[mask_services]
-    
-    
+
     def render_next_fixture_sidebar(fixture_row, filtered_data, budget_df):
         """
         Renders a quick summary widget in the sidebar for the given fixture.
         THIS IS ONLY FOR THE REMAINING INVENTORY PAGES
         """
+
+        # — Normalize budget_df kickoff column once at minute precision —
+        budget_df = budget_df.copy()
+        budget_df["KickOffEventStart"] = (
+            pd.to_datetime(budget_df["KickOffEventStart"], errors="coerce")
+            .dt.round("min")
+        )
+
         if fixture_row.empty:
             st.sidebar.markdown(
                 """
                 <style>
-                    @font-face {{
+                    @font-face {
                         font-family: 'Chapman-Bold';
                         src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
-                    }}
-                    .no-fixture-widget {{
+                    }
+                    .no-fixture-widget {
                         background-color: #fff0f0;
                         border: 2px solid #E41B17;
                         border-radius: 15px;
@@ -927,7 +934,7 @@ def run_dashboard():
                         font-size: 28px;
                         font-weight: bold;
                         color: #E41B17;
-                    }}
+                    }
                 </style>
                 <div class="no-fixture-widget">
                     ⚠️ No upcoming fixtures found.
@@ -937,65 +944,52 @@ def run_dashboard():
             )
             return
 
+        # Extract fixture details
         fixture_name = fixture_row["EventName"]
         event_competition = fixture_row["EventCompetition"]
-        fixture_date = pd.to_datetime(fixture_row["KickOffEventStart"], errors="coerce")
+        # Round the fixture’s own kickoff to minute precision
+        fixture_date = (
+            pd.to_datetime(fixture_row["KickOffEventStart"], errors="coerce")
+            .round("min")
+        )
 
-        # ✅ Calculate fixture details
+        # Calculate days until the fixture
         days_to_fixture = (fixture_date - datetime.now()).days if pd.notnull(fixture_date) else "TBC"
 
-        # ✅ Ensure correct lookup in budget_df
-        if isinstance(budget_df, pd.DataFrame):
-            matching_row = budget_df[
-                (budget_df["Fixture Name"].str.strip().str.lower() == fixture_name.strip().lower()) &
-                (budget_df["EventCompetition"].str.strip().str.lower() == event_competition.strip().lower())&
-                (pd.to_datetime(budget_df["KickOffEventStart"], errors="coerce") == fixture_date)
-            ]
-            budget_target = matching_row["Budget Target"].values[0] if not matching_row.empty else 0
-        else:
-            budget_target = budget_df.get((fixture_name, event_competition), 0)
-
-        # ✅ Ensure budget_target is numeric
+        # — Correct budget lookup with rounded times —
+        matching_row = budget_df[
+            (budget_df["Fixture Name"].str.strip().str.lower()== fixture_name.strip().lower()) &
+            (budget_df["EventCompetition"].str.strip().str.lower()== event_competition.strip().lower()) &
+            (budget_df["KickOffEventStart"]== fixture_date)
+        ]
+        budget_target = matching_row["Budget Target"].iloc[0] if not matching_row.empty else 0
+        # Ensure numeric
         budget_target = float(str(budget_target).replace("£", "").replace(",", "").strip()) if budget_target else 0
 
-        # ✅ FIX: Filter correct sales data
-        # … (above remains the same) …
-
-        # ✅ FIX: Filter correct sales data
-        df = filtered_df_without_seats.copy()
-        df["KickOff_dt"] = pd.to_datetime(df["KickOffEventStart"], errors="coerce")
-
+        # — Filter sales for *exact* fixture by name, competition, and kickoff —
+        df = filtered_data.copy()
+        df["KickOff_dt"] = pd.to_datetime(df["KickOffEventStart"], errors="coerce").dt.round("min")
         fixture_data = df[
-            (df["Fixture Name"].str.strip().str.lower()     == fixture_name.strip().lower()) &
+            (df["Fixture Name"].str.strip().str.lower()== fixture_name.strip().lower()) &
             (df["EventCompetition"].str.strip().str.lower() == event_competition.strip().lower()) &
-            (df["KickOff_dt"]                               == fixture_date)
+            (df["KickOff_dt"]== fixture_date)
         ]
 
-        # fixture_data = filtered_df_without_seats[
-        #     (filtered_df_without_seats["Fixture Name"].str.strip().str.lower() == fixture_name.strip().lower()) &
-        #     (filtered_df_without_seats["EventCompetition"].str.strip().str.lower() == event_competition.strip().lower())&
-        #     (filtered_df_without_seats["KickOffEventStart"].str.strip().str.lower() == event_competition.strip().lower())
-        # ]
-
-        # ✅ Ensure numeric conversion
+        # Sum revenue
         if not fixture_data.empty:
+            fixture_data["Seats"] = pd.to_numeric(fixture_data["Seats"], errors="coerce").fillna(0)
             fixture_data["Price"] = pd.to_numeric(fixture_data["Price"], errors="coerce").fillna(0)
-            fixture_revenue = fixture_data["Price"].sum()  # ✅ CORRECT Calculation
+            fixture_revenue = (fixture_data["Seats"] * fixture_data["Price"]).sum()
         else:
             fixture_revenue = 0
 
-        # ✅ Compute budget percentage achieved
+        # Compute % of budget achieved
         budget_achieved = round((fixture_revenue / budget_target) * 100, 2) if budget_target > 0 else 0
 
-        # ✅ Debugging Output
-        print("\n🔍 DEBUG: Fixture Revenue Calculation")
-        print(f"Fixture: {fixture_name} | Competition: {event_competition}")
-        print(f"Total Rows Matched: {len(fixture_data)}")
-        print(f"🎯 Budget Target: £{budget_target:,.0f}")
-        print(f"💰 FIXED Fixture Revenue: £{fixture_revenue:,.0f}")
-        print(f"📊 Budget Target Achieved: {budget_achieved:.2f}%")
+        # Debugging output
+        print(f"🔍 DEBUG: {fixture_name}@{fixture_date} → revenue £{fixture_revenue:,.0f} / target £{budget_target:,.0f} = {budget_achieved}%")
 
-        # 1️⃣ First widget: minimal “Next Fixture” card 
+        # 1️⃣ Minimal Next Fixture card
         st.sidebar.markdown(
             f"""
             <style>
@@ -1005,7 +999,7 @@ def run_dashboard():
                 }}
                 .next-fixture-minimal {{
                     background-color: #fff0f0;
-                    border: 2px solid #E41B17; /* Use Blue for the border if desired */
+                    border: 2px solid #E41B17;
                     border-radius: 15px;
                     margin-top: 10px;
                     padding: 15px;
@@ -1015,12 +1009,12 @@ def run_dashboard():
                 }}
                 .next-fixture-minimal .header-text {{
                     font-size: 24px;
-                    color: #0047AB; /* Blue for "Next Fixture" */
+                    color: #0047AB;
                     margin-bottom: 10px;
                 }}
                 .next-fixture-minimal .fixture-title {{
                     font-size: 22px;
-                    color: #E41B17; /* Red for fixture name */
+                    color: #E41B17;
                     margin-bottom: 5px;
                 }}
             </style>
@@ -1032,7 +1026,7 @@ def run_dashboard():
             unsafe_allow_html=True
         )
 
-        # 2️⃣ Second widget: detailed “Next Fixture Details” card
+        # 2️⃣ Detailed Next Fixture Details card
         st.sidebar.markdown(
             f"""
             <style>
@@ -1064,19 +1058,17 @@ def run_dashboard():
                 }}
             </style>
             <div class="next-fixture-widget">
-                🏟️ Next Fixture Details <br>
+                🏟️ Next Fixture Details<br>
                 <span class="fixture-info">⏳ Days to Fixture:</span>
-                <span class="fixture-days">{days_to_fixture} days</span>
+                <span class="fixture-days">{days_to_fixture} days</span><br>
                 <span class="fixture-info">🎯 Budget Target:</span>
-                <span class="fixture-days">£{budget_target:,.0f}</span>
+                <span class="fixture-days">£{budget_target:,.0f}</span><br>
                 <span class="fixture-info">✅ Budget Target Achieved:</span>
                 <span class="fixture-days">{budget_achieved:.2f}%</span>
             </div>
             """,
             unsafe_allow_html=True
         )
-
-
 
 
     ############################################################################
