@@ -358,97 +358,100 @@ def generate_event_level_women_cumulative_sales_chart(filtered_data):
     
     
     
-    
+import re
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import streamlit as st
+
 def generate_event_level_concert_cumulative_sales_chart(filtered_data):
     """
     Generate a cumulative percentage-to-target sales chart for Concert events.
     """
     try:
-        # Load budget targets data
+        # --- 1️⃣ Load & prepare budget targets, round KO to minute ---
         budget_df = load_budget_targets()
+        budget_df['KickOffEventStart'] = (
+            pd.to_datetime(budget_df['KickOffEventStart'], errors='coerce')
+              .dt.round('min')
+        )
+        budget_df.columns = budget_df.columns.str.strip()
+        budget_df['Fixture Name'] = budget_df['Fixture Name'].str.strip()
+        budget_df['EventCompetition'] = budget_df['EventCompetition'].str.strip()
 
-        # Clean and prepare data
-        filtered_data.columns = filtered_data.columns.str.strip()
-        filtered_data['EventCompetition'] = filtered_data['EventCompetition'].str.strip()
-        filtered_data['Fixture Name'] = filtered_data['Fixture Name'].str.strip()
-        filtered_data = filtered_data.merge(budget_df, on=['Fixture Name', 'EventCompetition'], how='left')
+        # --- 2️⃣ Clean incoming sales data & round its KO ---
+        df = filtered_data.copy()
+        df.columns = df.columns.str.strip()
+        df['Fixture Name'] = df['Fixture Name'].str.strip()
+        df['EventCompetition'] = df['EventCompetition'].str.strip()
+        df['EventCategory'] = df['EventCategory'].str.strip()
+        df['KickOffEventStart'] = (
+            pd.to_datetime(df['KickOffEventStart'], errors='coerce')
+              .dt.round('min')
+        )
 
-        # Ensure datetime formats
-        filtered_data['PaymentTime'] = pd.to_datetime(filtered_data['PaymentTime'], errors='coerce')
-        filtered_data['KickOffEventStart'] = pd.to_datetime(filtered_data['KickOffEventStart'], errors='coerce')
+        # Drop duplicates so each fixture/date appears only once
+        df = df.drop_duplicates(
+            subset=['Fixture Name', 'EventCompetition', 'KickOffEventStart'],
+            keep='first'
+        )
 
-        if 'Budget Target' not in filtered_data.columns:
-            raise ValueError("The 'Budget Target' column is missing. Ensure the data is correctly prepared.")
+        # --- 3️⃣ Merge in the correct budget on all three keys ---
+        df = df.merge(
+            budget_df,
+            on=['Fixture Name', 'EventCompetition', 'KickOffEventStart'],
+            how='left'
+        )
 
-        filtered_data['IsPaid'] = filtered_data['IsPaid'].astype(str).fillna('FALSE')
+        if 'Budget Target' not in df.columns:
+            raise ValueError("Missing 'Budget Target' after merge. Check your keys.")
 
-        # Filter for Concerts
-        allowed_categories = ["Concert"]
-        filtered_data = filtered_data[
-            (filtered_data['IsPaid'].str.upper() == 'TRUE') &
-            (filtered_data['EventCategory'].isin(allowed_categories))
+        # --- 4️⃣ Convert to datetime & normalize paid flag ---
+        df['PaymentTime'] = pd.to_datetime(df['PaymentTime'], errors='coerce')
+        df['IsPaid'] = df['IsPaid'].astype(str).fillna('FALSE').str.upper()
+
+        # --- 5️⃣ Filter to TRUE payments & Concert category ---
+        df = df[
+            (df['IsPaid'] == 'TRUE') &
+            (df['EventCategory'] == 'Concert')
         ].copy()
 
-        # Debug: Check if filtered data is empty
-        if filtered_data.empty:
-            st.warning("No data available for Concerts in the selected filters.")
-            return
+        # --- 6️⃣ Exclude unwanted discounts ---
+        df['Discount'] = df['Discount'].astype(str).str.lower().str.strip()
+        bad = ["credit","voucher","gift voucher","discount","pldl"]
+        df = df[~df['Discount'].str.contains('|'.join(map(re.escape,bad)), na=False)]
 
-        # Exclude certain discounts
-        exclude_keywords = ["credit", "voucher", "gift voucher", "discount", "pldl"]
-        mask = ~filtered_data['Discount'].str.contains('|'.join([re.escape(keyword) for keyword in exclude_keywords]), case=False, na=False)
-        filtered_data = filtered_data[mask]
-
-        # Debug: Check if data is empty after discount filtering
-        if filtered_data.empty:
-            st.warning("All data excluded due to discount filtering.")
-            return
-
-        # Calculate TotalEffectivePrice
-        filtered_data['TotalEffectivePrice'] = np.where(
-            filtered_data['TotalPrice'] > 0,
-            filtered_data['TotalPrice'],
-            np.where(filtered_data['DiscountValue'].notna(), filtered_data['DiscountValue'], 0)
+        # --- 7️⃣ Compute TotalEffectivePrice ---
+        df['TotalEffectivePrice'] = np.where(
+            df['TotalPrice'] > 0,
+            df['TotalPrice'],
+            np.where(df['DiscountValue'].notna(), df['DiscountValue'], 0)
         )
 
-        # Group and calculate cumulative sales
-        grouped_data = (
-            filtered_data.groupby(['Fixture Name', 'EventCompetition', 'PaymentTime'])
-            .agg(
-                DailySales=('TotalEffectivePrice', 'sum'),
-                KickOffDate=('KickOffEventStart', 'first'),
-                BudgetTarget=('Budget Target', 'first')
-            )
-            .reset_index()
+        # --- 8️⃣ Group & cumulative sums ---
+        grouped = (
+            df.groupby(['Fixture Name','EventCompetition','PaymentTime'])
+              .agg(
+                  DailySales=('TotalEffectivePrice','sum'),
+                  KickOffDate=('KickOffEventStart','first'),
+                  BudgetTarget=('Budget Target','first')
+              )
+              .reset_index()
+        )
+        grouped['CumulativeSales'] = grouped.groupby(
+            ['Fixture Name','EventCompetition']
+        )['DailySales'].cumsum()
+        grouped['RevenuePercentage'] = (
+            grouped['CumulativeSales'] / grouped['BudgetTarget'] * 100
         )
 
-        # Debug: Check if grouped data is empty
-        if grouped_data.empty:
-            st.warning("No grouped data available for the chart.")
-            return
-
-        grouped_data['CumulativeSales'] = grouped_data.groupby(['Fixture Name', 'EventCompetition'])['DailySales'].cumsum()
-        grouped_data['RevenuePercentage'] = (grouped_data['CumulativeSales'] / grouped_data['BudgetTarget']) * 100
-
-        # Validate x-axis limits
-        if grouped_data['PaymentTime'].isna().all():
-            st.warning("All 'PaymentTime' values are missing or invalid. Cannot generate the chart.")
-            return
-
-        min_date = grouped_data['PaymentTime'].min().date()
-        max_date = grouped_data['PaymentTime'].max().date()
-
-        if pd.isna(min_date) or pd.isna(max_date):
-            st.warning("Invalid date range for the chart. Please check the data.")
-            return
-
-        # Map fixture to colors
+        # --- 9️⃣ Plot ---
         fixture_colors = {
-            "Robbie Williams Live 2025 - Friday": 'cyan',
+            "Robbie Williams Live 2025 (Friday)": 'cyan',
             "Robbie Williams Live 2025 - Saturday": 'magenta'
         }
 
-        # Create the plot
         fig, ax = plt.subplots(figsize=(16, 10))
         fig.patch.set_facecolor('#121212')
         ax.set_facecolor('#121212')
@@ -457,33 +460,29 @@ def generate_event_level_concert_cumulative_sales_chart(filtered_data):
         ax.spines['bottom'].set_color('white')
         ax.spines['left'].set_color('white')
 
-        for fixture_name, fixture_data in grouped_data.groupby('Fixture Name'):
-            color = fixture_colors.get(fixture_name, 'blue')
-            fixture_data = fixture_data.sort_values('PaymentTime')
-            kick_off_date = fixture_data['KickOffDate'].iloc[0]
-            cumulative_percentage = fixture_data['RevenuePercentage'].iloc[-1]
-            if kick_off_date < pd.Timestamp.now():
-                label = f"{fixture_name} (p, {cumulative_percentage:.0f}%)"
-                annotation_color = 'red'
+        now = pd.Timestamp.now()
+        for fx, data in grouped.groupby('Fixture Name'):
+            color = fixture_colors.get(fx, 'blue')
+            data = data.sort_values('PaymentTime')
+            kick = data['KickOffDate'].iloc[0]
+            pct = data['RevenuePercentage'].iloc[-1]
+
+            if kick < now:
+                label = f"{fx} (p, {pct:.0f}%)"
+                txt_col = 'red'
             else:
-                days_left = (kick_off_date - pd.Timestamp.now()).days
-                label = f"{fixture_name} ({days_left} days, {cumulative_percentage:.0f}%)"
-                annotation_color = 'white'
+                days = (kick - now).days
+                label = f"{fx} ({days} days, {pct:.0f}%)"
+                txt_col = 'white'
 
             ax.plot(
-                fixture_data['PaymentTime'].dt.date,
-                fixture_data['RevenuePercentage'],
-                label=label,
-                color=color,
-                linewidth=1.5
+                data['PaymentTime'].dt.date,
+                data['RevenuePercentage'],
+                label=label, color=color, linewidth=1.5
             )
-
             ax.text(
-                fixture_data['PaymentTime'].dt.date.iloc[-1],
-                fixture_data['RevenuePercentage'].iloc[-1],
-                label,
-                fontsize=10,
-                color=annotation_color
+                data['PaymentTime'].dt.date.iloc[-1],
+                pct, label, fontsize=10, color=txt_col
             )
 
         ax.set_title("Concert Cumulative Revenue 24/25", fontsize=12, color='white')
@@ -491,68 +490,27 @@ def generate_event_level_concert_cumulative_sales_chart(filtered_data):
         ax.set_ylabel("Revenue (% of Budget Target)", fontsize=12, color='white')
         ax.axhline(y=100, color='red', linestyle='--', linewidth=1)
 
-        # Format the plot
-        date_range = (max_date - min_date).days
-        ax.set_xlim([min_date, max_date])
-        ax.xaxis.set_major_locator(mdates.DayLocator(interval=2 if date_range <= 30 else 10))
+        # Dynamic x‑axis limits & ticks
+        min_d = grouped['PaymentTime'].min().date()
+        max_d = grouped['PaymentTime'].max().date()
+        ax.set_xlim(min_d, max_d)
+        days_range = (max_d - min_d).days
+        interval = 2 if days_range <= 30 else 10
+        ax.xaxis.set_major_locator(mdates.DayLocator(interval=interval))
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
         fig.autofmt_xdate()
-        ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{int(x)}%'))
 
+        ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{int(x)}%'))
         handles = [
-            plt.Line2D([0], [0], color='cyan', lw=2, label="Robbie Williams Live - Friday"),
-            plt.Line2D([0], [0], color='magenta', lw=2, label="Robbie Williams Live - Saturday"),
-            plt.Line2D([], [], color='red', linestyle='--', linewidth=2, label='Budget Target (100%)')
+            plt.Line2D([0],[0],color='cyan', lw=2, label="Robbie Williams Live - Friday"),
+            plt.Line2D([0],[0],color='magenta', lw=2, label="Robbie Williams Live - Saturday"),
+            plt.Line2D([],[],color='red', linestyle='--', linewidth=2, label='Budget Target (100%)')
         ]
         ax.legend(handles=handles, loc='lower center', bbox_to_anchor=(0.5, -0.25), fontsize=10, frameon=False)
+
         st.pyplot(fig)
 
     except Exception as e:
         st.error(f"Failed to generate the concert cumulative chart: {e}")
         logging.error(f"Error in generate_event_level_concert_cumulative_sales_chart: {e}")
 
-
-
-
-
-#    # Total Sales Section
-#     total_sales = calculate_total_sales(filtered_df_without_seats)
-#     st.sidebar.markdown(
-#         f"""
-#         <style>
-#             @font-face {{
-#                 font-family: 'Chapman-Bold';
-#                 src: url('fonts/Chapman-Bold_2894575986.ttf') format('truetype');
-#             }}
-#             .custom-sales-box {{
-#                 background-color: #fff0f0;
-#                 border: 2px solid #E41B17;
-#                 border-radius: 10px;
-#                 padding: 20px 15px; /* Match padding of the other widgets */
-#                 margin-bottom: 10px; /* Space between widgets */
-#                 text-align: center; /* Center align all text */
-#                 font-family: 'Chapman-Bold'; /* Apply the custom font */
-#                 font-size: 28px; /* Match font size */
-#                 font-weight: bold; /* Match weight */
-#                 color: #E41B17; /* Match font color */
-#             }}
-#             .custom-sales-header {{
-#                 font-size: 25px;
-#                 color: #E41B17;
-#                 text-align: center;
-#                 font-weight: bold;
-#             }}
-#             .custom-sales-value {{
-#                 font-size: 28px;
-#                 color: #E41B17;
-#                 text-align: center;
-#                 font-weight: bold;
-#             }}
-#         </style>
-#         <div class="custom-sales-box">
-#             <span class="custom-sales-header"> 🍯 Sales To Date:</span><br>
-#             <span class="custom-sales-value">£{total_sales:,.0f}</span>
-#         </div>
-#         """,
-#         unsafe_allow_html=True
-#     )
