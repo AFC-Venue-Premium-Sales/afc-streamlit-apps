@@ -116,27 +116,34 @@ def run_app():
             loaded_api_df['CreatedOn'], format='%d-%m-%Y %H:%M', errors='coerce'
         )
 
-        # ─── STEP 1: Coerce KickOffEventStart in sales DataFrame to datetime ────────
+        # ─── STEP 1: parse KickOffEventStart in sales DataFrame to datetime ────────
         filtered_data['KickOffEventStart'] = pd.to_datetime(
             filtered_data['KickOffEventStart'],
             format='%d-%m-%Y %H:%M',
-            # dayfirst=True,
             errors='coerce'
         )
 
-        # ─── STEP 2: Merge against budget file ───────────────────────────────────────
-        filtered_data = pd.merge(
-            filtered_data,
+        # ─── STEP 1b: create a date-only column to fuse on ─────────────────────────
+        filtered_data['KO_date'] = filtered_data['KickOffEventStart'].dt.floor('D')
+        budget_df   ['KO_date'] = budget_df   ['KickOffEventStart'].dt.floor('D')
+
+        # ─── STEP 2: Merge against budget file on name, competition, and date only ─
+        filtered_data = filtered_data.merge(
             budget_df,
-            how="left",
-            on=["Fixture Name", "EventCompetition", "KickOffEventStart"]
+            how='left',
+            on=['Fixture Name','EventCompetition','KO_date'],
+            suffixes=('','_bud')
         )
 
-        # Add 'Days to Fixture'
+        # ─── STEP 3: clean up helper column ────────────────────────────────────────
+        filtered_data.drop(columns=['KO_date'], inplace=True)
+
+        # ─── Finally: Add 'Days to Fixture' using the original KickOffEventStart ──
         today = pd.Timestamp.now()
         filtered_data['Days to Fixture'] = (
             filtered_data['KickOffEventStart'] - today
         ).dt.days.fillna(-1).astype(int)
+
 
         # Sidebar filters: Date & Time
         st.sidebar.header("Filter Data by Date and Time")
