@@ -37,6 +37,7 @@ def load_budget_targets():
     df.columns = df.columns.str.strip()
     df["Fixture Name"]     = df["Fixture Name"].str.strip()
     df["EventCompetition"] = df["EventCompetition"].str.strip()
+    df.rename(columns={"Budget Target": "Budget"}, inplace=True)
     return df
 
 
