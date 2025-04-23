@@ -98,7 +98,9 @@ def run_app():
 
         # Initialize filtered_data
         filtered_data = loaded_api_df.copy()
+        
         filtered_data['Discount'] = filtered_data['Discount'].astype(str)
+        filtered_data['IsPaid']   = filtered_data['IsPaid'].astype(str)
         filtered_data['DiscountValue'] = pd.to_numeric(filtered_data['DiscountValue'], errors='coerce')
         for col in ['TotalPrice', 'DiscountValue']:
             filtered_data[col] = pd.to_numeric(filtered_data[col], errors='coerce')
