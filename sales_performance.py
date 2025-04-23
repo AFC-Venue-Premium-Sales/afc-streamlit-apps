@@ -248,10 +248,9 @@ def run_app():
         
         # build the summary off of df, not the full history
         total_sold_per_match = (
-            filtered_data_excluding_packages.groupby("Fixture Name")
+            filtered_data_excluding_packages.groupby("Fixture Name", "KickOffEventStart")
             .agg(
                 DaysToFixture=("Days to Fixture", "min"),
-                KickOffEventStart=("KickOffEventStart", "first"),
                 RTS_Sales=("TotalPrice", "sum"),
                 Budget=("Budget", "first")
             )
@@ -282,12 +281,13 @@ def run_app():
             lambda r: f"{(r['OtherSales']/r['Budget']*100):.0f}%" if pd.notnull(r['Budget']) and r['Budget']>0 else "N/A", axis=1
         )
         
-        
-# formatting        
+        # formatting        
         total_sold_per_match['RTS_Sales'] = total_sold_per_match['RTS_Sales'].apply(lambda x: f"£{x:,.0f}")
         total_sold_per_match['OtherSales'] = total_sold_per_match['OtherSales'].apply(lambda x: f"£{x:,.0f}")
         total_sold_per_match['Budget Target'] = total_sold_per_match['Budget'].apply(lambda x: f"£{x:,.0f}" if pd.notnull(x) else "None")
         total_sold_per_match['KickOffEventStart'] = pd.to_datetime(total_sold_per_match['KickOffEventStart'], errors='coerce')
+        
+        # sort & select
         total_sold_per_match = total_sold_per_match.sort_values(by="KickOffEventStart", ascending=False)
         total_sold_per_match = total_sold_per_match[
             ['Fixture Name','KickOffEventStart','DaysToFixture','CoversSold','RTS_Sales','OtherSales','Avg Spend','Budget Target','BudgetPercentage']

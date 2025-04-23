@@ -65,16 +65,16 @@ def generate_event_level_men_cumulative_sales_chart(filtered_data):
         df["IsPaid"]           = df["IsPaid"].astype(str).str.upper().fillna("FALSE")
 
         # --- 3️⃣ Merge on all three keys ---
-        df = df.drop_duplicates(
-            subset=["Fixture Name", "EventCompetition", "KickOffEventStart"], keep="first"
-        ).merge(
+        # --- 3️⃣ Merge against budget targets (keep all payment rows!) ---
+        df = df.merge(
             budget_df,
-            on=["Fixture Name", "EventCompetition", "KickOffEventStart"],
+            on=["Fixture Name","EventCompetition","KickOffEventStart"],
             how="left",
             validate="m:1"
         )
-        if "Budget Target" not in df:
+        if "Budget Target" not in df.columns:
             raise KeyError("After merge, 'Budget Target' missing – check your keys!")
+
 
         # --- 4️⃣ Filter & clean ---
         allowed = ['Premier League','UEFA Champions League','Carabao Cup','Emirates Cup','FA Cup']
@@ -347,15 +347,16 @@ def generate_event_level_concert_cumulative_sales_chart(filtered_data):
         )
 
         # --- 3️⃣ Merge on all three keys ---
+        # --- 3️⃣ Merge against budget targets (keep all payment rows!) ---
         df = df.merge(
             budget_df,
-            on=["Fixture Name", "EventCompetition", "KickOffEventStart"],
+            on=["Fixture Name","EventCompetition","KickOffEventStart"],
             how="left",
             validate="m:1"
         )
-
         if "Budget Target" not in df.columns:
-            raise KeyError("After merge, 'Budget Target' not found – check your keys!")
+            raise KeyError("After merge, 'Budget Target' missing – check your keys!")
+
 
         # --- 4️⃣ Parse PaymentTime + filter for paid concerts ---
         df["PaymentTime"] = pd.to_datetime(
