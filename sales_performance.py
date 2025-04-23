@@ -33,7 +33,7 @@ def load_budget_targets():
     strips whitespace and renames 'Budget Target'→'Budget'.
     """
     df = pd.read_excel(
-        "/Users/cmunthali/Documents/PYTHON/APPS/budget_target_2425.xlsx",
+        "budget_target_2425.xlsx",
         parse_dates=["KickOffEventStart"],
         # dayfirst=True
     )
