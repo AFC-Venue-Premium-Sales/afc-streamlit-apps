@@ -173,49 +173,52 @@ def generate_event_level_women_cumulative_sales_chart(filtered_data):
     Generate a cumulative percentage-to-target sales chart for Women's competitions.
     """
     try:
-        # 1️⃣ Load & normalize budget targets
+        # --- 1️⃣ Load & normalize budget targets ---
         budget_df = load_budget_targets().copy()
         budget_df.columns = budget_df.columns.str.strip()
-        # rename if needed
-        if "Budget Target" in budget_df:
-            budget_df.rename(columns={"Budget Target": "Budget"}, inplace=True)
-
-        # ensure datetime and floor to day
+        # if your sheet uses a different header, rename it here
+        if "KickOff Event Start" in budget_df.columns:
+            budget_df.rename(columns={"KickOff Event Start": "KickOffEventStart"}, inplace=True)
+        # parse & round to the minute
         budget_df["KickOffEventStart"] = pd.to_datetime(
-            budget_df["KickOffEventStart"], dayfirst=True, errors="coerce"
-        )
-        budget_df["KO_day"] = budget_df["KickOffEventStart"].dt.floor("D")
+            budget_df["KickOffEventStart"], errors="coerce", dayfirst=True
+        ).dt.round("min")
         budget_df["Fixture Name"]     = budget_df["Fixture Name"].str.strip()
         budget_df["EventCompetition"] = budget_df["EventCompetition"].str.strip()
+        # after load_budget_targets() you should already have a column called "Budget"
+        if "Budget" not in budget_df.columns:
+            raise KeyError("Your budget file must have a 'Budget' column")
 
-        # 2️⃣ Prepare sales feed
+        # --- 2️⃣ Prepare your sales feed ---
         df = filtered_data.copy()
         df.columns = df.columns.str.strip()
-        df["Fixture Name"]       = df["Fixture Name"].str.strip()
-        df["EventCompetition"]   = df["EventCompetition"].str.strip()
-        df["KickOffEventStart"]  = pd.to_datetime(df["KickOffEventStart"], dayfirst=True, errors="coerce")
-        df["PaymentTime"]        = pd.to_datetime(df["PaymentTime"], dayfirst=True, errors="coerce")
-        df["IsPaid"]             = df["IsPaid"].astype(str).str.upper().fillna("FALSE")
-        df["Discount"]           = df["Discount"].astype(str).str.lower()
-        df["KO_day"]             = df["KickOffEventStart"].dt.floor("D")
+        df["Fixture Name"]      = df["Fixture Name"].str.strip()
+        df["EventCompetition"]  = df["EventCompetition"].str.strip()
+        df["PaymentTime"]       = pd.to_datetime(df["PaymentTime"], errors="coerce", dayfirst=True)
+        df["KickOffEventStart"] = pd.to_datetime(df["KickOffEventStart"], errors="coerce", dayfirst=True).dt.round("min")
+        df["IsPaid"]            = df["IsPaid"].astype(str).str.upper().fillna("FALSE")
+        df["Discount"]          = df["Discount"].astype(str).str.lower()
 
-        # 3️⃣ Merge on day to pick up the Budget column
+        # --- 3️⃣ Merge on the three keys ---
         df = df.merge(
-            budget_df[["Fixture Name","EventCompetition","KO_day","Budget"]],
-            on=["Fixture Name","EventCompetition","KO_day"],
+            budget_df[["Fixture Name","EventCompetition","KickOffEventStart","Budget"]],
+            on=["Fixture Name","EventCompetition","KickOffEventStart"],
             how="left",
             validate="m:1"
         )
+        if "Budget" not in df.columns:
+            raise KeyError("After merge, 'Budget' is missing – check your merge keys!")
 
-        # 4️⃣ Filter for paid women’s comps
+        # --- 4️⃣ Filter & clean ---
         allowed = ["Barclays Women's Super League", "UEFA Women's Champions League"]
-        df = df[(df["IsPaid"]=="TRUE") & (df["EventCompetition"].isin(allowed))].copy()
-
-        # exclude unwanted discounts
+        df = df[
+            (df["IsPaid"]=="TRUE") &
+            (df["EventCompetition"].isin(allowed))
+        ].copy()
         bad = ["credit","voucher","gift voucher","discount","pldl"]
         df = df[~df["Discount"].str.contains("|".join(map(re.escape,bad)), na=False)]
 
-        # 5️⃣ Compute effective price & cumulative percentage
+        # --- 5️⃣ Compute effective price & cumulative sums ---
         df["TotalEffectivePrice"] = np.where(
             df["TotalPrice"] > 0,
             df["TotalPrice"],
@@ -224,9 +227,9 @@ def generate_event_level_women_cumulative_sales_chart(filtered_data):
         grouped = (
             df.groupby(["Fixture Name","EventCompetition","PaymentTime"])
               .agg(
-                  DailySales=("TotalEffectivePrice","sum"),
-                  KickOffDate=("KickOffEventStart","first"),
-                  BudgetTarget=("Budget","first")
+                  DailySales      = ("TotalEffectivePrice","sum"),
+                  KickOffDate     = ("KickOffEventStart","first"),
+                  BudgetTarget    = ("Budget","first")
               )
               .reset_index()
         )
@@ -235,14 +238,7 @@ def generate_event_level_women_cumulative_sales_chart(filtered_data):
         )["DailySales"].cumsum()
         grouped["RevenuePercentage"] = grouped["CumulativeSales"] / grouped["BudgetTarget"] * 100
 
-        # 6️⃣ Now plot (same style as men’s chart)
-        fig, ax = plt.subplots(figsize=(16,10))
-        fig.patch.set_facecolor('#121212')
-        ax.set_facecolor('#121212')
-        ax.tick_params(colors='white')
-        ax.spines['bottom'].set_color('white')
-        ax.spines['left'].set_color('white')
-
+        # --- 6️⃣ Plot it ---
         competition_colors = {
             "Barclays Women's Super League": 'green',
             "UEFA Women's Champions League":  'gold'
@@ -251,17 +247,24 @@ def generate_event_level_women_cumulative_sales_chart(filtered_data):
             "Manchester City Women":"MCW",
             "Everton Women":"EVT",
             "Chelsea Women":"CHE",
-            # …add the rest…
+            # …add any others…
         }
+
+        fig, ax = plt.subplots(figsize=(16,10))
+        fig.patch.set_facecolor('#121212')
+        ax.set_facecolor('#121212')
+        ax.tick_params(colors='white')
+        ax.spines['bottom'].set_color('white')
+        ax.spines['left'].set_color('white')
 
         now = pd.Timestamp.now()
         for (fx, comp), data in grouped.groupby(["Fixture Name","EventCompetition"]):
-            opp    = fx.split(" v ")[-1]
-            abbrev = abbreviations.get(opp, opp[:3].upper())
-            color  = competition_colors.get(comp, 'blue')
-            data   = data.sort_values("PaymentTime")
-            kick   = data["KickOffDate"].iloc[0]
-            pct    = data["RevenuePercentage"].iloc[-1]
+            opponent = fx.split(" v ")[-1]
+            abbrev   = abbreviations.get(opponent, opponent[:3].upper())
+            color    = competition_colors.get(comp, 'blue')
+            data     = data.sort_values("PaymentTime")
+            kick     = data["KickOffDate"].iloc[0]
+            pct      = data["RevenuePercentage"].iloc[-1]
 
             if kick < now:
                 label, txt_col = f"{abbrev} (p, {pct:.0f}%)", 'red'
@@ -269,28 +272,33 @@ def generate_event_level_women_cumulative_sales_chart(filtered_data):
                 days = (kick - now).days
                 label, txt_col = f"{abbrev} ({days}d, {pct:.0f}%)", 'white'
 
-            ax.plot(data["PaymentTime"].dt.date,
-                    data["RevenuePercentage"],
-                    label=label,
-                    color=color,
-                    linewidth=1.5)
-            ax.text(data["PaymentTime"].dt.date.iloc[-1],
-                    pct,
-                    label,
-                    fontsize=10,
-                    color=txt_col)
+            ax.plot(
+                data["PaymentTime"].dt.date,
+                data["RevenuePercentage"],
+                label=label,
+                color=color,
+                linewidth=1.5
+            )
+            ax.text(
+                data["PaymentTime"].dt.date.iloc[-1],
+                pct,
+                label,
+                fontsize=10,
+                color=txt_col
+            )
 
-        # Dynamic ticks & legend
+        # dynamic x‐axis ticks
         unique_days = grouped["PaymentTime"].dt.date.nunique()
-        interval = 1 if unique_days <= 5 else 2 if unique_days <= 10 else 3
+        interval   = 1 if unique_days<=5 else 2 if unique_days<=10 else 3
         ax.xaxis.set_major_locator(mdates.DayLocator(interval=interval))
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%b'))
-        ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x,_: f'{int(x)}%'))
         fig.autofmt_xdate()
-        ax.axhline(100, color='red', linestyle='--', linewidth=1)
+        ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x,_: f'{int(x)}%'))
+
         ax.set_title("AFC Women's Cumulative Revenue 24/25", fontsize=14, color='white')
         ax.set_xlabel("Date", color='white')
         ax.set_ylabel("Revenue (% of Budget)", color='white')
+        ax.axhline(100, color='red', linestyle='--', linewidth=1)
 
         handles = [
             plt.Line2D([0],[0], color=c, lw=2, label=l)
@@ -303,6 +311,7 @@ def generate_event_level_women_cumulative_sales_chart(filtered_data):
     except Exception as e:
         st.error(f"Failed to generate women’s cumulative chart: {e}")
         logging.error(f"Error in generate_event_level_women_cumulative_sales_chart: {e}")
+
 
 
 
