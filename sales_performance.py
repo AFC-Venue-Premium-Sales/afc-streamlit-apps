@@ -8,6 +8,7 @@ import re
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
+# allow import of your local charts_ module
 sys.path.append("/Users/cmunthali/Documents/PYTHON/APPS")
 from charts_ import (
     generate_event_level_men_cumulative_sales_chart,
@@ -25,7 +26,6 @@ except ImportError as e:
     st.error(f"❌ Error importing tjt_hosp_api: {e}")
     filtered_df_without_seats = None
 
-
 def load_budget_targets():
     """
     Reads the external Excel file for fixture-based budgets,
@@ -35,14 +35,15 @@ def load_budget_targets():
     df = pd.read_excel(
         "budget_target_2425.xlsx",
         parse_dates=["KickOffEventStart"],
-        # dayfirst=True
+        # dayfirst=True,
+        engine="openpyxl"
     )
     df.columns = df.columns.str.strip()
     df["Fixture Name"] = df["Fixture Name"].str.strip()
     df["EventCompetition"] = df["EventCompetition"].str.strip()
-    df.rename(columns={"Budget Target": "Budget"}, inplace=True)
+    if "Budget Target" in df.columns:
+        df.rename(columns={"Budget Target": "Budget"}, inplace=True)
     return df
-
 
 def run_app():
     specified_users = [
@@ -52,6 +53,7 @@ def run_app():
 
     # ─── Load fixture budget targets from Excel ───────────────────────────────────
     budget_df = load_budget_targets()
+    # ───────────────────────────────────────────────────────────────────────────────
 
     st.title('💷 MBM Sales 💷')
 
@@ -98,7 +100,8 @@ def run_app():
 
         # Initialize filtered_data
         filtered_data = loaded_api_df.copy()
-        
+
+        # Ensure types
         filtered_data['Discount'] = filtered_data['Discount'].astype(str)
         filtered_data['IsPaid']   = filtered_data['IsPaid'].astype(str)
         filtered_data['DiscountValue'] = pd.to_numeric(filtered_data['DiscountValue'], errors='coerce')
@@ -137,9 +140,9 @@ def run_app():
 
         # Sidebar filters: Date & Time
         st.sidebar.header("Filter Data by Date and Time")
-        date_range = st.sidebar.date_input("📅 Select Date Range", [])
-        start_time = st.sidebar.time_input("⏰ Start Time", datetime.now().replace(hour=0, minute=0).time())
-        end_time = st.sidebar.time_input("⏰ End Time", datetime.now().replace(hour=23, minute=59).time())
+        date_range  = st.sidebar.date_input("📅 Select Date Range", [])
+        start_time  = st.sidebar.time_input("⏰ Start Time", datetime.now().replace(hour=0, minute=0).time())
+        end_time    = st.sidebar.time_input("⏰ End Time", datetime.now().replace(hour=23, minute=59).time())
 
         if len(date_range) == 1:
             min_dt = datetime.combine(date_range[0], start_time)
@@ -151,18 +154,18 @@ def run_app():
             min_dt = max_dt = None
 
         # Sidebar filters: Users, Events, Categories, Locations, Paid
-        valid_usernames = [u for u in specified_users if u in filtered_data['CreatedBy'].unique()]
-        event_names = filtered_data['Fixture Name'].unique().tolist()
-        competition_vals = filtered_data['EventCompetition'].unique().tolist()
+        valid_usernames     = [u for u in specified_users if u in filtered_data['CreatedBy'].unique()]
+        event_names         = filtered_data['Fixture Name'].unique().tolist()
+        competition_vals    = filtered_data['EventCompetition'].unique().tolist()
         if 'EventCategory' in filtered_data.columns:
             competition_vals = sorted(set(competition_vals + filtered_data['EventCategory'].unique().tolist()))
 
-        selected_categories = st.sidebar.multiselect("Select Event Category", options=competition_vals)
-        selected_events = st.sidebar.multiselect("🎫 Select Events", options=event_names)
-        selected_sale_location = st.sidebar.multiselect("📍 Select SaleLocation", options=filtered_data['SaleLocation'].unique())
-        selected_users = st.sidebar.multiselect("👤 Select Execs", options=valid_usernames)
-        paid_options = filtered_data['IsPaid'].unique().tolist()
-        selected_paid = st.sidebar.selectbox("💰 Filter by IsPaid", options=paid_options)
+        selected_categories    = st.sidebar.multiselect("Select Event Category", options=competition_vals)
+        selected_events        = st.sidebar.multiselect("🎫 Select Events",      options=event_names)
+        selected_sale_location = st.sidebar.multiselect("📍 Select SaleLocation",options=filtered_data['SaleLocation'].unique())
+        selected_users         = st.sidebar.multiselect("👤 Select Execs",       options=valid_usernames)
+        paid_options           = filtered_data['IsPaid'].unique().tolist()
+        selected_paid          = st.sidebar.selectbox("💰 Filter by IsPaid", options=paid_options)
 
         # ─── APPLY the above filters to filtered_data ────────────────────────────────
         if min_dt and max_dt:
@@ -179,15 +182,14 @@ def run_app():
             filtered_data = filtered_data[filtered_data['IsPaid'] == selected_paid]
 
         # ─── NEW: Kickoff-time filter ───────────────────────────────────────────────
-        kickoff_times = sorted(filtered_data["KickOffEventStart"].dropna().unique())
-        display_kickoffs = [ts.strftime("%Y-%m-%d %H:%M") for ts in kickoff_times]
+        kickoff_times     = sorted(filtered_data["KickOffEventStart"].dropna().unique())
+        display_kickoffs  = [ts.strftime("%Y-%m-%d %H:%M") for ts in kickoff_times]
         selected_kickoffs = st.sidebar.multiselect("⏰ Select Kickoff time", options=display_kickoffs)
         if selected_kickoffs:
             keep_ts = [kickoff_times[display_kickoffs.index(label)] for label in selected_kickoffs]
             filtered_data = filtered_data[filtered_data["KickOffEventStart"].isin(keep_ts)]
 
         # ─── Continue with Discount filter and exclusions ────────────────────────────
-        # Dynamically update discount options
         if selected_events:
             available_discounts = filtered_data[filtered_data['Fixture Name'].isin(selected_events)]['Discount'].unique()
         else:
@@ -207,7 +209,6 @@ def run_app():
         filtered_data_excluding_packages = filtered_data[
             ~filtered_data['Package Name'].isin(['Platinum', 'Woolwich Restaurant'])
         ]
-
         mask = ~filtered_data_excluding_packages['Discount'].str.contains(
             '|'.join([re.escape(k) for k in ["credit","voucher","gift voucher","discount","pldl"]]),
             case=False, na=False
@@ -216,82 +217,73 @@ def run_app():
 
         # Static and dynamic totals
         static_start_date = datetime(2024, 6, 18)
-        static_total = loaded_api_df[
+        static_total      = loaded_api_df[
             (loaded_api_df['CreatedOn'] >= static_start_date) &
             ~loaded_api_df['Package Name'].isin(['Platinum', 'Woolwich Restaurant'])
         ]['TotalPrice'].sum()
-        dynamic_total = filtered_data_excluding_packages['TotalPrice'].sum()
+        dynamic_total     = filtered_data_excluding_packages['TotalPrice'].sum()
         other_sales_total = dynamic_total + filtered_data_without_excluded_keywords['DiscountValue'].sum()
 
         # Metric cards
-        raw_loc = filtered_data_excluding_packages.groupby('SaleLocation')['TotalPrice'].sum().reset_index()
+        raw_loc   = filtered_data_excluding_packages.groupby('SaleLocation')['TotalPrice'].sum().reset_index()
         other_loc = filtered_data_without_excluded_keywords.groupby('SaleLocation')['DiscountValue'].sum().reset_index()
-        raw_loc = pd.merge(raw_loc, other_loc, on='SaleLocation', how='left').rename(columns={'DiscountValue': 'OtherPayments'})
+        raw_loc   = pd.merge(raw_loc, other_loc, on='SaleLocation', how='left').rename(columns={'DiscountValue':'OtherPayments'})
         raw_loc['TotalWithOtherPayments'] = raw_loc['TotalPrice'] + raw_loc['OtherPayments'].fillna(0)
         top_channel = raw_loc.sort_values('TotalWithOtherPayments', ascending=False).iloc[0]
         payment_channel_metric = f"{top_channel['SaleLocation']} (Sales: £{top_channel['TotalWithOtherPayments']:,.2f})"
 
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Total Confirmed Sales", f"£{static_total:,.2f}")
-        c2.metric("Filtered Confirmed Sales", f"£{dynamic_total:,.2f}")
+        c1.metric("Total Confirmed Sales",                f"£{static_total:,.2f}")
+        c2.metric("Filtered Confirmed Sales",            f"£{dynamic_total:,.2f}")
         c3.metric("Total Sales (Including Pending payments)", f"£{other_sales_total:,.2f}")
         # c4.metric("Payment Channel", payment_channel_metric)
 
         # ⚽ Total Sales Summary table
         st.write("### ⚽ Total Sales Summary")
         st.write(f"RTS sales = confirmed, OtherSales = pending: **£{other_sales_total:,.2f}**")
-        
-        # restrict to the upcoming kickoff per fixture
-        df = filtered_data_excluding_packages.copy()
-        latest_kos = df.groupby("Fixture Name")["KickOffEventStart"].transform("max")
-        df = df[df["KickOffEventStart"] == latest_kos]
-        
-        # build the summary off of df, not the full history
+
+        # build the summary off of filtered_data_excluding_packages
         total_sold_per_match = (
-            filtered_data_excluding_packages.groupby("Fixture Name", "KickOffEventStart")
+            filtered_data_excluding_packages
+            .groupby(["Fixture Name","KickOffEventStart"])
             .agg(
-                DaysToFixture=("Days to Fixture", "min"),
-                RTS_Sales=("TotalPrice", "sum"),
-                Budget=("Budget", "first")
+                DaysToFixture=("Days to Fixture","min"),
+                RTS_Sales=("TotalPrice","sum"),
+                Budget=("Budget","first")
             )
             .reset_index()
         )
-        
-        # pending sales
         other_sales = (
             filtered_data_without_excluded_keywords.groupby("Fixture Name")['DiscountValue'].sum()
         )
-        total_sold_per_match = pd.merge(total_sold_per_match, other_sales, on="Fixture Name", how="left").rename(columns={'DiscountValue':'OtherSales'})
-        
-        # combine confirmed + pending
+        total_sold_per_match = pd.merge(
+            total_sold_per_match,
+            other_sales.rename("OtherSales"),
+            on="Fixture Name",
+            how="left"
+        )
         total_sold_per_match['OtherSales'] = total_sold_per_match['OtherSales'].fillna(0) + total_sold_per_match['RTS_Sales']
-        
-        # covers sold
-        covers = filtered_data_excluding_packages.groupby("Fixture Name")['Seats'].sum().reset_index().rename(columns={'Seats':'CoversSold'})
+        covers = filtered_data_excluding_packages.groupby("Fixture Name")['Seats'].sum().rename("CoversSold")
         total_sold_per_match = pd.merge(total_sold_per_match, covers, on="Fixture Name", how="left")
         total_sold_per_match['CoversSold'] = total_sold_per_match['CoversSold'].fillna(0).astype(int)
-        
-        # avg spend
         total_sold_per_match['Avg Spend'] = total_sold_per_match.apply(
-            lambda r: r['OtherSales']/r['CoversSold'] if r['CoversSold']>0 else 0, axis=1
+            lambda r: r['OtherSales']/r['CoversSold'] if r['CoversSold']>0 else 0,
+            axis=1
         ).apply(lambda x: f"£{x:,.2f}")
-        
-        # budget %
         total_sold_per_match['BudgetPercentage'] = total_sold_per_match.apply(
-            lambda r: f"{(r['OtherSales']/r['Budget']*100):.0f}%" if pd.notnull(r['Budget']) and r['Budget']>0 else "N/A", axis=1
+            lambda r: f"{(r['OtherSales']/r['Budget']*100):.0f}%" if pd.notnull(r['Budget']) and r['Budget']>0 else "N/A",
+            axis=1
         )
-        
-        # formatting        
         total_sold_per_match['RTS_Sales'] = total_sold_per_match['RTS_Sales'].apply(lambda x: f"£{x:,.0f}")
         total_sold_per_match['OtherSales'] = total_sold_per_match['OtherSales'].apply(lambda x: f"£{x:,.0f}")
-        total_sold_per_match['Budget Target'] = total_sold_per_match['Budget'].apply(lambda x: f"£{x:,.0f}" if pd.notnull(x) else "None")
-        total_sold_per_match['KickOffEventStart'] = pd.to_datetime(total_sold_per_match['KickOffEventStart'], errors='coerce')
-        
-        # sort & select
+        total_sold_per_match['Budget Target'] = total_sold_per_match['Budget'].apply(
+            lambda x: f"£{x:,.0f}" if pd.notnull(x) else "None"
+        )
         total_sold_per_match = total_sold_per_match.sort_values(by="KickOffEventStart", ascending=False)
-        total_sold_per_match = total_sold_per_match[
-            ['Fixture Name','KickOffEventStart','DaysToFixture','CoversSold','RTS_Sales','OtherSales','Avg Spend','Budget Target','BudgetPercentage']
-        ]
+        total_sold_per_match = total_sold_per_match[[
+            'Fixture Name','KickOffEventStart','DaysToFixture','CoversSold',
+            'RTS_Sales','OtherSales','Avg Spend','Budget Target','BudgetPercentage'
+        ]]
         st.dataframe(total_sold_per_match)
 
         # Table with Pending Payments
@@ -299,15 +291,15 @@ def run_app():
         total_discount_value = filtered_data_without_excluded_keywords.groupby(
             ['Order Id','Country Code','First Name','Surname','Fixture Name','GLCode','CreatedOn']
         )[['Discount','DiscountValue','TotalPrice']].sum().reset_index()
-        total_discount_value['TotalPrice'] = total_discount_value['TotalPrice'].apply(lambda x: f"£{x:,.2f}")
-        total_discount_value['DiscountValue'] = total_discount_value['DiscountValue'].apply(lambda x: f"£{x:,.2f}")
+        total_discount_value['TotalPrice']    = total_discount_value['TotalPrice'].apply(lambda x: f"£{x:,.2f}")
+        total_discount_value['DiscountValue']= total_discount_value['DiscountValue'].apply(lambda x: f"£{x:,.2f}")
         st.dataframe(total_discount_value)
 
         # Package Sales
         st.write("### 🎟️ MBM Package Sales")
-        other_pkg = filtered_data_without_excluded_keywords.groupby('Package Name')['DiscountValue'].sum().reset_index()
-        pkg = filtered_data_excluding_packages.groupby('Package Name')['TotalPrice'].sum().reset_index()
-        total_sold_per_package = pd.merge(pkg, other_pkg, on='Package Name', how='left').rename(columns={'DiscountValue':'OtherPayments'})
+        other_pkg = filtered_data_without_excluded_keywords.groupby('Package Name')['DiscountValue'].sum().rename("OtherPayments")
+        pkg       = filtered_data_excluding_packages.groupby('Package Name')['TotalPrice'].sum().rename("TotalPrice")
+        total_sold_per_package = pd.merge(pkg.reset_index(), other_pkg.reset_index(), on='Package Name', how='left')
         total_sold_per_package['TotalWithOtherPayments'] = total_sold_per_package['TotalPrice'] + total_sold_per_package['OtherPayments'].fillna(0)
         for col in ['TotalPrice','OtherPayments','TotalWithOtherPayments']:
             total_sold_per_package[col] = total_sold_per_package[col].apply(lambda x: f"£{x:,.2f}")
@@ -315,9 +307,9 @@ def run_app():
 
         # Payment Channel table
         st.write("### 🏟️ Payment Channel")
-        other_loc = filtered_data_without_excluded_keywords.groupby('SaleLocation')['DiscountValue'].sum().reset_index()
-        loc = filtered_data_excluding_packages.groupby('SaleLocation')['TotalPrice'].sum().reset_index()
-        total_sold_per_location = pd.merge(loc, other_loc, on='SaleLocation', how='left').rename(columns={'DiscountValue':'OtherPayments'})
+        other_loc = filtered_data_without_excluded_keywords.groupby('SaleLocation')['DiscountValue'].sum().rename("OtherPayments")
+        loc       = filtered_data_excluding_packages.groupby('SaleLocation')['TotalPrice'].sum().rename("TotalPrice")
+        total_sold_per_location = pd.merge(loc.reset_index(), other_loc.reset_index(), on='SaleLocation', how='left')
         total_sold_per_location['TotalWithOtherPayments'] = total_sold_per_location['TotalPrice'] + total_sold_per_location['OtherPayments'].fillna(0)
         for col in ['TotalPrice','OtherPayments','TotalWithOtherPayments']:
             total_sold_per_location[col] = total_sold_per_location[col].apply(lambda x: f"£{x:,.2f}")
@@ -379,7 +371,6 @@ def run_app():
 
     else:
         st.sidebar.warning("🚨 Please upload a file to proceed.")
-
 
 if __name__ == "__main__":
     run_app()
