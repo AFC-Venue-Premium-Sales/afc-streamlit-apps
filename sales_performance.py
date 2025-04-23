@@ -240,6 +240,13 @@ def run_app():
         # ⚽ Total Sales Summary table
         st.write("### ⚽ Total Sales Summary")
         st.write(f"RTS sales = confirmed, OtherSales = pending: **£{other_sales_total:,.2f}**")
+        
+        # restrict to the upcoming kickoff per fixture
+        df = filtered_data_excluding_packages.copy()
+        latest_kos = df.groupby("Fixture Name")["KickOffEventStart"].transform("max")
+        df = df[df["KickOffEventStart"] == latest_kos]
+        
+        # build the summary off of df, not the full history
         total_sold_per_match = (
             filtered_data_excluding_packages.groupby("Fixture Name")
             .agg(
@@ -250,20 +257,33 @@ def run_app():
             )
             .reset_index()
         )
+        
+        # pending sales
         other_sales = (
             filtered_data_without_excluded_keywords.groupby("Fixture Name")['DiscountValue'].sum()
         )
         total_sold_per_match = pd.merge(total_sold_per_match, other_sales, on="Fixture Name", how="left").rename(columns={'DiscountValue':'OtherSales'})
+        
+        # combine confirmed + pending
         total_sold_per_match['OtherSales'] = total_sold_per_match['OtherSales'].fillna(0) + total_sold_per_match['RTS_Sales']
+        
+        # covers sold
         covers = filtered_data_excluding_packages.groupby("Fixture Name")['Seats'].sum().reset_index().rename(columns={'Seats':'CoversSold'})
         total_sold_per_match = pd.merge(total_sold_per_match, covers, on="Fixture Name", how="left")
         total_sold_per_match['CoversSold'] = total_sold_per_match['CoversSold'].fillna(0).astype(int)
+        
+        # avg spend
         total_sold_per_match['Avg Spend'] = total_sold_per_match.apply(
             lambda r: r['OtherSales']/r['CoversSold'] if r['CoversSold']>0 else 0, axis=1
         ).apply(lambda x: f"£{x:,.2f}")
+        
+        # budget %
         total_sold_per_match['BudgetPercentage'] = total_sold_per_match.apply(
             lambda r: f"{(r['OtherSales']/r['Budget']*100):.0f}%" if pd.notnull(r['Budget']) and r['Budget']>0 else "N/A", axis=1
         )
+        
+        
+# formatting        
         total_sold_per_match['RTS_Sales'] = total_sold_per_match['RTS_Sales'].apply(lambda x: f"£{x:,.0f}")
         total_sold_per_match['OtherSales'] = total_sold_per_match['OtherSales'].apply(lambda x: f"£{x:,.0f}")
         total_sold_per_match['Budget Target'] = total_sold_per_match['Budget'].apply(lambda x: f"£{x:,.0f}" if pd.notnull(x) else "None")
