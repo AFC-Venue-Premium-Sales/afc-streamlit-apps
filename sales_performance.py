@@ -35,7 +35,7 @@ def load_budget_targets():
     df = pd.read_excel(
         "/Users/cmunthali/Documents/PYTHON/APPS/budget_target_2425.xlsx",
         parse_dates=["KickOffEventStart"],
-        dayfirst=True
+        # dayfirst=True
     )
     df.columns = df.columns.str.strip()
     df["Fixture Name"] = df["Fixture Name"].str.strip()
@@ -115,7 +115,7 @@ def run_app():
         filtered_data['KickOffEventStart'] = pd.to_datetime(
             filtered_data['KickOffEventStart'],
             format='%d-%m-%Y %H:%M',
-            dayfirst=True,
+            # dayfirst=True,
             errors='coerce'
         )
 
