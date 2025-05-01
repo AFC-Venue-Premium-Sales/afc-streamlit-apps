@@ -174,20 +174,27 @@ def generate_event_level_women_cumulative_sales_chart(filtered_data):
     """
     try:
         # --- 1️⃣ Load & normalize budget targets ---
+        # --- 1️⃣ Load & normalize budget targets ---
         budget_df = load_budget_targets().copy()
         budget_df.columns = budget_df.columns.str.strip()
-        # if your sheet uses a different header, rename it here
+
+        # rename kick-off column if needed
         if "KickOff Event Start" in budget_df.columns:
             budget_df.rename(columns={"KickOff Event Start": "KickOffEventStart"}, inplace=True)
-        # parse & round to the minute
+
+        # *** rename the budget column ***
+        if "Budget Target" in budget_df.columns:
+            budget_df.rename(columns={"Budget Target": "Budget"}, inplace=True)
+        elif "Budget" not in budget_df.columns:
+            raise KeyError("Your budget file must have a 'Budget Target' or 'Budget' column")
+
+        # now parse & round to the minute
         budget_df["KickOffEventStart"] = pd.to_datetime(
             budget_df["KickOffEventStart"], errors="coerce", dayfirst=True
         ).dt.round("min")
         budget_df["Fixture Name"]     = budget_df["Fixture Name"].str.strip()
         budget_df["EventCompetition"] = budget_df["EventCompetition"].str.strip()
-        # after load_budget_targets() you should already have a column called "Budget"
-        if "Budget" not in budget_df.columns:
-            raise KeyError("Your budget file must have a 'Budget' column")
+
 
         # --- 2️⃣ Prepare your sales feed ---
         df = filtered_data.copy()
@@ -206,7 +213,7 @@ def generate_event_level_women_cumulative_sales_chart(filtered_data):
             how="left",
             validate="m:1"
         )
-        if "Budget" not in df.columns:
+        if "Budget Target" not in df.columns:
             raise KeyError("After merge, 'Budget' is missing – check your merge keys!")
 
         # --- 4️⃣ Filter & clean ---
@@ -226,13 +233,14 @@ def generate_event_level_women_cumulative_sales_chart(filtered_data):
         )
         grouped = (
             df.groupby(["Fixture Name","EventCompetition","PaymentTime"])
-              .agg(
-                  DailySales      = ("TotalEffectivePrice","sum"),
-                  KickOffDate     = ("KickOffEventStart","first"),
-                  BudgetTarget    = ("Budget","first")
-              )
-              .reset_index()
+            .agg(
+                DailySales      = ("TotalEffectivePrice","sum"),
+                KickOffDate     = ("KickOffEventStart","first"),
+                BudgetTarget    = ("Budget","first")
+            )
+            .reset_index()
         )
+
         grouped["CumulativeSales"]   = grouped.groupby(
             ["Fixture Name","EventCompetition"]
         )["DailySales"].cumsum()
