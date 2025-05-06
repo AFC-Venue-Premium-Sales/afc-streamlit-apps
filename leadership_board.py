@@ -949,12 +949,20 @@ def run_dashboard():
         # ✅ Ensure correct lookup in budget_df
         if isinstance(budget_df, pd.DataFrame):
             matching_row = budget_df[
-                (budget_df["Fixture Name"].str.strip().str.lower() == fixture_name.strip().lower()) &
-                (budget_df["EventCompetition"].str.strip().str.lower() == event_competition.strip().lower())
+                (
+                    (budget_df["Fixture Name"].str.strip().str.lower() == fixture_name.strip().lower()) &
+                    (budget_df["EventCompetition"].str.strip().str.lower() == event_competition.strip().lower())
+                ) |
+                (
+                    (budget_df["Fixture Name"].str.strip().str.lower() == fixture_name.strip().lower()) &
+                    (budget_df["EventCompetition"].isnull() | (budget_df["EventCompetition"].str.strip() == ""))
+                )
             ]
             budget_target = matching_row["Budget Target"].values[0] if not matching_row.empty else 0
         else:
             budget_target = budget_df.get((fixture_name, event_competition), 0)
+
+        
 
         # ✅ Ensure budget_target is numeric
         budget_target = float(str(budget_target).replace("£", "").replace(",", "").strip()) if budget_target else 0
