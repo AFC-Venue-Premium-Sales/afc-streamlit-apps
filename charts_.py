@@ -181,26 +181,28 @@ def generate_event_level_women_cumulative_sales_chart(filtered_data):
     Generate a cumulative percentage-to-target sales chart for Women's competitions.
     """
     # --- 1️⃣ Load & normalize budget targets ---
+    # --- 1️⃣ Load & normalize budget targets ---
     budget_df = load_budget_targets().copy()
+
+    # ✅ Strip column names of whitespace
     budget_df.columns = budget_df.columns.str.strip()
 
-    # rename kickoff column if needed
+    # ✅ Rename kickoff column if needed
     if "KickOff Event Start" in budget_df.columns:
         budget_df.rename(columns={"KickOff Event Start": "KickOffEventStart"}, inplace=True)
 
-    # rename the budget column to "Budget"
-    if "Budget Target" in budget_df.columns:
-        budget_df.rename(columns={"Budget Target": "Budget"}, inplace=True)
-    elif "Budget" not in budget_df.columns:
-        raise KeyError("Your budget file must have a 'Budget Target' or 'Budget' column")
+    # ✅ Make sure "Budget Target" exists
+    if "Budget Target" not in budget_df.columns:
+        raise KeyError("Your budget file must have a 'Budget Target' column")
 
-    # parse & round kickoff times
-    budget_df["KickOffEventStart"] = (
-        pd.to_datetime(budget_df["KickOffEventStart"], errors="coerce", dayfirst=True)
-          .dt.round("min")
-    )
-    budget_df["Fixture Name"]     = budget_df["Fixture Name"].str.strip()
-    budget_df["EventCompetition"] = budget_df["EventCompetition"].str.strip()
+    # ✅ Clean and parse columns
+    budget_df["KickOffEventStart"] = pd.to_datetime(
+        budget_df["KickOffEventStart"], errors="coerce", dayfirst=True
+    ).dt.round("min")
+
+    budget_df["Fixture Name"]     = budget_df["Fixture Name"].astype(str).str.strip()
+    budget_df["EventCompetition"] = budget_df["EventCompetition"].astype(str).str.strip()
+    budget_df["Budget Target"]    = budget_df["Budget Target"].replace('[£,]', '', regex=True).astype(float)
 
     # --- 2️⃣ Prepare your sales feed ---
     df = filtered_data.copy()
