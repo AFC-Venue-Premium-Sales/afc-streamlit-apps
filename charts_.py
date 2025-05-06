@@ -168,16 +168,6 @@ def generate_event_level_men_cumulative_sales_chart(filtered_data):
         logging.error(f"Error in generate_event_level_men_cumulative_sales_chart: {e}")
 
 
-
-import re
-import io
-import base64
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
-
-
 import re
 import io
 import base64
@@ -218,38 +208,49 @@ def generate_event_level_women_cumulative_sales_chart(filtered_data):
     df["Fixture Name"]      = df["Fixture Name"].str.strip()
     df["EventCompetition"]  = df["EventCompetition"].str.strip()
     df["PaymentTime"]       = pd.to_datetime(df["PaymentTime"], errors="coerce", dayfirst=True)
-    df["KickOffEventStart"] = (
-        pd.to_datetime(df["KickOffEventStart"], errors="coerce", dayfirst=True)
-          .dt.round("min")
-    )
+    df["KickOffEventStart"] = pd.to_datetime(df["KickOffEventStart"], errors="coerce", dayfirst=True).dt.round("min")
     df["IsPaid"]            = df["IsPaid"].astype(str).str.upper().fillna("FALSE")
     df["Discount"]          = df["Discount"].astype(str).str.lower()
 
     # --- 3️⃣ Merge on the three keys ---
-    
-    # Clean keys in both dataframes BEFORE merging
-    for col in ["Fixture Name", "EventCompetition"]:
-        df[col] = df[col].astype(str).str.strip().str.lower()
-        budget_df[col] = budget_df[col].astype(str).str.strip().str.lower()
+
+    # Validate and clean the budget column
+    if "Budget Target" not in budget_df.columns:
+        raise KeyError("Your budget file must have a 'Budget Target' column")
+
+    budget_df["Budget Target"] = (
+        budget_df["Budget Target"].replace('[£,]', '', regex=True).astype(float)
+    )
 
     # Align datetime rounding
-    df["KickOffEventStart"] = pd.to_datetime(df["KickOffEventStart"]).dt.round("min")
-    budget_df["KickOffEventStart"] = pd.to_datetime(budget_df["KickOffEventStart"]).dt.round("min")
-    
-    # Merge Safely
-    df = df.merge(
-        budget_df[["Fixture Name","EventCompetition","KickOffEventStart","Budget"]],
-        on=["Fixture Name","EventCompetition","KickOffEventStart"],
+    budget_df["KickOffEventStart"] = pd.to_datetime(budget_df["KickOffEventStart"], errors="coerce").dt.round("min")
+
+    # Merge safely on 3 keys
+    merged = pd.merge(
+        df,
+        budget_df[["Fixture Name", "EventCompetition", "KickOffEventStart", "Budget Target"]],
+        on=["Fixture Name", "EventCompetition", "KickOffEventStart"],
         how="left",
         validate="m:1"
     )
-    
-    # Raise error if Budget column is missing
-    if "Budget" not in df.columns:
-        raise KeyError("After merge, 'Budget' is missing – check your merge keys!")
-    
+
+    # Optional fallback merge (Fixture + KickOff only)
+    if merged["Budget Target"].isna().any():
+        fallback = pd.merge(
+            df,
+            budget_df[["Fixture Name", "KickOffEventStart", "Budget Target"]],
+            on=["Fixture Name", "KickOffEventStart"],
+            how="left"
+        )
+        merged["Budget Target"] = merged["Budget Target"].fillna(fallback["Budget Target"])
+
     # Debug output
-    st.write(f"🔍 Rows with missing budgets after merge: {df['Budget'].isna().sum()} of {len(df)}")
+    st.write(f"🔍 Rows with missing budgets after merge: {merged['Budget Target'].isna().sum()} of {len(merged)}")
+
+    # Final check: exit if all budgets are still missing
+    if merged["Budget Target"].isna().all():
+        st.warning("⚠️ No matching budget data found for women's fixtures. Please check EventCompetition or Kickoff formatting.")
+        return
 
     # --- 4️⃣ Filter & clean ---
     allowed = ["Barclays Women's Super League", "UEFA Women's Champions League"]
