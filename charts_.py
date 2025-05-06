@@ -226,14 +226,30 @@ def generate_event_level_women_cumulative_sales_chart(filtered_data):
     df["Discount"]          = df["Discount"].astype(str).str.lower()
 
     # --- 3️⃣ Merge on the three keys ---
+    
+    # Clean keys in both dataframes BEFORE merging
+    for col in ["Fixture Name", "EventCompetition"]:
+        df[col] = df[col].astype(str).str.strip().str.lower()
+        budget_df[col] = budget_df[col].astype(str).str.strip().str.lower()
+
+    # Align datetime rounding
+    df["KickOffEventStart"] = pd.to_datetime(df["KickOffEventStart"]).dt.round("min")
+    budget_df["KickOffEventStart"] = pd.to_datetime(budget_df["KickOffEventStart"]).dt.round("min")
+    
+    # Merge Safely
     df = df.merge(
         budget_df[["Fixture Name","EventCompetition","KickOffEventStart","Budget"]],
         on=["Fixture Name","EventCompetition","KickOffEventStart"],
         how="left",
         validate="m:1"
     )
+    
+    # Raise error if Budget column is missing
     if "Budget" not in df.columns:
         raise KeyError("After merge, 'Budget' is missing – check your merge keys!")
+    
+    # Debug output
+    st.write(f"🔍 Rows with missing budgets after merge: {df['Budget'].isna().sum()} of {len(df)}")
 
     # --- 4️⃣ Filter & clean ---
     allowed = ["Barclays Women's Super League", "UEFA Women's Champions League"]
