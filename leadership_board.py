@@ -945,22 +945,20 @@ def run_dashboard():
 
         # ✅ Calculate fixture details
         days_to_fixture = (fixture_date - datetime.now()).days if pd.notnull(fixture_date) else "TBC"
+        
+        # Concert are missing EventCompetition
+        if fixture_name in ["Robbie Williams Live 2025 (Friday)", "Robbie Williams Live 2025 (Saturday)"]:
+            event_competition = ""  # Force blank match since it's blank in budget_df
 
         # ✅ Ensure correct lookup in budget_df
         if isinstance(budget_df, pd.DataFrame):
             matching_row = budget_df[
-                (
-                    (budget_df["Fixture Name"].str.strip().str.lower() == fixture_name.strip().lower()) &
-                    (budget_df["EventCompetition"].str.strip().str.lower() == event_competition.strip().lower())
-                ) |
-                (
-                    (budget_df["Fixture Name"].str.strip().str.lower() == fixture_name.strip().lower()) &
-                    (budget_df["EventCompetition"].isnull() | (budget_df["EventCompetition"].str.strip() == ""))
-                )
+                budget_df["Fixture Name"].str.strip().str.lower() == fixture_name.strip().lower()
             ]
             budget_target = matching_row["Budget Target"].values[0] if not matching_row.empty else 0
         else:
             budget_target = budget_df.get((fixture_name, event_competition), 0)
+
 
         
 
