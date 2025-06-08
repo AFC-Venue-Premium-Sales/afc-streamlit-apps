@@ -8,10 +8,23 @@ import streamlit as st
 from datetime import datetime, timedelta
 from datetime import datetime
 from streamlit_autorefresh import st_autorefresh
+import streamlit.components.v1 as components
 
 ################################################################################
 # 1. Load live sales data from tjt_hosp_api and merged inventory data
 ################################################################################
+
+
+# ─────────── Resolve crest path ───────────
+BASE_DIR = os.path.dirname(__file__)
+CREST_PATH = os.path.join(BASE_DIR, "assets", "arsenal_crest_gold.png")
+try:
+    with open(CREST_PATH, "rb") as img_f:
+        crest_base64 = base64.b64encode(img_f.read()).decode()
+except FileNotFoundError:
+    crest_base64 = ""  # fallback if asset missing
+
+
 
 def load_live_data():
     """
@@ -727,6 +740,76 @@ def run_dashboard():
     Each page auto-cycles every 15 seconds.
     """
     # st.set_page_config(page_title="Hospitality Leadership Board", layout="wide")
+    
+    # ──────────── Keep-Alive Ping (invisible) ────────────
+    # fires a trivial rerun every 5min so your host won't sleep
+    from streamlit_autorefresh import st_autorefresh
+    st_autorefresh(interval=300_000, key="keep_alive")
+
+    # ─────────────── Off-Season Early Return ───────────────
+    # fixed release date for the 25/26 season
+    NEXT_SALE_DATE = datetime(2025, 6, 18, 0, 0)
+    now = datetime.now()
+
+    if now < NEXT_SALE_DATE:
+        target_iso = NEXT_SALE_DATE.strftime("%Y-%m-%dT%H:%M:%S")
+        html = f"""
+        <style>
+          .offseason-logo {{ text-align: center; margin-top: 60px; }}
+          .offseason-logo img {{ height: 120px; }}
+
+          .offseason-title {{
+            font-family: 'Northbank-N7';
+            font-size: 48px;
+            color: #E41B17;
+            text-align: center;
+            margin-top: 20px;
+          }}
+
+          .countdown {{
+            font-family: 'Chapman-Bold';
+            font-size: 36px;
+            color: #947A58;
+            text-align: center;
+            margin-top: 30px;
+          }}
+        </style>
+
+        <div class="offseason-logo">
+          <img src="data:image/png;base64,{crest_base64}" alt="Arsenal Crest" />
+        </div>
+
+        <div class="offseason-title">
+          Back soon after the 25/26 fixture release!
+        </div>
+
+        <div id="countdown" class="countdown"></div>
+
+        <script>
+          const target = new Date("{target_iso}");
+          function tick() {{
+            const diff = target - new Date();
+            if (diff <= 0) {{
+              document.getElementById("countdown").innerHTML = "We’re live!";
+              clearInterval(iv);
+              return;
+            }}
+            const d = Math.floor(diff / 86400000);
+            const h = Math.floor((diff % 86400000) / 3600000);
+            const m = Math.floor((diff % 3600000) / 60000);
+            const s = Math.floor((diff % 60000) / 1000);
+            document.getElementById("countdown").innerHTML =
+              `<b>${{d}}</b> days, <b>${{h}}</b> hrs, <b>${{m}}</b> min, <b>${{s}}</b> seconds`;
+          }}
+          tick();
+          const iv = setInterval(tick, 1000);
+        </script>
+        """
+        components.html(html, height=400)
+        return
+    # ───────────── End off-season block ───────────────
+
+
 
     # --------------------------------------------------------------------------
     #  MOVE OUR LOAD FUNCTIONS HERE so that each refresh re-runs them:

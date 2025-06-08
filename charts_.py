@@ -374,64 +374,68 @@ def generate_event_level_concert_cumulative_sales_chart(filtered_data):
         budget_df.columns = budget_df.columns.str.strip()
         if "KickOff Event Start" in budget_df.columns:
             budget_df.rename(columns={"KickOff Event Start": "KickOffEventStart"}, inplace=True)
-        budget_df["KickOffEventStart"] = (
-            pd.to_datetime(budget_df["KickOffEventStart"], errors="coerce", dayfirst=True)
-              .dt.round("min")
-        )
-        budget_df["FixtureKey"] = budget_df["Fixture Name"].astype(str).str.strip().str.lower()
+        budget_df["KickOffEventStart"] = pd.to_datetime(
+            budget_df["KickOffEventStart"], errors="coerce", dayfirst=True
+        ).dt.round("min")
+        budget_df["Fixture Name"] = budget_df["Fixture Name"].astype(str).str.strip()
+        # normalize competition for merge
+        budget_df["EventCompetition"] = budget_df.get("EventCompetition", "").astype(str).str.strip()
         if "Budget Target" not in budget_df.columns:
             raise KeyError("Your budget file must have a 'Budget Target' column")
         budget_df["Budget Target"] = (
             budget_df["Budget Target"].replace("[£,]", "", regex=True).astype(float)
         )
-        # drop duplicates to ensure 1:1 merge
-        concert_budget = budget_df.drop_duplicates(subset=["FixtureKey", "KickOffEventStart"])
 
-        # --- 2️⃣ Prepare and filter sales feed ---
+        # --- 2️⃣ Prepare and filter sales data ---
         df = filtered_data.copy()
         df.columns = df.columns.str.strip()
-        df["FixtureKey"]          = df["Fixture Name"].astype(str).str.strip().str.lower()
-        df["EventCategory"]       = df.get("EventCategory", pd.Series()).astype(str).str.strip().str.lower()
-        df["PaymentTime"]         = pd.to_datetime(df["PaymentTime"], errors="coerce", dayfirst=True)
-        df["KickOffEventStart"]   = pd.to_datetime(df["KickOffEventStart"], errors="coerce", dayfirst=True).dt.round("min")
-        df["IsPaid"]              = df["IsPaid"].astype(str).str.upper().fillna("FALSE")
-        df["Discount"]            = df["Discount"].astype(str).str.lower()
-
-        # filter to paid concerts only
+        df["Fixture Name"]      = df["Fixture Name"].astype(str).str.strip()
+        df["PaymentTime"]       = pd.to_datetime(
+            df["PaymentTime"], errors="coerce", dayfirst=True
+        )
+        df["KickOffEventStart"] = pd.to_datetime(
+            df["KickOffEventStart"], errors="coerce", dayfirst=True
+        ).dt.round("min")
+        df["IsPaid"]            = df["IsPaid"].astype(str).str.upper().fillna("FALSE")
+        # filter to concert category then set EventCompetition for merge
+        df["EventCategory"]     = df.get("EventCategory", pd.Series()).astype(str).str.strip().str.lower()
         df = df[(df["IsPaid"] == "TRUE") & (df["EventCategory"] == "concert")].copy()
         if df.empty:
             st.warning("⚠️ No paid concert sales to show.")
             return
-        df = df.drop_duplicates(subset=["FixtureKey", "KickOffEventStart"])
+        # override competition to match budget's 'Concert'
+        df["EventCompetition"] = "Concert"
+        df = df.drop_duplicates(subset=["Fixture Name", "KickOffEventStart", "EventCompetition"])
 
-        # --- 3️⃣ Merge on FixtureKey + KickOffEventStart ---
+        # --- 3️⃣ Merge on all three keys ---
         merged = pd.merge(
             df,
-            concert_budget[["FixtureKey", "KickOffEventStart", "Budget Target"]],
-            on=["FixtureKey", "KickOffEventStart"],
+            budget_df[["Fixture Name", "EventCompetition", "KickOffEventStart", "Budget Target"]],
+            on=["Fixture Name", "EventCompetition", "KickOffEventStart"],
             how="left",
-            validate="m:1",
+            validate="m:1"
         )
         missing = merged["Budget Target"].isna().sum()
         if missing:
             st.warning(f"⚠️ {missing} concert rows missing budgets.")
-        
+
         # --- 4️⃣ Compute effective price & cumulative sums ---
         merged["TotalEffectivePrice"] = np.where(
             merged["TotalPrice"] > 0,
             merged["TotalPrice"],
-            merged["DiscountValue"].fillna(0),
+            merged["DiscountValue"].fillna(0)
         )
         grouped = (
-            merged.groupby(["Fixture Name", "PaymentTime"]).agg(
-                DailySales    = ("TotalEffectivePrice", "sum"),
-                KickOffDate   = ("KickOffEventStart",   "first"),
-                BudgetTarget  = ("Budget Target",        "first"),
-            )
-            .reset_index()
+            merged.groupby(["Fixture Name", "PaymentTime"])  
+                  .agg(
+                      DailySales   = ("TotalEffectivePrice", "sum"),
+                      KickOffDate  = ("KickOffEventStart", "first"),
+                      BudgetTarget = ("Budget Target", "first"),
+                  )
+                  .reset_index()
         )
-        grouped["CumulativeSales"]    = grouped.groupby("Fixture Name")["DailySales"].cumsum()
-        grouped["RevenuePercentage"]  = grouped["CumulativeSales"] / grouped["BudgetTarget"] * 100
+        grouped["CumulativeSales"]   = grouped.groupby("Fixture Name")["DailySales"].cumsum()
+        grouped["RevenuePercentage"] = grouped["CumulativeSales"] / grouped["BudgetTarget"] * 100
 
         # --- 5️⃣ Plot ---
         fixture_colors = {
@@ -467,16 +471,20 @@ def generate_event_level_concert_cumulative_sales_chart(filtered_data):
         dates = grouped["PaymentTime"].dt.date
         ax.set_xlim(dates.min(), dates.max())
         span = (dates.max() - dates.min()).days
-        interval = 2 if span <= 30 else 10
-        ax.xaxis.set_major_locator(mdates.DayLocator(interval=interval))
+        ax.xaxis.set_major_locator(mdates.DayLocator(interval=2 if span <= 30 else 10))
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
         fig.autofmt_xdate()
         ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{int(x)}%'))
 
-        handles = [plt.Line2D([0],[0], color=fixture_colors.get(fx,'blue'), lw=2, label=fx) for fx in grouped["Fixture Name"].unique()] + [plt.Line2D([],[], color='red', linestyle='--', label='Budget Target (100%)')]
+        handles = (
+            [plt.Line2D([0], [0], color=fixture_colors.get(fx, 'blue'), lw=2, label=fx)
+             for fx in grouped["Fixture Name"].unique()]
+            + [plt.Line2D([], [], color='red', linestyle='--', label='Budget Target (100%)')]
+        )
         ax.legend(handles=handles, loc='lower center', bbox_to_anchor=(0.5, -0.25), frameon=False)
 
         st.pyplot(fig)
+
     except Exception as e:
         st.error(f"Failed to generate the concert cumulative chart: {e}")
         logging.error(f"Error in generate_event_level_concert_cumulative_sales_chart: {e}")
