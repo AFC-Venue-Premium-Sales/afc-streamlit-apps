@@ -799,7 +799,7 @@ def run_dashboard():
             const m = Math.floor((diff % 3600000) / 60000);
             const s = Math.floor((diff % 60000) / 1000);
             document.getElementById("countdown").innerHTML =
-              `<b>${{d}}</b> days, <b>${{h}}</b> hrs, <b>${{m}}</b> min, <b>${{s}}</b> seconds`;
+              `<b>${{d}}</b> days: <b>${{h}}</b> hrs: <b>${{m}}</b> min: <b>${{s}}</b> seconds`;
           }}
           tick();
           const iv = setInterval(tick, 1000);
