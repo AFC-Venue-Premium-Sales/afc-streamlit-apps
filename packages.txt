@@ -12,4 +12,5 @@ libatk1.0-0
 libpangocairo-1.0-0
 libgtk-3-0
 libxml2-dev
+libxslt1-dev
 pkg-config
