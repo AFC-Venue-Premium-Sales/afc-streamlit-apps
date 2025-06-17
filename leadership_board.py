@@ -748,7 +748,7 @@ def run_dashboard():
 
     # ─────────────── Off-Season Early Return ───────────────
     # fixed release date for the 25/26 season
-    NEXT_SALE_DATE = datetime(2025, 6, 18, 0, 0)
+    NEXT_SALE_DATE = datetime(2025, 6, 18, 9, 0)
     now = datetime.now()
 
     if now < NEXT_SALE_DATE:
