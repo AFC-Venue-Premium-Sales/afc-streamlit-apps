@@ -11,7 +11,7 @@ from streamlit_autorefresh import st_autorefresh
 import streamlit.components.v1 as components
 
 ################################################################################
-# 1. Load live sales data from tjt_hosp_api and merged inventory data
+# 1. Load live sales data from tjt_hosp_api and merged inventory data!
 ################################################################################
 
 
