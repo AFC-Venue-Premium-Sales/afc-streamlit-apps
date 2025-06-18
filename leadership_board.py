@@ -219,7 +219,7 @@ def calculate_monthly_progress(data, start_date, end_date, targets_data):
     progress_data["Sales Exec"] = progress_data["Sales Exec"].map(user_mapping).fillna(progress_data["Sales Exec"])
     
      # ✅ Exclude the user "Millie" from the display
-    progress_data = progress_data[progress_data["Sales Exec"] == "TBC"] 
+    progress_data = progress_data[progress_data["Sales Exec"] != "TBC"] 
 
     # ✅ Sort correctly, keeping TOTALS at the bottom
     progress_data = progress_data.sort_values(by="Progress To Monthly Target (Numeric)", ascending=False, na_position='last')
