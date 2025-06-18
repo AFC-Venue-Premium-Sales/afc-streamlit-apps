@@ -218,7 +218,7 @@ def calculate_monthly_progress(data, start_date, end_date, targets_data):
     }
     progress_data["Sales Exec"] = progress_data["Sales Exec"].map(user_mapping).fillna(progress_data["Sales Exec"])
     
-     # ✅ Exclude the user "Millie" from the display
+     # ✅ Exclude the user from the main leaderboard display
     progress_data = progress_data[progress_data["Sales Exec"] != "TBC"] 
 
     # ✅ Sort correctly, keeping TOTALS at the bottom
