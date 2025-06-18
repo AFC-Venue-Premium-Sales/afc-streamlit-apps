@@ -76,21 +76,36 @@ df_inventory = load_inventory_data()
 
 # Hardcoded monthly targets
 targets_data = pd.DataFrame({
-    "Month": ["December", "January", "February", "March", "April", "May"],
-    "Year": [2024, 2025, 2025, 2025, 2025, 2025],
-    "bgardiner": [155000, 155000, 135000, 110000, 90000, 65000],
-    "dcoppin":   [155000, 155000, 135000, 110000, 90000, 65000],
-    "jedwards":  [155000, 155000, 135000, 110000, 90000, 65000],
-    "millies":   [0, 0, 0, 0, 0, 0],
-    "dmontague": [155000, 155000, 135000, 110000, 90000, 65000],
+    # "Month": ["December", "January", "February", "March", "April", "May"],
+    # "Year": [2024, 2025, 2025, 2025, 2025, 2025],
+    # "bgardiner": [155000, 155000, 135000, 110000, 90000, 65000],
+    # "dcoppin":   [155000, 155000, 135000, 110000, 90000, 65000],
+    # "jedwards":  [155000, 155000, 135000, 110000, 90000, 65000],
+    # "millies":   [0, 0, 0, 0, 0, 0],
+    # "dmontague": [155000, 155000, 135000, 110000, 90000, 65000],
+    
     # "MeganS":    [42500, 42500, 36500, 30500, 24500, 18500],
     # "BethNW":    [42500, 42500, 36500, 30500, 24500, 18500],
     # "HayleyA":   [42500, 42500, 36500, 30500, 24500, 18500],
     # "jmurphy":   [35000, 35000, 30000, 25000, 20000, 15000],
     # "BenT":      [35000, 35000, 30000, 25000, 20000, 15000],
+    
+    "Month": ["June", "July", "August", "September", "October", "November", "December",
+              "January", "February", "March", "April", "May"],
+    "Year": [2025, 2025, 2025, 2025, 2025, 2025, 2025, 2026, 2026, 2026, 2026, 2026],
+    "bgardiner": [155000, 165000, 175000, 185000, 175000, 165000, 165000,
+                  155000, 155000, 135000, 100000, 65000],
+    "dcoppin":   [155000, 165000, 175000, 185000, 175000, 165000, 165000,
+                  155000, 155000, 135000, 100000, 65000],
+    "jedwards":  [155000, 165000, 175000, 185000, 175000, 165000, 165000,
+                  155000, 155000, 135000, 100000, 65000],
+    "TBC":       [0, 0, 0, 165000, 175000, 185000, 185000,
+                  175000, 155000, 135000, 100000, 65000],
+    "dmontague": [155000, 165000, 175000, 185000, 175000, 165000, 165000,
+                  155000, 155000, 135000, 100000, 65000]
 }).set_index(["Month", "Year"])
 
-valid_sales_executives =  ["dcoppin", "millies", "bgardiner", "dmontague", "jedwards"]
+valid_sales_executives =  ["dcoppin", "TBC", "bgardiner", "dmontague", "jedwards"]
 # valid_services_executives = ["HayleyA", "BethNW", "BenT", "jmurphy", "MeganS"]
 
 def load_budget_targets():
@@ -199,12 +214,12 @@ def calculate_monthly_progress(data, start_date, end_date, targets_data):
         "bgardiner": "Bobby",
         "dcoppin": "David",
         "jedwards": "Joey",
-        "millies": "Millie",
+        "TBC": "TBC",
     }
     progress_data["Sales Exec"] = progress_data["Sales Exec"].map(user_mapping).fillna(progress_data["Sales Exec"])
     
      # ✅ Exclude the user "Millie" from the display
-    progress_data = progress_data[progress_data["Sales Exec"] != "Millie"]
+    progress_data = progress_data[progress_data["Sales Exec"] == "TBC"] 
 
     # ✅ Sort correctly, keeping TOTALS at the bottom
     progress_data = progress_data.sort_values(by="Progress To Monthly Target (Numeric)", ascending=False, na_position='last')
@@ -413,7 +428,7 @@ def generate_scrolling_messages(data, budget_df, df_inventory):
         top_fixture_message = "📉 No sales recorded today."
 
     # ✅ **Top Selling Exec with Name Mapping**
-    valid_executives = ["dcoppin", "millies", "bgardiner", "dmontague", "jedwards"]
+    valid_executives = ["dcoppin", "TBC", "bgardiner", "dmontague", "jedwards"]
 
     # Apply user mapping
     user_mapping = {
@@ -421,7 +436,7 @@ def generate_scrolling_messages(data, budget_df, df_inventory):
         "bgardiner": "Bobby",
         "dcoppin":   "David",
         "jedwards":  "Joey",
-        "millies":   "Millie",
+        "TBC":   "Millie",
         # "HayleyA":   "Hayley",
         # "BethNW":    "Beth",
         # "BenT":      "Ben",
@@ -741,73 +756,73 @@ def run_dashboard():
     """
     # st.set_page_config(page_title="Hospitality Leadership Board", layout="wide")
     
-    # ──────────── Keep-Alive Ping (invisible) ────────────
-    # fires a trivial rerun every 5min so your host won't sleep
-    from streamlit_autorefresh import st_autorefresh
-    st_autorefresh(interval=300_000, key="keep_alive")
+    # # ──────────── Keep-Alive Ping (invisible) ────────────
+    # # fires a trivial rerun every 5min so your host won't sleep
+    # from streamlit_autorefresh import st_autorefresh
+    # st_autorefresh(interval=300_000, key="keep_alive")
 
-    # ─────────────── Off-Season Early Return ───────────────
-    # fixed release date for the 25/26 season
-    NEXT_SALE_DATE = datetime(2025, 6, 18, 9, 0)
-    now = datetime.now()
+    # # ─────────────── Off-Season Early Return ───────────────
+    # # fixed release date for the 25/26 season
+    # NEXT_SALE_DATE = datetime(2025, 6, 18, 9, 0)
+    # now = datetime.now()
 
-    if now < NEXT_SALE_DATE:
-        target_iso = NEXT_SALE_DATE.strftime("%Y-%m-%dT%H:%M:%S")
-        html = f"""
-        <style>
-          .offseason-logo {{ text-align: center; margin-top: 60px; }}
-          .offseason-logo img {{ height: 120px; }}
+    # if now < NEXT_SALE_DATE:
+    #     target_iso = NEXT_SALE_DATE.strftime("%Y-%m-%dT%H:%M:%S")
+    #     html = f"""
+    #     <style>
+    #       .offseason-logo {{ text-align: center; margin-top: 60px; }}
+    #       .offseason-logo img {{ height: 120px; }}
 
-          .offseason-title {{
-            font-family: 'Northbank-N7';
-            font-size: 48px;
-            color: #E41B17;
-            text-align: center;
-            margin-top: 20px;
-          }}
+    #       .offseason-title {{
+    #         font-family: 'Northbank-N7';
+    #         font-size: 48px;
+    #         color: #E41B17;
+    #         text-align: center;
+    #         margin-top: 20px;
+    #       }}
 
-          .countdown {{
-            font-family: 'Chapman-Bold';
-            font-size: 36px;
-            color: #947A58;
-            text-align: center;
-            margin-top: 30px;
-          }}
-        </style>
+    #       .countdown {{
+    #         font-family: 'Chapman-Bold';
+    #         font-size: 36px;
+    #         color: #947A58;
+    #         text-align: center;
+    #         margin-top: 30px;
+    #       }}
+    #     </style>
 
-        <div class="offseason-logo">
-          <img src="data:image/png;base64,{crest_base64}" alt="Arsenal Crest" />
-        </div>
+    #     <div class="offseason-logo">
+    #       <img src="data:image/png;base64,{crest_base64}" alt="Arsenal Crest" />
+    #     </div>
 
-        <div class="offseason-title">
-          Back soon after the 25/26 fixture release!
-        </div>
+    #     <div class="offseason-title">
+    #       Back soon after the 25/26 fixture release!
+    #     </div>
 
-        <div id="countdown" class="countdown"></div>
+    #     <div id="countdown" class="countdown"></div>
 
-        <script>
-          const target = new Date("{target_iso}");
-          function tick() {{
-            const diff = target - new Date();
-            if (diff <= 0) {{
-              document.getElementById("countdown").innerHTML = "We’re live!";
-              clearInterval(iv);
-              return;
-            }}
-            const d = Math.floor(diff / 86400000);
-            const h = Math.floor((diff % 86400000) / 3600000);
-            const m = Math.floor((diff % 3600000) / 60000);
-            const s = Math.floor((diff % 60000) / 1000);
-            document.getElementById("countdown").innerHTML =
-              `<b>${{d}}</b> days: <b>${{h}}</b> hrs: <b>${{m}}</b> min: <b>${{s}}</b> seconds`;
-          }}
-          tick();
-          const iv = setInterval(tick, 1000);
-        </script>
-        """
-        components.html(html, height=400)
-        return
-    # ───────────── End off-season block ───────────────
+    #     <script>
+    #       const target = new Date("{target_iso}");
+    #       function tick() {{
+    #         const diff = target - new Date();
+    #         if (diff <= 0) {{
+    #           document.getElementById("countdown").innerHTML = "We’re live!";
+    #           clearInterval(iv);
+    #           return;
+    #         }}
+    #         const d = Math.floor(diff / 86400000);
+    #         const h = Math.floor((diff % 86400000) / 3600000);
+    #         const m = Math.floor((diff % 3600000) / 60000);
+    #         const s = Math.floor((diff % 60000) / 1000);
+    #         document.getElementById("countdown").innerHTML =
+    #           `<b>${{d}}</b> days: <b>${{h}}</b> hrs: <b>${{m}}</b> min: <b>${{s}}</b> seconds`;
+    #       }}
+    #       tick();
+    #       const iv = setInterval(tick, 1000);
+    #     </script>
+    #     """
+    #     components.html(html, height=400)
+    #     return
+    # # ───────────── End off-season block ───────────────
 
 
 
@@ -819,7 +834,7 @@ def run_dashboard():
     # --------------------------------------------------------------------------
 
     # For sales + services
-    valid_sales_executives = ["dcoppin", "millies", "bgardiner", "dmontague", "jedwards"]
+    valid_sales_executives = ["dcoppin", "TBC", "bgardiner", "dmontague", "jedwards"]
     # valid_services_executives = ["HayleyA", "BethNW", "BenT", "jmurphy", "MeganS"]
 
     
