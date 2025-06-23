@@ -220,7 +220,7 @@ def calculate_monthly_progress(data, start_date, end_date, targets_data):
     
      # ✅ Exclude the user from the main leaderboard display!
     # progress_data = progress_data[progress_data["Sales Exec"] != "TBC"] 
-    progress_data = progress_data[~progress_data["Sales Exec"].isin(["TBC", "jedwards"])]
+    progress_data = progress_data[~progress_data["Sales Exec"].isin(["TBC", "Joey"])]
 
 
     # ✅ Sort correctly, keeping TOTALS at the bottom
